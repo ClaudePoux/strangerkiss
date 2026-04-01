@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --bg: #0d0014;
+  --pink: #e91e8c;
+  --purple: #7c3aed;
+}
+
+body {
+  background: var(--bg);
+  font-family: var(--font-geist), Arial, sans-serif;
+}
+
+/* Leaflet overrides */
+.leaflet-container {
+  background: #1a0a2e;
+  border-radius: 1rem;
+}
+
+.leaflet-tile {
+  filter: brightness(0.85) saturate(1.2) hue-rotate(10deg);
+}
+
+.leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.5) !important;
+  color: #888 !important;
+}
+
+.leaflet-control-attribution a {
+  color: #aaa !important;
+}
