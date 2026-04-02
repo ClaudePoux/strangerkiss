@@ -41,10 +41,11 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 ## Stack cible (production)
 
 - **Nom de domaine** : strangerkiss.com (réservé sur Gandi)
-- **Hébergement** : OVH + Vercel pour Next.js
-- **Base de données** : MySQL sur OVH — migration prévue depuis Supabase
+- **Hébergement** : Vercel (gratuit, Next.js natif)
+- **Base de données** : MySQL sur OVH mutualisé (1,49 €/mois — 250 Mo) — migration prévue depuis Supabase
+- **Paiements** : Stripe (Apple Pay et Google Pay inclus)
 - **SMS** : Twilio
-- **Paiements** : Stripe (compatibilité native Apple Pay & Google Pay, essentiel pour le mobile)
+- **Traduction** : DeepL API
 
 ## Conventions du projet
 
