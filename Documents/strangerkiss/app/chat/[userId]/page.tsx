@@ -3,34 +3,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import type { Message } from "@/lib/supabase";
+import { useI18n } from "@/lib/i18n";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
-// Demo messages shown when Supabase is not configured
-const DEMO_MESSAGES: Message[] = [
-  {
-    id: "d1",
-    from_id: "demo-0",
-    to_id: "me",
-    content: "Hey ! Je t'ai vu sur la carte 😊",
-    created_at: new Date(Date.now() - 120000).toISOString(),
-  },
-  {
-    id: "d2",
-    from_id: "me",
-    to_id: "demo-0",
-    content: "Salut ! Tu es encore dans le coin ?",
-    created_at: new Date(Date.now() - 90000).toISOString(),
-  },
-  {
-    id: "d3",
-    from_id: "demo-0",
-    to_id: "me",
-    content: "Oui, je suis à la terrasse du café central, veste rouge 😉",
-    created_at: new Date(Date.now() - 60000).toISOString(),
-  },
-];
-
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("fr-FR", {
+function formatTime(iso: string, bcp47: string) {
+  return new Date(iso).toLocaleTimeString(bcp47, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -40,6 +17,7 @@ export default function ChatPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t, bcp47 } = useI18n();
 
   const otherId = params.userId as string;
   const otherName = searchParams.get("name") ?? "Inconnu·e";
@@ -52,8 +30,9 @@ export default function ChatPage() {
   const [demoMode, setDemoMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const tRef = useRef(t);
+  tRef.current = t;
 
-  // Scroll to bottom whenever messages update
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -62,15 +41,19 @@ export default function ChatPage() {
     const { supabase, getMessages, subscribeToMessages } = await import("@/lib/supabase");
 
     if (!supabase) {
+      const tr = tRef.current;
       setDemoMode(true);
-      setMessages(DEMO_MESSAGES.map((m) => ({ ...m, from_id: m.from_id === "me" ? id : otherId, to_id: m.to_id === "me" ? id : otherId })));
+      setMessages([
+        { id: "d1", from_id: otherId, to_id: id, content: tr("chat.demo1"), created_at: new Date(Date.now() - 120000).toISOString() },
+        { id: "d2", from_id: id, to_id: otherId, content: tr("chat.demo2"), created_at: new Date(Date.now() - 90000).toISOString() },
+        { id: "d3", from_id: otherId, to_id: id, content: tr("chat.demo3"), created_at: new Date(Date.now() - 60000).toISOString() },
+      ]);
       return;
     }
 
     const history = await getMessages(id, otherId);
     setMessages(history);
 
-    // Real-time subscription
     const unsub = subscribeToMessages(id, otherId, (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
@@ -99,7 +82,6 @@ export default function ChatPage() {
     setSending(true);
 
     if (demoMode) {
-      // Optimistic local add in demo mode
       const fakeMsg: Message = {
         id: crypto.randomUUID(),
         from_id: myId,
@@ -136,7 +118,7 @@ export default function ChatPage() {
         <button
           onClick={() => router.back()}
           className="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
-          aria-label="Retour"
+          aria-label={t("chat.back")}
         >
           ←
         </button>
@@ -148,17 +130,20 @@ export default function ChatPage() {
           )}
         </div>
 
-        {demoMode && (
-          <span className="flex-shrink-0 text-xs text-amber-400/70 bg-amber-400/10 border border-amber-400/20 rounded-full px-2.5 py-1">
-            Mode démo
-          </span>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {demoMode && (
+            <span className="text-xs text-amber-400/70 bg-amber-400/10 border border-amber-400/20 rounded-full px-2.5 py-1">
+              {t("chat.demoMode")}
+            </span>
+          )}
+          <LanguageSwitcher />
+        </div>
       </header>
 
       {/* Demo banner */}
       {demoMode && (
         <div className="px-4 py-2.5 bg-amber-400/5 border-b border-amber-400/10 text-xs text-amber-400/60 text-center">
-          Messages locaux uniquement — connecte Supabase pour le chat en temps réel
+          {t("chat.demoBanner")}
         </div>
       )}
 
@@ -168,7 +153,7 @@ export default function ChatPage() {
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="text-5xl">💌</div>
             <p className="text-white/40 text-sm">
-              Dis bonjour à <strong className="text-white/60">{otherName}</strong> !
+              {t("chat.greeting", { name: otherName })}
             </p>
           </div>
         )}
@@ -193,7 +178,7 @@ export default function ChatPage() {
                     isMe ? "text-white/60 text-right" : "text-white/30"
                   }`}
                 >
-                  {formatTime(msg.created_at)}
+                  {formatTime(msg.created_at, bcp47)}
                 </p>
               </div>
             </div>
@@ -210,7 +195,7 @@ export default function ChatPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={`Écrire à ${otherName}…`}
+          placeholder={t("chat.inputPlaceholder", { name: otherName })}
           maxLength={500}
           disabled={sending}
           className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all text-sm disabled:opacity-50"
@@ -219,7 +204,7 @@ export default function ChatPage() {
           onClick={handleSend}
           disabled={!input.trim() || sending}
           className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95 shadow-[0_0_16px_rgba(233,30,140,0.35)]"
-          aria-label="Envoyer"
+          aria-label={t("chat.send")}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M22 2L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

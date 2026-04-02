@@ -3,16 +3,13 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { LookingFor, Gender } from "@/lib/supabase";
-
-const GENDERS: { value: Gender; label: string; icon: string }[] = [
-  { value: "femme", label: "Femme", icon: "♀️" },
-  { value: "homme", label: "Homme", icon: "♂️" },
-  { value: "non-binaire", label: "Non-binaire", icon: "⚧" },
-  { value: "autre", label: "Autre", icon: "✨" },
-];
+import { useI18n } from "@/lib/i18n";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { t } = useI18n();
+
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<Gender>("femme");
@@ -22,14 +19,21 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const GENDERS: { value: Gender; label: string; icon: string }[] = [
+    { value: "femme", label: t("profile.genderFemme"), icon: "♀️" },
+    { value: "homme", label: t("profile.genderHomme"), icon: "♂️" },
+    { value: "non-binaire", label: t("profile.genderNonBinaire"), icon: "⚧" },
+    { value: "autre", label: t("profile.genderAutre"), icon: "✨" },
+  ];
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
     const ageNum = parseInt(age, 10);
-    if (!name.trim()) return setError("Saisis un prénom ou pseudo.");
+    if (!name.trim()) return setError(t("profile.errorName"));
     if (!age || isNaN(ageNum) || ageNum < 18 || ageNum > 99)
-      return setError("Tu dois avoir au moins 18 ans.");
+      return setError(t("profile.errorAge"));
 
     setLoading(true);
 
@@ -55,6 +59,11 @@ export default function ProfilePage() {
       {/* Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[#7c3aed]/10 blur-[120px] pointer-events-none" />
 
+      {/* Language switcher */}
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSwitcher />
+      </div>
+
       <div className="relative z-10 w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
@@ -62,7 +71,7 @@ export default function ProfilePage() {
           <h1 className="text-3xl font-bold text-white">
             Stranger<span className="text-[#e91e8c]">Kiss</span>
           </h1>
-          <p className="mt-2 text-white/50 text-sm">Dis-nous qui tu es</p>
+          <p className="mt-2 text-white/50 text-sm">{t("profile.header")}</p>
         </div>
 
         {/* Card */}
@@ -73,13 +82,13 @@ export default function ProfilePage() {
           {/* Name */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Prénom ou pseudo
+              {t("profile.nameLabel")}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex : Léo, Wanderer42…"
+              placeholder={t("profile.namePlaceholder")}
               maxLength={30}
               className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/60 focus:ring-2 focus:ring-[#e91e8c]/20 transition-all"
             />
@@ -88,13 +97,14 @@ export default function ProfilePage() {
           {/* Age */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Âge <span className="text-white/30">(18 ans minimum)</span>
+              {t("profile.ageLabel")}{" "}
+              <span className="text-white/30">{t("profile.ageMin")}</span>
             </label>
             <input
               type="number"
               value={age}
               onChange={(e) => setAge(e.target.value)}
-              placeholder="Ex : 26"
+              placeholder={t("profile.agePlaceholder")}
               min={18}
               max={99}
               className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/60 focus:ring-2 focus:ring-[#e91e8c]/20 transition-all"
@@ -104,7 +114,7 @@ export default function ProfilePage() {
           {/* Gender */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Je suis…
+              {t("profile.genderLabel")}
             </label>
             <div className="grid grid-cols-4 gap-2">
               {GENDERS.map((opt) => (
@@ -128,33 +138,31 @@ export default function ProfilePage() {
           {/* Bio */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              En deux mots…{" "}
-              <span className="text-white/30">(optionnel)</span>
+              {t("profile.bioLabel")}{" "}
+              <span className="text-white/30">{t("profile.optional")}</span>
             </label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Ex : Voyageuse solo de passage, j'adore les rencontres sincères ✈️"
+              placeholder={t("profile.bioPlaceholder")}
               maxLength={120}
               rows={2}
               className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/60 focus:ring-2 focus:ring-[#e91e8c]/20 transition-all resize-none"
             />
-            <p className="text-right text-xs text-white/20">
-              {bio.length}/120
-            </p>
+            <p className="text-right text-xs text-white/20">{bio.length}/120</p>
           </div>
 
           {/* Appearance */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Pour me reconnaître…{" "}
-              <span className="text-white/30">(optionnel)</span>
+              {t("profile.appearanceLabel")}{" "}
+              <span className="text-white/30">{t("profile.optional")}</span>
             </label>
             <input
               type="text"
               value={appearance}
               onChange={(e) => setAppearance(e.target.value)}
-              placeholder="Ex : veste rouge, chapeau jaune, terrasse du café central"
+              placeholder={t("profile.appearancePlaceholder")}
               maxLength={80}
               className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/60 focus:ring-2 focus:ring-[#e91e8c]/20 transition-all"
             />
@@ -166,14 +174,18 @@ export default function ProfilePage() {
           {/* Looking for */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/70">
-              Je cherche…
+              {t("profile.lookingForLabel")}
             </label>
             <div className="grid grid-cols-2 gap-3">
               {(
                 [
-                  { value: "hug", label: "Un hug", icon: "🤗" },
-                  { value: "french_kiss", label: "Un French kiss", icon: "💋" },
-                ] as const
+                  { value: "hug" as LookingFor, label: t("profile.hug"), icon: "🤗" },
+                  {
+                    value: "french_kiss" as LookingFor,
+                    label: t("profile.frenchKiss"),
+                    icon: "💋",
+                  },
+                ]
               ).map((opt) => (
                 <button
                   key={opt.value}
@@ -205,7 +217,7 @@ export default function ProfilePage() {
             disabled={loading}
             className="w-full bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-60 text-white font-semibold py-4 rounded-2xl transition-all duration-200 shadow-[0_0_20px_rgba(233,30,140,0.3)] hover:shadow-[0_0_35px_rgba(233,30,140,0.5)] hover:scale-[1.02] active:scale-95"
           >
-            {loading ? "Chargement…" : "Voir la carte →"}
+            {loading ? t("profile.loading") : t("profile.submit")}
           </button>
         </form>
       </div>

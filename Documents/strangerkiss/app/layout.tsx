@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import Providers from "@/components/Providers";
 
 const geist = Geist({
   variable: "--font-geist",
@@ -10,7 +11,7 @@ const geist = Geist({
 export const metadata: Metadata = {
   title: "StrangerKiss — Find a hug or a kiss nearby",
   description:
-    "Rencontre des voyageurs autour de toi pour échanger un hug ou un French kiss.",
+    "Meet travellers around you to share a hug or a French kiss.",
 };
 
 export default function RootLayout({
@@ -21,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${geist.variable} h-full`}>
       <body className="min-h-full flex flex-col bg-[#0d0014] text-white antialiased">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

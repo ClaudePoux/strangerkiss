@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
+import { useI18n } from "@/lib/i18n";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -41,12 +43,24 @@ function getMockPins(lat: number, lng: number): UserPin[] {
   }));
 }
 
-const LABEL: Record<string, string> = {
-  hug: "🤗 Hug",
-  french_kiss: "💋 French kiss",
-};
-
 export default function MapPage() {
+  const { t, locale } = useI18n();
+
+  const LABEL: Record<string, string> = {
+    hug: t("map.hug"),
+    french_kiss: t("map.frenchKiss"),
+  };
+
+  function translateGender(g: string): string {
+    const m: Record<string, string> = {
+      femme: t("profile.genderFemme"),
+      homme: t("profile.genderHomme"),
+      "non-binaire": t("profile.genderNonBinaire"),
+      autre: t("profile.genderAutre"),
+    };
+    return m[g] ?? g;
+  }
+
   const [profile, setProfile] = useState<{
     name: string;
     age: number;
@@ -57,7 +71,7 @@ export default function MapPage() {
   } | null>(null);
   const [myId, setMyId] = useState<string>("");
   const [coords, setCoords] = useState<[number, number] | null>(null);
-  const [geoError, setGeoError] = useState("");
+  const [geoErrorKey, setGeoErrorKey] = useState("");
   const [pins, setPins] = useState<UserPin[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -107,18 +121,14 @@ export default function MapPage() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setGeoError("La géolocalisation n'est pas supportée par ce navigateur.");
+      setGeoErrorKey("map.geoNotSupported");
       setLoading(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => loadMap(pos.coords.latitude, pos.coords.longitude),
       (err) => {
-        setGeoError(
-          err.code === 1
-            ? "Accès à la localisation refusé. Autorise-le dans les paramètres de ton navigateur."
-            : "Impossible de te localiser. Réessaie."
-        );
+        setGeoErrorKey(err.code === 1 ? "map.geoDenied" : "map.geoError");
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -137,27 +147,30 @@ export default function MapPage() {
         <Link href="/" className="text-xl font-bold">
           Stranger<span className="text-[#e91e8c]">Kiss</span>
         </Link>
-        {profile && (
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-sm font-medium text-white">
-                {profile.name}, {profile.age} ans
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          {profile && (
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-sm font-medium text-white">
+                  {profile.name}, {t("map.age", { age: String(profile.age) })}
+                </div>
+                <div className="text-xs text-white/40">{LABEL[profile.looking_for]}</div>
               </div>
-              <div className="text-xs text-white/40">{LABEL[profile.looking_for]}</div>
+              <Link
+                href="/profile"
+                className="text-xs text-white/40 hover:text-white/70 border border-white/10 rounded-full px-3 py-1.5 transition-colors"
+              >
+                {t("map.modify")}
+              </Link>
             </div>
-            <Link
-              href="/profile"
-              className="text-xs text-white/40 hover:text-white/70 border border-white/10 rounded-full px-3 py-1.5 transition-colors"
-            >
-              Modifier
+          )}
+          {!profile && (
+            <Link href="/profile" className="text-sm text-[#e91e8c] hover:underline">
+              {t("map.createProfile")}
             </Link>
-          </div>
-        )}
-        {!profile && (
-          <Link href="/profile" className="text-sm text-[#e91e8c] hover:underline">
-            Créer mon profil
-          </Link>
-        )}
+          )}
+        </div>
       </header>
 
       {/* Map area */}
@@ -165,23 +178,23 @@ export default function MapPage() {
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-20">
             <div className="text-4xl animate-pulse">📍</div>
-            <p className="text-white/60 text-sm">Localisation en cours…</p>
+            <p className="text-white/60 text-sm">{t("map.locating")}</p>
           </div>
         )}
-        {!loading && geoError && (
+        {!loading && geoErrorKey && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 z-20">
             <div className="text-5xl">😕</div>
-            <p className="text-white/70 text-center max-w-sm">{geoError}</p>
+            <p className="text-white/70 text-center max-w-sm">{t(geoErrorKey)}</p>
             <button
               onClick={() => window.location.reload()}
               className="bg-[#e91e8c] text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-[#c2186f] transition-colors"
             >
-              Réessayer
+              {t("map.retry")}
             </button>
           </div>
         )}
         {!loading && coords && (
-          <MapView currentUser={profile} pins={pins} center={coords} myId={myId} />
+          <MapView currentUser={profile} pins={pins} center={coords} myId={myId} locale={locale} />
         )}
       </div>
 
@@ -190,22 +203,20 @@ export default function MapPage() {
         <div className="border-t border-white/5 px-5 py-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-white/80">
-              À proximité{" "}
+              {t("map.nearby")}{" "}
               <span className="text-white/40 font-normal">
-                ({pins.length} personne{pins.length !== 1 ? "s" : ""})
+                ({pins.length} {pins.length !== 1 ? t("map.persons") : t("map.person")})
               </span>
             </h2>
             {!supabaseReady && (
               <span className="text-xs text-amber-400/70 bg-amber-400/10 border border-amber-400/20 rounded-full px-2.5 py-1">
-                Mode démo
+                {t("map.demoMode")}
               </span>
             )}
           </div>
 
           {pins.length === 0 && (
-            <p className="text-sm text-white/30 italic">
-              Personne dans les environs pour l&apos;instant…
-            </p>
+            <p className="text-sm text-white/30 italic">{t("map.nobody")}</p>
           )}
 
           <div className="flex gap-3 overflow-x-auto pb-1">
@@ -216,10 +227,10 @@ export default function MapPage() {
               >
                 <div className="text-2xl">{pin.looking_for === "hug" ? "🤗" : "💋"}</div>
                 <div className="font-semibold text-white text-sm">
-                  {pin.name}, {pin.age} ans
+                  {pin.name}, {t("map.age", { age: String(pin.age) })}
                 </div>
                 <div className="text-xs text-white/40">
-                  {pin.gender} · {LABEL[pin.looking_for]}
+                  {translateGender(pin.gender)} · {LABEL[pin.looking_for]}
                 </div>
                 {pin.bio && (
                   <p className="text-xs text-white/30 leading-relaxed line-clamp-2">{pin.bio}</p>
@@ -233,7 +244,7 @@ export default function MapPage() {
                   href={`/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`}
                   className="mt-1 flex items-center justify-center gap-1.5 bg-[#7c3aed]/20 hover:bg-[#7c3aed]/35 border border-[#7c3aed]/30 text-[#a78bfa] text-xs font-medium rounded-xl py-2 transition-colors"
                 >
-                  💬 Message
+                  {t("map.message")}
                 </Link>
               </div>
             ))}

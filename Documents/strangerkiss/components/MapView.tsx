@@ -2,34 +2,38 @@
 
 import { useEffect, useRef } from "react";
 import type { UserPin } from "@/lib/supabase";
+import { useI18n } from "@/lib/i18n";
 
 interface Props {
   currentUser: { name: string; age: number; gender: string; bio: string; appearance: string; looking_for: string } | null;
   pins: UserPin[];
   center: [number, number];
   myId: string;
+  locale: string;
 }
-
-const LABEL: Record<string, string> = {
-  hug: "🤗 Hug",
-  french_kiss: "💋 French kiss",
-};
 
 function popupStyle(content: string) {
   return `<div style="color:#1a1a2e;font-family:sans-serif;min-width:140px;max-width:200px">${content}</div>`;
 }
 
-export default function MapView({ currentUser, pins, center, myId }: Props) {
+export default function MapView({ currentUser, pins, center, myId, locale }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
+    if (!mapRef.current) return;
 
-    // Dynamic import to avoid SSR issues
+    // Remove existing map on locale change
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+
     import("leaflet").then((L) => {
-      // Fix default marker icons
+      if (!mapRef.current) return;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -41,7 +45,7 @@ export default function MapView({ currentUser, pins, center, myId }: Props) {
           "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      const map = L.map(mapRef.current!, {
+      const map = L.map(mapRef.current, {
         center,
         zoom: 15,
         zoomControl: true,
@@ -70,20 +74,26 @@ export default function MapView({ currentUser, pins, center, myId }: Props) {
         iconAnchor: [22, 22],
       });
 
+      const hugLabel = t("map.hug");
+      const kissLabel = t("map.frenchKiss");
+
       L.marker(center, { icon: youIcon })
         .addTo(map)
         .bindPopup(popupStyle(`
-          <strong>${currentUser?.name ?? "Toi"}</strong>
-          <br/><span style="font-size:12px">🎂 ${currentUser?.age ?? "?"} ans · ${currentUser?.gender ?? ""}</span>
-          <br/><span style="font-size:12px">${LABEL[currentUser?.looking_for ?? "hug"] ?? ""}</span>
+          <strong>${currentUser?.name ?? "—"}</strong>
+          <br/><span style="font-size:12px">${t("mapView.age", { age: String(currentUser?.age ?? "?") })} · ${currentUser?.gender ?? ""}</span>
+          <br/><span style="font-size:12px">${currentUser?.looking_for === "french_kiss" ? kissLabel : hugLabel}</span>
           ${currentUser?.bio ? `<br/><span style="font-size:11px;color:#555;font-style:italic">${currentUser.bio}</span>` : ""}
           ${currentUser?.appearance ? `<br/><span style="font-size:11px;color:#e91e8c">👀 ${currentUser.appearance}</span>` : ""}
-          <br/><span style="font-size:11px;color:#e91e8c;font-weight:bold">C'est toi !</span>
+          <br/><span style="font-size:11px;color:#e91e8c;font-weight:bold">${t("mapView.itsYou")}</span>
         `));
 
       // Other users markers
       pins.forEach((pin) => {
         const dist = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
+        const distStr = dist < 1
+          ? t("mapView.distanceM", { dist: String(Math.round(dist * 1000)) })
+          : t("mapView.distanceKm", { dist: dist.toFixed(1) });
         const isHug = pin.looking_for === "hug";
         const pinIcon = L.divIcon({
           html: `<div style="
@@ -103,12 +113,12 @@ export default function MapView({ currentUser, pins, center, myId }: Props) {
           .addTo(map)
           .bindPopup(popupStyle(`
             <strong>${pin.name}</strong>
-            <br/><span style="font-size:12px">🎂 ${pin.age} ans · ${pin.gender ?? ""}</span>
-            <br/><span style="font-size:12px">${LABEL[pin.looking_for] ?? pin.looking_for}</span>
+            <br/><span style="font-size:12px">${t("mapView.age", { age: String(pin.age) })} · ${pin.gender ?? ""}</span>
+            <br/><span style="font-size:12px">${isHug ? hugLabel : kissLabel}</span>
             ${pin.bio ? `<br/><span style="font-size:11px;color:#555;font-style:italic">${pin.bio}</span>` : ""}
             ${pin.appearance ? `<br/><span style="font-size:11px;color:#c2186f">👀 ${pin.appearance}</span>` : ""}
-            <br/><span style="font-size:11px;color:#888">à ${dist < 1 ? Math.round(dist * 1000) + " m" : dist.toFixed(1) + " km"}</span>
-            <br/><a href="${chatUrl}" style="display:inline-block;margin-top:6px;background:#7c3aed;color:white;font-size:11px;padding:3px 10px;border-radius:8px;text-decoration:none">💬 Message</a>
+            <br/><span style="font-size:11px;color:#888">${distStr}</span>
+            <br/><a href="${chatUrl}" style="display:inline-block;margin-top:6px;background:#7c3aed;color:white;font-size:11px;padding:3px 10px;border-radius:8px;text-decoration:none">${t("mapView.message")}</a>
           `));
       });
 
@@ -122,7 +132,7 @@ export default function MapView({ currentUser, pins, center, myId }: Props) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [locale]);
 
   return (
     <div ref={mapRef} className="absolute inset-0 rounded-2xl" />
