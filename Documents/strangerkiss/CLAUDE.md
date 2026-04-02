@@ -40,7 +40,7 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 
 ## Stack cible (production)
 
-- **Nom de domaine** : strangerkiss.com (réservé sur OVH)
+- **Nom de domaine** : strangerkiss.com (réservé sur Gandi)
 - **Hébergement** : OVH + Vercel pour Next.js
 - **Base de données** : MySQL sur OVH — migration prévue depuis Supabase
 - **SMS** : Twilio
