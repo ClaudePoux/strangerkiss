@@ -40,9 +40,9 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 
 ## Stack cible (production)
 
-- **Hébergement** : OVH
-- **Base de données** : MySQL
-- **Nom de domaine** : à définir
+- **Nom de domaine** : strangerkiss.com (réservé sur OVH)
+- **Hébergement** : OVH + Vercel pour Next.js
+- **Base de données** : MySQL sur OVH — migration prévue depuis Supabase
 - **SMS** : Twilio
 - **Paiements** : Stripe (compatibilité native Apple Pay & Google Pay, essentiel pour le mobile)
 
