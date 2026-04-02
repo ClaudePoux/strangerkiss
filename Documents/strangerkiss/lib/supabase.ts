@@ -3,8 +3,16 @@ import { createClient } from "@supabase/supabase-js";
 export type LookingFor = "hug" | "french_kiss";
 export type Gender = "homme" | "femme" | "non-binaire" | "autre";
 
+export interface User {
+  id: string;
+  phone: string;
+  credits: number;
+  created_at: string;
+}
+
 export interface UserPin {
   id: string;
+  user_id?: string;
   name: string;
   age: number;
   gender: Gender;
@@ -36,8 +44,21 @@ export const supabase =
 /*
   SQL schema to run in Supabase:
 
+  -- Table utilisateurs (auth SMS + crédits)
+  create table users (
+    id uuid primary key default gen_random_uuid(),
+    phone text unique not null,
+    credits integer not null default 3,
+    created_at timestamptz default now()
+  );
+
+  alter table users enable row level security;
+  create policy "service role only" on users using (false);
+
+  -- Table pins (profils sur la carte)
   create table user_pins (
     id uuid primary key default gen_random_uuid(),
+    user_id uuid references users(id),
     name text not null,
     age integer not null check (age >= 18),
     gender text not null check (gender in ('homme', 'femme', 'non-binaire', 'autre')),
@@ -72,7 +93,45 @@ export const supabase =
   alter table messages enable row level security;
   create policy "public read" on messages for select using (true);
   create policy "public insert" on messages for insert with check (true);
+
+  -- Déduire 1 crédit (atomique, service role uniquement)
+  create or replace function spend_credit(p_user_id uuid)
+  returns integer language plpgsql security definer as $$
+  declare new_credits integer;
+  begin
+    update users set credits = credits - 1
+    where id = p_user_id and credits >= 1
+    returning credits into new_credits;
+    if not found then
+      raise exception 'insufficient_credits';
+    end if;
+    return new_credits;
+  end;
+  $$;
+
+  -- Ajouter des crédits après paiement Stripe (atomique, service role uniquement)
+  create or replace function add_credits(p_user_id uuid, p_amount integer)
+  returns integer language plpgsql security definer as $$
+  declare new_credits integer;
+  begin
+    update users set credits = credits + p_amount
+    where id = p_user_id
+    returning credits into new_credits;
+    return new_credits;
+  end;
+  $$;
 */
+
+export async function getUserCredits(userId: string): Promise<number | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("users")
+    .select("credits")
+    .eq("id", userId)
+    .single();
+  if (error) return null;
+  return (data as { credits: number }).credits;
+}
 
 export async function upsertUserPin(
   pin: Omit<UserPin, "id" | "created_at">

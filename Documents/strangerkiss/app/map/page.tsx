@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { getUserCredits } from "@/lib/supabase";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -86,6 +87,7 @@ export default function MapPage() {
   } | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
   const [myId, setMyId] = useState<string>("");
+  const [credits, setCredits] = useState<number | null>(null);
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [geoErrorKey, setGeoErrorKey] = useState("");
   const [pins, setPins] = useState<UserPin[]>([]);
@@ -96,6 +98,17 @@ export default function MapPage() {
     try {
       const stored = localStorage.getItem("sk_profile");
       if (stored) setProfile(JSON.parse(stored));
+      const userId = localStorage.getItem("sk_user_id");
+      if (userId) {
+        const cached = localStorage.getItem("sk_user_credits");
+        if (cached !== null) setCredits(parseInt(cached, 10));
+        getUserCredits(userId).then((c) => {
+          if (c !== null) {
+            setCredits(c);
+            localStorage.setItem("sk_user_credits", String(c));
+          }
+        });
+      }
     } catch {
       // ignore
     }
@@ -182,6 +195,16 @@ export default function MapPage() {
                 {t("map.modify")}
               </Link>
             </div>
+          )}
+          {credits !== null && (
+            <Link
+              href="/credits"
+              className="flex items-center gap-1 text-xs font-medium bg-white/5 border border-white/10 rounded-full px-3 py-1.5 hover:bg-white/10 transition-colors"
+              title="Mes crédits"
+            >
+              <span className="text-[#e91e8c]">💞</span>
+              <span className="text-white/70">{credits}</span>
+            </Link>
           )}
           {!profile && (
             <Link href="/profile" className="text-sm text-[#e91e8c] hover:underline">
