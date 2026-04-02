@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import type { Message } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import { translateText, AlreadyInTargetLanguageError } from "@/lib/translate";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 function formatTime(iso: string, bcp47: string) {
@@ -17,7 +18,7 @@ export default function ChatPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { t, bcp47 } = useI18n();
+  const { t, bcp47, locale } = useI18n();
 
   const otherId = params.userId as string;
   const otherName = searchParams.get("name") ?? "Inconnu·e";
@@ -28,6 +29,11 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+
+  // Translation state per message id
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [translating, setTranslating] = useState<Record<string, boolean>>({});
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const tRef = useRef(t);
@@ -97,9 +103,7 @@ export default function ChatPage() {
 
     const { sendMessage } = await import("@/lib/supabase");
     const sent = await sendMessage(myId, otherId, text);
-    if (sent) {
-      setMessages((prev) => [...prev, sent]);
-    }
+    if (sent) setMessages((prev) => [...prev, sent]);
     setSending(false);
     inputRef.current?.focus();
   }
@@ -108,6 +112,38 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  }
+
+  async function handleTranslate(msgId: string, content: string) {
+    // Toggle off if already translated
+    if (translations[msgId]) {
+      setTranslations((prev) => {
+        const next = { ...prev };
+        delete next[msgId];
+        return next;
+      });
+      return;
+    }
+
+    setTranslating((prev) => ({ ...prev, [msgId]: true }));
+    try {
+      const result = await translateText(content, locale);
+      setTranslations((prev) => ({ ...prev, [msgId]: result }));
+    } catch (err) {
+      if (err instanceof AlreadyInTargetLanguageError) {
+        setTranslations((prev) => ({
+          ...prev,
+          [msgId]: `— ${tRef.current("chat.alreadyTranslated")} —`,
+        }));
+      }
+      // silently ignore other errors
+    } finally {
+      setTranslating((prev) => {
+        const next = { ...prev };
+        delete next[msgId];
+        return next;
+      });
     }
   }
 
@@ -160,11 +196,15 @@ export default function ChatPage() {
 
         {messages.map((msg) => {
           const isMe = msg.from_id === myId;
+          const translated = translations[msg.id];
+          const isTranslating = translating[msg.id];
+
           return (
             <div
               key={msg.id}
-              className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+              className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
             >
+              {/* Message bubble */}
               <div
                 className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                   isMe
@@ -173,14 +213,38 @@ export default function ChatPage() {
                 }`}
               >
                 <p>{msg.content}</p>
-                <p
-                  className={`text-[10px] mt-1 ${
-                    isMe ? "text-white/60 text-right" : "text-white/30"
-                  }`}
-                >
-                  {formatTime(msg.created_at, bcp47)}
-                </p>
+                <div className={`flex items-center gap-2 mt-1 ${isMe ? "justify-end" : "justify-between"}`}>
+                  <p className={`text-[10px] ${isMe ? "text-white/60" : "text-white/30"}`}>
+                    {formatTime(msg.created_at, bcp47)}
+                  </p>
+                  {/* Translate button — only on incoming messages */}
+                  {!isMe && (
+                    <button
+                      onClick={() => handleTranslate(msg.id, msg.content)}
+                      disabled={isTranslating}
+                      className={`text-[10px] flex items-center gap-0.5 transition-colors rounded px-1 py-0.5 ${
+                        translated
+                          ? "text-[#a78bfa] bg-[#7c3aed]/20"
+                          : "text-white/25 hover:text-white/50"
+                      }`}
+                      title={t("chat.translate")}
+                    >
+                      {isTranslating ? (
+                        <span className="animate-pulse">⏳</span>
+                      ) : (
+                        <>🌐 {translated ? "×" : t("chat.translate")}</>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Translation bubble */}
+              {!isMe && translated && (
+                <div className="max-w-[75%] mt-1 px-4 py-2 rounded-2xl rounded-tl-sm bg-[#7c3aed]/10 border border-[#7c3aed]/20 text-xs text-[#c4b5fd] leading-relaxed">
+                  {translated}
+                </div>
+              )}
             </div>
           );
         })}

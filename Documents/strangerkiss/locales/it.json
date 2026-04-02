@@ -64,7 +64,9 @@
     "send": "Invia",
     "demo1": "Ciao! Ti ho visto sulla mappa 😊",
     "demo2": "Ciao! Sei ancora in zona?",
-    "demo3": "Sì, sono alla terrazza del caffè centrale, giacca rossa 😉"
+    "demo3": "Sì, sono alla terrazza del caffè centrale, giacca rossa 😉",
+    "translate": "Traduci",
+    "alreadyTranslated": "Già nella tua lingua"
   },
   "mapView": {
     "itsYou": "Sei tu!",
