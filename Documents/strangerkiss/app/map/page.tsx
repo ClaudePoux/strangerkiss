@@ -6,7 +6,6 @@ import Link from "next/link";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { getUserCredits } from "@/lib/supabase";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -102,12 +101,15 @@ export default function MapPage() {
       if (userId) {
         const cached = localStorage.getItem("sk_user_credits");
         if (cached !== null) setCredits(parseInt(cached, 10));
-        getUserCredits(userId).then((c) => {
-          if (c !== null) {
-            setCredits(c);
-            localStorage.setItem("sk_user_credits", String(c));
-          }
-        });
+        fetch(`/api/credits/balance?user_id=${userId}`)
+          .then((r) => r.json())
+          .then(({ credits: c }) => {
+            if (c != null) {
+              setCredits(c);
+              localStorage.setItem("sk_user_credits", String(c));
+            }
+          })
+          .catch(() => {});
       }
     } catch {
       // ignore
@@ -118,30 +120,45 @@ export default function MapPage() {
   const loadMap = useCallback(
     async (lat: number, lng: number) => {
       setCoords([lat, lng]);
-      const { supabase, upsertUserPin, getNearbyUsers } = await import("@/lib/supabase");
 
-      if (supabase && profile) {
-        const inserted = await upsertUserPin({
-          name: profile.name,
-          age: profile.age,
-          gender: profile.gender,
-          nationality: profile.nationality ?? "",
-          bio: profile.bio,
-          appearance: profile.appearance,
-          looking_for: profile.looking_for,
-          lat,
-          lng,
-        });
-        if (inserted) {
-          try { localStorage.setItem("sk_my_id", inserted.id); } catch { /* */ }
-          setMyId(inserted.id);
+      if (profile) {
+        try {
+          const userId = localStorage.getItem("sk_user_id") ?? undefined;
+
+          // Upsert du pin sur la carte
+          const pinRes = await fetch("/api/db/pins", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: profile.name,
+              age: profile.age,
+              gender: profile.gender,
+              nationality: profile.nationality ?? "",
+              bio: profile.bio,
+              appearance: profile.appearance,
+              looking_for: profile.looking_for,
+              lat,
+              lng,
+              user_id: userId ?? null,
+            }),
+          });
+          const { pin } = await pinRes.json();
+          if (pin?.id) {
+            localStorage.setItem("sk_my_id", pin.id);
+            setMyId(pin.id);
+          }
+
+          // Récupérer les profils proches
+          const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
+          const { pins: nearby } = await nearbyRes.json();
+          setPins(
+            (nearby as UserPin[]).filter(
+              (p) => Math.abs(p.lat - lat) > 0.0001 || Math.abs(p.lng - lng) > 0.0001
+            )
+          );
+        } catch {
+          setPins(getMockPins(lat, lng));
         }
-        const nearby = await getNearbyUsers(lat, lng);
-        setPins(
-          nearby.filter(
-            (p) => Math.abs(p.lat - lat) > 0.0001 || Math.abs(p.lng - lng) > 0.0001
-          )
-        );
       } else {
         setPins(getMockPins(lat, lng));
       }
@@ -166,10 +183,7 @@ export default function MapPage() {
     );
   }, [loadMap]);
 
-  const supabaseReady = !!(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  const supabaseReady = true; // MySQL via API routes
 
   return (
     <main className="flex flex-col h-screen overflow-hidden">

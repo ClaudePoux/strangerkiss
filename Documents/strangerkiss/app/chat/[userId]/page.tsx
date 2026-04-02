@@ -12,11 +12,6 @@ const SK_MEETING_REQUEST  = "§MEETING_REQUEST§";
 const SK_MEETING_ACCEPTED = "§MEETING_ACCEPTED§";
 const SK_MEETING_REFUSED  = "§MEETING_REFUSED§";
 
-function isMeetingMsg(content: string) {
-  return content === SK_MEETING_REQUEST
-    || content === SK_MEETING_ACCEPTED
-    || content === SK_MEETING_REFUSED;
-}
 
 function isImageMsg(content: string) {
   return content.startsWith("data:image/");
@@ -90,27 +85,39 @@ export default function ChatPage() {
   }, [messages]);
 
   const loadChat = useCallback(async (id: string) => {
-    const { supabase, getMessages, subscribeToMessages } = await import("@/lib/supabase");
-
-    if (!supabase) {
+    // Chargement de l'historique via MySQL
+    const res = await fetch(`/api/db/messages?from=${id}&to=${otherId}`);
+    if (!res.ok) {
+      // Fallback démo si l'API n'est pas disponible
       const tr = tRef.current;
       setDemoMode(true);
       setMessages([
         { id: "d1", from_id: otherId, to_id: id, content: tr("chat.demo1"), created_at: new Date(Date.now() - 120000).toISOString() },
         { id: "d2", from_id: id, to_id: otherId, content: tr("chat.demo2"), created_at: new Date(Date.now() - 90000).toISOString() },
-        // Demo: the other person sends a meeting request
         { id: "d3", from_id: otherId, to_id: id, content: SK_MEETING_REQUEST, created_at: new Date(Date.now() - 30000).toISOString() },
       ]);
       return;
     }
+    const { messages: history } = await res.json();
+    setMessages(history ?? []);
 
-    const history = await getMessages(id, otherId);
-    setMessages(history);
+    // Polling toutes les 3 secondes pour les nouveaux messages (remplace Supabase realtime)
+    const interval = setInterval(async () => {
+      setMessages((prev) => {
+        const since = prev.length > 0 ? prev[prev.length - 1].created_at : new Date(0).toISOString();
+        fetch(`/api/db/messages?from=${id}&to=${otherId}&since=${encodeURIComponent(since)}`)
+          .then((r) => r.json())
+          .then(({ messages: newMsgs }) => {
+            if (newMsgs?.length > 0) {
+              setMessages((p) => [...p, ...newMsgs]);
+            }
+          })
+          .catch(() => {});
+        return prev;
+      });
+    }, 3000);
 
-    const unsub = subscribeToMessages(id, otherId, (msg) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-    return unsub;
+    return () => clearInterval(interval);
   }, [otherId]);
 
   useEffect(() => {
@@ -142,8 +149,12 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, msg]);
       return msg;
     }
-    const { sendMessage } = await import("@/lib/supabase");
-    const sent = await sendMessage(id, otherId, content);
+    const res = await fetch("/api/db/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from_id: id, to_id: otherId, content }),
+    });
+    const { message: sent } = await res.json();
     if (sent) setMessages((prev) => [...prev, sent]);
     return sent;
   }

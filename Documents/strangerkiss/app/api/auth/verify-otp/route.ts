@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyOtp } from "@/lib/twilio";
-import { createClient } from "@supabase/supabase-js";
+import { pool, mysqlReady } from "@/lib/mysql";
 import type { User } from "@/lib/supabase";
-
-function adminSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function POST(req: NextRequest) {
   const { phone, code } = await req.json();
@@ -29,29 +22,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Code incorrect ou expiré" }, { status: 401 });
   }
 
-  const db = adminSupabase();
+  if (!mysqlReady) {
+    return NextResponse.json({ error: "Base de données non configurée" }, { status: 500 });
+  }
 
-  // Récupérer ou créer l'utilisateur
-  const { data: existing } = await db
-    .from("users")
-    .select("*")
-    .eq("phone", phone)
-    .single();
+  // Récupérer l'utilisateur existant
+  const [rows] = await pool.execute(
+    `SELECT id, phone, credits,
+            DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at
+     FROM users WHERE phone = ?`,
+    [phone]
+  );
+  const existing = (rows as User[])[0];
 
   if (existing) {
-    return NextResponse.json({ user: existing as User });
+    return NextResponse.json({ user: existing });
   }
 
-  const { data: created, error } = await db
-    .from("users")
-    .insert({ phone, credits: 3 })
-    .select()
-    .single();
+  // Créer un nouvel utilisateur avec 3 crédits offerts
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
 
-  if (error) {
-    console.error("create user error:", error);
-    return NextResponse.json({ error: "Erreur création compte" }, { status: 500 });
-  }
+  await pool.execute(
+    `INSERT INTO users (id, phone, credits, created_at) VALUES (?, ?, 3, ?)`,
+    [id, phone, now]
+  );
 
-  return NextResponse.json({ user: created as User });
+  const user: User = { id, phone, credits: 3, created_at: now };
+  return NextResponse.json({ user });
 }
