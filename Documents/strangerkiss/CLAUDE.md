@@ -36,7 +36,7 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 - 1 crédit dépensé uniquement quand les deux parties acceptent la rencontre
 - Si refus → aucun crédit dépensé
 - Chat et carte gratuits
-- Recharge : pack de crédits via carte bancaire, Apple Pay, Google Pay
+- Recharge : pack de crédits via carte bancaire (PayPlug)
 
 ## Stack cible (production)
 
@@ -44,7 +44,7 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 - **Base de données** : MySQL
 - **Nom de domaine** : à définir
 - **SMS** : Twilio
-- **Paiements** : Stripe
+- **Paiements** : PayPlug (solution française, conforme RGPD, marché européen)
 
 ## Conventions du projet
 
