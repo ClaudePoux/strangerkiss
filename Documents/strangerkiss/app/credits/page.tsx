@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CREDIT_PACKS } from "@/lib/stripe";
 
-export default function CreditsPage() {
+function CreditsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [credits, setCredits] = useState<number | null>(null);
@@ -20,17 +20,20 @@ export default function CreditsPage() {
       const id = localStorage.getItem("sk_user_id");
       if (!id) { router.push("/auth"); return; }
       setUserId(id);
-      // Rafraîchir le solde depuis Supabase
-      import("@/lib/supabase").then(({ getUserCredits }) => {
-        getUserCredits(id).then((c) => {
+      // Rafraîchir le solde depuis MySQL via API
+      fetch(`/api/credits/balance?user_id=${id}`)
+        .then((r) => r.json())
+        .then(({ credits: c }) => {
           if (c !== null) {
             setCredits(c);
             localStorage.setItem("sk_user_credits", String(c));
           } else {
             setCredits(parseInt(localStorage.getItem("sk_user_credits") ?? "0", 10));
           }
+        })
+        .catch(() => {
+          setCredits(parseInt(localStorage.getItem("sk_user_credits") ?? "0", 10));
         });
-      });
     } catch {
       router.push("/auth");
     }
@@ -141,5 +144,13 @@ export default function CreditsPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function CreditsPage() {
+  return (
+    <Suspense>
+      <CreditsContent />
+    </Suspense>
   );
 }

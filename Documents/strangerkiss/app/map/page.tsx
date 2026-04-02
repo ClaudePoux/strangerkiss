@@ -183,7 +183,6 @@ export default function MapPage() {
     );
   }, [loadMap]);
 
-  const supabaseReady = true; // MySQL via API routes
 
   return (
     <main className="flex flex-col h-screen overflow-hidden">
@@ -263,11 +262,6 @@ export default function MapPage() {
                 ({pins.length} {pins.length !== 1 ? t("map.persons") : t("map.person")})
               </span>
             </h2>
-            {!supabaseReady && (
-              <span className="text-xs text-amber-400/70 bg-amber-400/10 border border-amber-400/20 rounded-full px-2.5 py-1">
-                {t("map.demoMode")}
-              </span>
-            )}
           </div>
 
           {pins.length === 0 && (

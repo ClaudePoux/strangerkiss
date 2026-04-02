@@ -1,7 +1,8 @@
 import mysql from "mysql2/promise";
 
-// Pool de connexions MySQL OVH
-// connectionLimit réduit car OVH mutualisé limite les connexions simultanées
+// Pool de connexions MySQL OVH — optimisé pour Vercel serverless
+// connectionLimit bas car chaque fonction Vercel instancie son propre pool
+// enableKeepAlive évite les déconnexions silencieuses d'OVH
 export const pool = mysql.createPool({
   host: process.env.MYSQL_HOST,
   port: parseInt(process.env.MYSQL_PORT ?? "3306", 10),
@@ -9,7 +10,10 @@ export const pool = mysql.createPool({
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASSWORD,
   waitForConnections: true,
-  connectionLimit: 5,
+  connectionLimit: 3,
+  connectTimeout: 10000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
   charset: "utf8mb4",
   timezone: "Z",
 });
