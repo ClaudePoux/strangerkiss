@@ -2,19 +2,37 @@
 
 # StrangerKiss
 
-App web de géolocalisation pour voyageurs qui souhaitent échanger un hug ou un baiser avec un inconnu à proximité.
-
-## Stack technique
-
-- **Framework** : Next.js 16 (App Router) — lire `node_modules/next/dist/docs/` avant tout code
-- **Style** : Tailwind CSS v4
-- **Backend / DB** : Supabase (auth, base de données, realtime)
-- **Carte** : Leaflet + react-leaflet
-- **Langage** : TypeScript
+App web de géolocalisation pour voyageurs souhaitant échanger un hug ou un baiser avec un inconnu à proximité.
 
 ## Concept produit
 
-Un utilisateur partage sa position sur une carte et indique ce qu'il propose (hug / baiser). Les autres voyageurs à proximité voient les pins sur la carte et peuvent envoyer une demande de rencontre. Les deux parties doivent accepter avant qu'un match soit confirmé.
+Un utilisateur partage sa position sur une carte et renseigne un profil : prénom/pseudo, âge, sexe, type de rencontre souhaité (hug ou French kiss), un commentaire libre et une description physique "pour me reconnaître". Les autres voyageurs à proximité voient les pins sur la carte et peuvent envoyer une demande de rencontre. Les deux parties doivent accepter avant qu'un match soit confirmé.
+
+## Fonctionnalités développées (prototype)
+
+- Formulaire de profil : prénom/pseudo, âge, sexe, type de rencontre (hug / French kiss), commentaire libre, description physique "pour me reconnaître"
+- Carte avec géolocalisation des profils proches (pins)
+- Chat entre profils matchés
+
+## Fonctionnalités à développer
+
+- **Multilingue** : français, anglais, allemand, italien, espagnol, mandarin, russe, japonais
+- **Photo selfie** dans le chat (envoi de photo en temps réel)
+- **Système de consentement** : validation mutuelle obligatoire pour confirmer une rencontre
+- **Masquage après refus** : si un profil refuse une demande, il disparaît de la carte pour le profil refusé
+
+## Stack actuelle (prototype)
+
+- **Framework** : Next.js + TypeScript (App Router) — lire `node_modules/next/dist/docs/` avant tout code
+- **Style** : Tailwind CSS
+- **Backend / DB** : Supabase (auth, base de données, realtime)
+- **Carte** : Leaflet + react-leaflet
+
+## Stack cible (production)
+
+- **Hébergement** : OVH
+- **Base de données** : MySQL
+- **Nom de domaine** : à définir
 
 ## Conventions du projet
 
