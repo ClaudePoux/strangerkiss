@@ -23,17 +23,18 @@ function getOrCreateMyId(): string {
 
 function getMockPins(lat: number, lng: number): UserPin[] {
   const offsets = [
-    { dlat: 0.003, dlng: 0.004, name: "Sofia", age: 24, gender: "femme", bio: "Voyageuse solo, j'adore les rencontres sincères ✈️", appearance: "veste rouge, cheveux bouclés, terrasse du café", looking_for: "french_kiss" },
-    { dlat: -0.002, dlng: 0.005, name: "Liam", age: 29, gender: "homme", bio: "Backpacker irlandais de passage 🍀", appearance: "t-shirt vert, sac à dos bleu marine", looking_for: "hug" },
-    { dlat: 0.005, dlng: -0.003, name: "Yuki", age: 22, gender: "non-binaire", bio: "En vadrouille dans toute l'Europe 🌍", appearance: "bonnet orange, veste en jean", looking_for: "hug" },
-    { dlat: -0.004, dlng: -0.006, name: "Marco", age: 31, gender: "homme", bio: "", appearance: "", looking_for: "french_kiss" },
-    { dlat: 0.001, dlng: -0.007, name: "Amara", age: 27, gender: "femme", bio: "Curieuse et libre 🌸", appearance: "robe jaune, près de la fontaine", looking_for: "hug" },
+    { dlat: 0.003, dlng: 0.004, name: "Sofia", age: 24, gender: "femme", nationality: "ES", bio: "Voyageuse solo, j'adore les rencontres sincères ✈️", appearance: "veste rouge, cheveux bouclés, terrasse du café", looking_for: "french_kiss" },
+    { dlat: -0.002, dlng: 0.005, name: "Liam", age: 29, gender: "homme", nationality: "IE", bio: "Backpacker irlandais de passage 🍀", appearance: "t-shirt vert, sac à dos bleu marine", looking_for: "hug" },
+    { dlat: 0.005, dlng: -0.003, name: "Yuki", age: 22, gender: "non-binaire", nationality: "JP", bio: "En vadrouille dans toute l'Europe 🌍", appearance: "bonnet orange, veste en jean", looking_for: "hug" },
+    { dlat: -0.004, dlng: -0.006, name: "Marco", age: 31, gender: "homme", nationality: "IT", bio: "", appearance: "", looking_for: "french_kiss" },
+    { dlat: 0.001, dlng: -0.007, name: "Amara", age: 27, gender: "femme", nationality: "SN", bio: "Curieuse et libre 🌸", appearance: "robe jaune, près de la fontaine", looking_for: "hug" },
   ];
   return offsets.map((o, i) => ({
     id: `demo-${i}`,
     name: o.name,
     age: o.age,
     gender: o.gender as Gender,
+    nationality: o.nationality,
     bio: o.bio,
     appearance: o.appearance,
     looking_for: o.looking_for as LookingFor,
@@ -41,6 +42,19 @@ function getMockPins(lat: number, lng: number): UserPin[] {
     lng: lng + o.dlng,
     created_at: new Date().toISOString(),
   }));
+}
+
+function flagEmoji(code: string): string {
+  if (!code) return "";
+  return [...code.toUpperCase()].map(c =>
+    String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)
+  ).join("");
+}
+
+function getBlocked(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem("sk_blocked") ?? "[]");
+  } catch { return []; }
 }
 
 export default function MapPage() {
@@ -65,10 +79,12 @@ export default function MapPage() {
     name: string;
     age: number;
     gender: Gender;
+    nationality: string;
     bio: string;
     appearance: string;
     looking_for: LookingFor;
   } | null>(null);
+  const [blocked, setBlocked] = useState<string[]>([]);
   const [myId, setMyId] = useState<string>("");
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [geoErrorKey, setGeoErrorKey] = useState("");
@@ -83,6 +99,7 @@ export default function MapPage() {
     } catch {
       // ignore
     }
+    setBlocked(getBlocked());
   }, []);
 
   const loadMap = useCallback(
@@ -95,6 +112,7 @@ export default function MapPage() {
           name: profile.name,
           age: profile.age,
           gender: profile.gender,
+          nationality: profile.nationality ?? "",
           bio: profile.bio,
           appearance: profile.appearance,
           looking_for: profile.looking_for,
@@ -194,7 +212,7 @@ export default function MapPage() {
           </div>
         )}
         {!loading && coords && (
-          <MapView currentUser={profile} pins={pins} center={coords} myId={myId} locale={locale} />
+          <MapView currentUser={profile} pins={pins.filter(p => !blocked.includes(p.id))} center={coords} myId={myId} locale={locale} />
         )}
       </div>
 
@@ -220,14 +238,14 @@ export default function MapPage() {
           )}
 
           <div className="flex gap-3 overflow-x-auto pb-1">
-            {pins.map((pin) => (
+            {pins.filter(p => !blocked.includes(p.id)).map((pin) => (
               <div
                 key={pin.id}
                 className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl p-4 min-w-[180px] max-w-[210px] flex flex-col gap-1.5"
               >
                 <div className="text-2xl">{pin.looking_for === "hug" ? "🤗" : "💋"}</div>
                 <div className="font-semibold text-white text-sm">
-                  {pin.name}, {t("map.age", { age: String(pin.age) })}
+                  {flagEmoji(pin.nationality)}{pin.nationality ? " " : ""}{pin.name}, {t("map.age", { age: String(pin.age) })}
                 </div>
                 <div className="text-xs text-white/40">
                   {translateGender(pin.gender)} · {LABEL[pin.looking_for]}

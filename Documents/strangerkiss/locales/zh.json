@@ -34,6 +34,8 @@
     "frenchKiss": "French kiss",
     "errorName": "请输入姓名或昵称。",
     "errorAge": "你必须年满18岁。",
+    "nationalityLabel": "国籍",
+    "nationalityPlaceholder": "选择国家…",
     "submit": "查看地图 →",
     "loading": "加载中…"
   },
@@ -66,7 +68,16 @@
     "demo2": "你好！你还在附近吗？",
     "demo3": "是的，我在中央咖啡馆的露台，穿红色外套 😉",
     "translate": "翻译",
-    "alreadyTranslated": "已是你的语言"
+    "alreadyTranslated": "已是你的语言",
+    "meetingRequest": "💞 提议见面",
+    "meetingRequestSent": "你向 {name} 发出了见面请求。",
+    "meetingRequestReceived": "{name} 向你提议见面。",
+    "accept": "接受 ✓",
+    "refuse": "拒绝 ✗",
+    "meetingAccepted": "见面请求已接受！🎉",
+    "meetingRefused": "见面请求已拒绝。",
+    "selfie": "📷 自拍",
+    "selfieError": "无法发送照片。"
   },
   "mapView": {
     "itsYou": "就是你！",

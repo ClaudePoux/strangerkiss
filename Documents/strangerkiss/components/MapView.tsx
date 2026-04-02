@@ -16,6 +16,13 @@ function popupStyle(content: string) {
   return `<div style="color:#1a1a2e;font-family:sans-serif;min-width:140px;max-width:200px">${content}</div>`;
 }
 
+function flagEmoji(code: string): string {
+  if (!code) return "";
+  return [...code.toUpperCase()].map(c =>
+    String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)
+  ).join("");
+}
+
 export default function MapView({ currentUser, pins, center, myId, locale }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,7 +87,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       L.marker(center, { icon: youIcon })
         .addTo(map)
         .bindPopup(popupStyle(`
-          <strong>${currentUser?.name ?? "—"}</strong>
+          <strong>${flagEmoji((currentUser as {nationality?:string})?.nationality ?? "")} ${currentUser?.name ?? "—"}</strong>
           <br/><span style="font-size:12px">${t("mapView.age", { age: String(currentUser?.age ?? "?") })} · ${currentUser?.gender ?? ""}</span>
           <br/><span style="font-size:12px">${currentUser?.looking_for === "french_kiss" ? kissLabel : hugLabel}</span>
           ${currentUser?.bio ? `<br/><span style="font-size:11px;color:#555;font-style:italic">${currentUser.bio}</span>` : ""}
@@ -112,7 +119,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         L.marker([pin.lat, pin.lng], { icon: pinIcon })
           .addTo(map)
           .bindPopup(popupStyle(`
-            <strong>${pin.name}</strong>
+            <strong>${flagEmoji(pin.nationality ?? "")} ${pin.name}</strong>
             <br/><span style="font-size:12px">${t("mapView.age", { age: String(pin.age) })} · ${pin.gender ?? ""}</span>
             <br/><span style="font-size:12px">${isHug ? hugLabel : kissLabel}</span>
             ${pin.bio ? `<br/><span style="font-size:11px;color:#555;font-style:italic">${pin.bio}</span>` : ""}

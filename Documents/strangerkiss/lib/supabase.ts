@@ -8,6 +8,7 @@ export interface UserPin {
   name: string;
   age: number;
   gender: Gender;
+  nationality: string;
   bio: string;
   appearance: string;
   looking_for: LookingFor;
@@ -40,6 +41,7 @@ export const supabase =
     name text not null,
     age integer not null check (age >= 18),
     gender text not null check (gender in ('homme', 'femme', 'non-binaire', 'autre')),
+    nationality text not null default '',
     bio text not null default '',
     appearance text not null default '',
     looking_for text not null check (looking_for in ('hug', 'french_kiss')),

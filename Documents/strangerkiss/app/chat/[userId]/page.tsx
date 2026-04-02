@@ -7,11 +7,56 @@ import { useI18n } from "@/lib/i18n";
 import { translateText, AlreadyInTargetLanguageError } from "@/lib/translate";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
+// Special message markers
+const SK_MEETING_REQUEST  = "§MEETING_REQUEST§";
+const SK_MEETING_ACCEPTED = "§MEETING_ACCEPTED§";
+const SK_MEETING_REFUSED  = "§MEETING_REFUSED§";
+
+function isMeetingMsg(content: string) {
+  return content === SK_MEETING_REQUEST
+    || content === SK_MEETING_ACCEPTED
+    || content === SK_MEETING_REFUSED;
+}
+
+function isImageMsg(content: string) {
+  return content.startsWith("data:image/");
+}
+
 function formatTime(iso: string, bcp47: string) {
-  return new Date(iso).toLocaleTimeString(bcp47, {
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Date(iso).toLocaleTimeString(bcp47, { hour: "2-digit", minute: "2-digit" });
+}
+
+// Compress image to JPEG, max 800px on the longest side
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 800;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.75));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("load failed")); };
+    img.src = url;
   });
+}
+
+function getBlocked(): string[] {
+  try { return JSON.parse(localStorage.getItem("sk_blocked") ?? "[]"); } catch { return []; }
+}
+
+function addBlocked(id: string) {
+  try {
+    const list = getBlocked();
+    if (!list.includes(id)) {
+      localStorage.setItem("sk_blocked", JSON.stringify([...list, id]));
+    }
+  } catch {}
 }
 
 export default function ChatPage() {
@@ -36,6 +81,7 @@ export default function ChatPage() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const tRef = useRef(t);
   tRef.current = t;
 
@@ -52,7 +98,8 @@ export default function ChatPage() {
       setMessages([
         { id: "d1", from_id: otherId, to_id: id, content: tr("chat.demo1"), created_at: new Date(Date.now() - 120000).toISOString() },
         { id: "d2", from_id: id, to_id: otherId, content: tr("chat.demo2"), created_at: new Date(Date.now() - 90000).toISOString() },
-        { id: "d3", from_id: otherId, to_id: id, content: tr("chat.demo3"), created_at: new Date(Date.now() - 60000).toISOString() },
+        // Demo: the other person sends a meeting request
+        { id: "d3", from_id: otherId, to_id: id, content: SK_MEETING_REQUEST, created_at: new Date(Date.now() - 30000).toISOString() },
       ]);
       return;
     }
@@ -81,70 +128,200 @@ export default function ChatPage() {
     return () => unsub?.();
   }, [loadChat]);
 
-  async function handleSend() {
-    const text = input.trim();
-    if (!text || !myId) return;
-    setInput("");
-    setSending(true);
-
+  // ── Send helpers ──────────────────────────────────────────────
+  async function pushMessage(content: string, id = myId) {
+    if (!id) return;
     if (demoMode) {
-      const fakeMsg: Message = {
+      const msg: Message = {
         id: crypto.randomUUID(),
-        from_id: myId,
+        from_id: id,
         to_id: otherId,
-        content: text,
+        content,
         created_at: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, fakeMsg]);
-      setSending(false);
-      inputRef.current?.focus();
-      return;
+      setMessages((prev) => [...prev, msg]);
+      return msg;
     }
-
     const { sendMessage } = await import("@/lib/supabase");
-    const sent = await sendMessage(myId, otherId, text);
+    const sent = await sendMessage(id, otherId, content);
     if (sent) setMessages((prev) => [...prev, sent]);
+    return sent;
+  }
+
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || !myId || sending) return;
+    setInput("");
+    setSending(true);
+    await pushMessage(text);
     setSending(false);
     inputRef.current?.focus();
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  }
+
+  // ── Selfie ────────────────────────────────────────────────────
+  async function handleSelfieFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setSending(true);
+    try {
+      const dataUrl = await compressImage(file);
+      await pushMessage(dataUrl);
+    } catch {
+      alert(tRef.current("chat.selfieError"));
+    } finally {
+      setSending(false);
     }
   }
 
+  // ── Meeting request ───────────────────────────────────────────
+  async function handleSendMeetingRequest() {
+    if (!myId || sending) return;
+    setSending(true);
+    await pushMessage(SK_MEETING_REQUEST);
+    setSending(false);
+  }
+
+  async function handleMeetingResponse(accept: boolean) {
+    if (!myId) return;
+    const content = accept ? SK_MEETING_ACCEPTED : SK_MEETING_REFUSED;
+    await pushMessage(content);
+    if (!accept) {
+      // The person who asked (otherId) is now blocked from appearing on our map
+      addBlocked(otherId);
+    }
+  }
+
+  // ── Translation ───────────────────────────────────────────────
   async function handleTranslate(msgId: string, content: string) {
-    // Toggle off if already translated
     if (translations[msgId]) {
-      setTranslations((prev) => {
-        const next = { ...prev };
-        delete next[msgId];
-        return next;
-      });
+      setTranslations((prev) => { const n = { ...prev }; delete n[msgId]; return n; });
       return;
     }
-
     setTranslating((prev) => ({ ...prev, [msgId]: true }));
     try {
       const result = await translateText(content, locale);
       setTranslations((prev) => ({ ...prev, [msgId]: result }));
     } catch (err) {
       if (err instanceof AlreadyInTargetLanguageError) {
-        setTranslations((prev) => ({
-          ...prev,
-          [msgId]: `— ${tRef.current("chat.alreadyTranslated")} —`,
-        }));
+        setTranslations((prev) => ({ ...prev, [msgId]: `— ${tRef.current("chat.alreadyTranslated")} —` }));
       }
-      // silently ignore other errors
     } finally {
-      setTranslating((prev) => {
-        const next = { ...prev };
-        delete next[msgId];
-        return next;
-      });
+      setTranslating((prev) => { const n = { ...prev }; delete n[msgId]; return n; });
     }
+  }
+
+  // ── Render one message ────────────────────────────────────────
+  function renderMessage(msg: Message) {
+    const isMe = msg.from_id === myId;
+    const translated = translations[msg.id];
+    const isTranslating = translating[msg.id];
+
+    // Meeting request card
+    if (msg.content === SK_MEETING_REQUEST) {
+      if (isMe) {
+        return (
+          <div key={msg.id} className="flex justify-end">
+            <div className="max-w-[80%] px-4 py-3 rounded-2xl rounded-br-sm bg-[#e91e8c]/20 border border-[#e91e8c]/30 text-sm text-white/80 text-center">
+              💞 {t("chat.meetingRequestSent", { name: otherName })}
+              <p className="text-[10px] text-white/40 mt-1">{formatTime(msg.created_at, bcp47)}</p>
+            </div>
+          </div>
+        );
+      }
+      // Received — show Accept/Refuse buttons
+      return (
+        <div key={msg.id} className="flex justify-start">
+          <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-sm bg-[#7c3aed]/20 border border-[#7c3aed]/30 text-sm text-center space-y-3">
+            <p className="text-white/90">💞 {t("chat.meetingRequestReceived", { name: otherName })}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleMeetingResponse(true)}
+                className="flex-1 py-2 rounded-xl bg-green-500/20 border border-green-500/30 text-green-300 text-xs font-medium hover:bg-green-500/30 transition-colors"
+              >
+                {t("chat.accept")}
+              </button>
+              <button
+                onClick={() => handleMeetingResponse(false)}
+                className="flex-1 py-2 rounded-xl bg-red-500/15 border border-red-500/25 text-red-300 text-xs font-medium hover:bg-red-500/25 transition-colors"
+              >
+                {t("chat.refuse")}
+              </button>
+            </div>
+            <p className="text-[10px] text-white/30">{formatTime(msg.created_at, bcp47)}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Meeting accepted / refused
+    if (msg.content === SK_MEETING_ACCEPTED || msg.content === SK_MEETING_REFUSED) {
+      const accepted = msg.content === SK_MEETING_ACCEPTED;
+      return (
+        <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+          <div className={`px-4 py-2 rounded-2xl text-sm font-medium ${
+            accepted
+              ? "bg-green-500/15 border border-green-500/25 text-green-300"
+              : "bg-red-500/10 border border-red-500/20 text-red-300"
+          }`}>
+            {accepted ? t("chat.meetingAccepted") : t("chat.meetingRefused")}
+            <span className="block text-[10px] opacity-50 mt-0.5">{formatTime(msg.created_at, bcp47)}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // Image (selfie)
+    if (isImageMsg(msg.content)) {
+      return (
+        <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+          <div className={`max-w-[65%] rounded-2xl overflow-hidden border ${isMe ? "border-[#e91e8c]/40 rounded-br-sm" : "border-white/15 rounded-bl-sm"}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={msg.content} alt="selfie" className="block w-full" />
+            <p className={`text-[10px] px-2 py-1 ${isMe ? "text-right text-[#e91e8c]/60" : "text-white/30"}`}>
+              {formatTime(msg.created_at, bcp47)}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Regular text message
+    return (
+      <div key={msg.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+        <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+          isMe ? "bg-[#e91e8c] text-white rounded-br-sm" : "bg-white/10 text-white/90 rounded-bl-sm"
+        }`}>
+          <p>{msg.content}</p>
+          <div className={`flex items-center gap-2 mt-1 ${isMe ? "justify-end" : "justify-between"}`}>
+            <p className={`text-[10px] ${isMe ? "text-white/60" : "text-white/30"}`}>
+              {formatTime(msg.created_at, bcp47)}
+            </p>
+            {!isMe && (
+              <button
+                onClick={() => handleTranslate(msg.id, msg.content)}
+                disabled={isTranslating}
+                className={`text-[10px] flex items-center gap-0.5 transition-colors rounded px-1 py-0.5 ${
+                  translated ? "text-[#a78bfa] bg-[#7c3aed]/20" : "text-white/25 hover:text-white/50"
+                }`}
+                title={t("chat.translate")}
+              >
+                {isTranslating ? <span className="animate-pulse">⏳</span> : <>🌐 {translated ? "×" : t("chat.translate")}</>}
+              </button>
+            )}
+          </div>
+        </div>
+        {!isMe && translated && (
+          <div className="max-w-[75%] mt-1 px-4 py-2 rounded-2xl rounded-tl-sm bg-[#7c3aed]/10 border border-[#7c3aed]/20 text-xs text-[#c4b5fd] leading-relaxed">
+            {translated}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -158,14 +335,12 @@ export default function ChatPage() {
         >
           ←
         </button>
-
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-white text-sm truncate">{otherName}</div>
           {otherAppearance && (
             <div className="text-xs text-[#e91e8c]/70 truncate">👀 {otherAppearance}</div>
           )}
         </div>
-
         <div className="flex items-center gap-2 flex-shrink-0">
           {demoMode && (
             <span className="text-xs text-amber-400/70 bg-amber-400/10 border border-amber-400/20 rounded-full px-2.5 py-1">
@@ -188,93 +363,66 @@ export default function ChatPage() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="text-5xl">💌</div>
-            <p className="text-white/40 text-sm">
-              {t("chat.greeting", { name: otherName })}
-            </p>
+            <p className="text-white/40 text-sm">{t("chat.greeting", { name: otherName })}</p>
           </div>
         )}
-
-        {messages.map((msg) => {
-          const isMe = msg.from_id === myId;
-          const translated = translations[msg.id];
-          const isTranslating = translating[msg.id];
-
-          return (
-            <div
-              key={msg.id}
-              className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-            >
-              {/* Message bubble */}
-              <div
-                className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                  isMe
-                    ? "bg-[#e91e8c] text-white rounded-br-sm"
-                    : "bg-white/10 text-white/90 rounded-bl-sm"
-                }`}
-              >
-                <p>{msg.content}</p>
-                <div className={`flex items-center gap-2 mt-1 ${isMe ? "justify-end" : "justify-between"}`}>
-                  <p className={`text-[10px] ${isMe ? "text-white/60" : "text-white/30"}`}>
-                    {formatTime(msg.created_at, bcp47)}
-                  </p>
-                  {/* Translate button — only on incoming messages */}
-                  {!isMe && (
-                    <button
-                      onClick={() => handleTranslate(msg.id, msg.content)}
-                      disabled={isTranslating}
-                      className={`text-[10px] flex items-center gap-0.5 transition-colors rounded px-1 py-0.5 ${
-                        translated
-                          ? "text-[#a78bfa] bg-[#7c3aed]/20"
-                          : "text-white/25 hover:text-white/50"
-                      }`}
-                      title={t("chat.translate")}
-                    >
-                      {isTranslating ? (
-                        <span className="animate-pulse">⏳</span>
-                      ) : (
-                        <>🌐 {translated ? "×" : t("chat.translate")}</>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Translation bubble */}
-              {!isMe && translated && (
-                <div className="max-w-[75%] mt-1 px-4 py-2 rounded-2xl rounded-tl-sm bg-[#7c3aed]/10 border border-[#7c3aed]/20 text-xs text-[#c4b5fd] leading-relaxed">
-                  {translated}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {messages.map(renderMessage)}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-white/5 px-4 py-3 flex gap-3 items-end bg-white/[0.02]">
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={t("chat.inputPlaceholder", { name: otherName })}
-          maxLength={500}
-          disabled={sending}
-          className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all text-sm disabled:opacity-50"
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || sending}
-          className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95 shadow-[0_0_16px_rgba(233,30,140,0.35)]"
-          aria-label={t("chat.send")}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M22 2L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+      {/* Action bar */}
+      <div className="border-t border-white/5 bg-white/[0.02]">
+        {/* Meeting request + selfie buttons */}
+        <div className="flex gap-2 px-4 pt-3 pb-1">
+          <button
+            onClick={handleSendMeetingRequest}
+            disabled={sending}
+            className="text-xs text-[#e91e8c]/70 hover:text-[#e91e8c] bg-[#e91e8c]/10 hover:bg-[#e91e8c]/20 border border-[#e91e8c]/20 rounded-full px-3 py-1.5 transition-all disabled:opacity-40"
+          >
+            {t("chat.meetingRequest")}
+          </button>
+          <button
+            onClick={() => cameraRef.current?.click()}
+            disabled={sending}
+            className="text-xs text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-3 py-1.5 transition-all disabled:opacity-40"
+          >
+            {t("chat.selfie")}
+          </button>
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="user"
+            className="hidden"
+            onChange={handleSelfieFile}
+          />
+        </div>
+
+        {/* Text input */}
+        <div className="px-4 py-3 flex gap-3 items-end">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t("chat.inputPlaceholder", { name: otherName })}
+            maxLength={500}
+            disabled={sending}
+            className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all text-sm disabled:opacity-50"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || sending}
+            className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95 shadow-[0_0_16px_rgba(233,30,140,0.35)]"
+            aria-label={t("chat.send")}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M22 2L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </main>
   );

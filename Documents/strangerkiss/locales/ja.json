@@ -34,6 +34,8 @@
     "frenchKiss": "フレンチキス",
     "errorName": "名前またはニックネームを入力してください。",
     "errorAge": "18歳以上である必要があります。",
+    "nationalityLabel": "国籍",
+    "nationalityPlaceholder": "国を選んでください…",
     "submit": "マップを見る →",
     "loading": "読み込み中…"
   },
@@ -66,7 +68,16 @@
     "demo2": "こんにちは！まだ近くにいますか？",
     "demo3": "はい、中央カフェのテラスにいます、赤いジャケットです 😉",
     "translate": "翻訳する",
-    "alreadyTranslated": "すでにあなたの言語です"
+    "alreadyTranslated": "すでにあなたの言語です",
+    "meetingRequest": "💞 会う提案をする",
+    "meetingRequestSent": "{name}に会う提案を送りました。",
+    "meetingRequestReceived": "{name}があなたに会う提案をしています。",
+    "accept": "承諾 ✓",
+    "refuse": "拒否 ✗",
+    "meetingAccepted": "会う提案が承諾されました！🎉",
+    "meetingRefused": "会う提案が拒否されました。",
+    "selfie": "📷 自撮り",
+    "selfieError": "写真を送信できませんでした。"
   },
   "mapView": {
     "itsYou": "あなたです！",

@@ -34,6 +34,8 @@
     "frenchKiss": "French kiss",
     "errorName": "Введи имя или псевдоним.",
     "errorAge": "Тебе должно быть не менее 18 лет.",
+    "nationalityLabel": "Гражданство",
+    "nationalityPlaceholder": "Выбрать страну…",
     "submit": "На карту →",
     "loading": "Загрузка…"
   },
@@ -66,7 +68,16 @@
     "demo2": "Эй! Ты ещё рядом?",
     "demo3": "Да, я на террасе центрального кафе, красная куртка 😉",
     "translate": "Перевести",
-    "alreadyTranslated": "Уже на твоём языке"
+    "alreadyTranslated": "Уже на твоём языке",
+    "meetingRequest": "💞 Предложить встречу",
+    "meetingRequestSent": "Ты предложил(а) встречу {name}.",
+    "meetingRequestReceived": "{name} предлагает тебе встречу.",
+    "accept": "Принять ✓",
+    "refuse": "Отказать ✗",
+    "meetingAccepted": "Встреча принята! 🎉",
+    "meetingRefused": "Встреча отклонена.",
+    "selfie": "📷 Селфи",
+    "selfieError": "Не удалось отправить фото."
   },
   "mapView": {
     "itsYou": "Это ты!",

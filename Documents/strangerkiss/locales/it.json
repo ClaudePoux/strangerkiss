@@ -34,6 +34,8 @@
     "frenchKiss": "Un French kiss",
     "errorName": "Inserisci un nome o soprannome.",
     "errorAge": "Devi avere almeno 18 anni.",
+    "nationalityLabel": "Nazionalità",
+    "nationalityPlaceholder": "Scegli un paese…",
     "submit": "Vai alla mappa →",
     "loading": "Caricamento…"
   },
@@ -66,7 +68,16 @@
     "demo2": "Ciao! Sei ancora in zona?",
     "demo3": "Sì, sono alla terrazza del caffè centrale, giacca rossa 😉",
     "translate": "Traduci",
-    "alreadyTranslated": "Già nella tua lingua"
+    "alreadyTranslated": "Già nella tua lingua",
+    "meetingRequest": "💞 Proponi un incontro",
+    "meetingRequestSent": "Hai proposto un incontro a {name}.",
+    "meetingRequestReceived": "{name} ti propone un incontro.",
+    "accept": "Accetta ✓",
+    "refuse": "Rifiuta ✗",
+    "meetingAccepted": "Incontro accettato! 🎉",
+    "meetingRefused": "Incontro rifiutato.",
+    "selfie": "📷 Selfie",
+    "selfieError": "Impossibile inviare la foto."
   },
   "mapView": {
     "itsYou": "Sei tu!",

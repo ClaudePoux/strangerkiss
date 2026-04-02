@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import CountrySelect from "@/components/CountrySelect";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<Gender>("femme");
+  const [nationality, setNationality] = useState("");
   const [bio, setBio] = useState("");
   const [appearance, setAppearance] = useState("");
   const [lookingFor, setLookingFor] = useState<LookingFor>("hug");
@@ -41,6 +43,7 @@ export default function ProfilePage() {
       name: name.trim(),
       age: ageNum,
       gender,
+      nationality,
       bio: bio.trim(),
       appearance: appearance.trim(),
       looking_for: lookingFor,
@@ -133,6 +136,19 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Nationality */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-white/70">
+              {t("profile.nationalityLabel")}{" "}
+              <span className="text-white/30">{t("profile.optional")}</span>
+            </label>
+            <CountrySelect
+              value={nationality}
+              onChange={setNationality}
+              placeholder={t("profile.nationalityPlaceholder")}
+            />
           </div>
 
           {/* Bio */}
