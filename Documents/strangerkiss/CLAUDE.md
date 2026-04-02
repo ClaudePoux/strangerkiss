@@ -28,11 +28,23 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 - **Backend / DB** : Supabase (auth, base de données, realtime)
 - **Carte** : Leaflet + react-leaflet
 
+## Monétisation
+
+- Système de crédits + vérification par SMS
+- Inscription : numéro de téléphone → code SMS → validé
+- 3 crédits offerts à l'inscription
+- 1 crédit dépensé uniquement quand les deux parties acceptent la rencontre
+- Si refus → aucun crédit dépensé
+- Chat et carte gratuits
+- Recharge : pack de crédits via carte bancaire, Apple Pay, Google Pay
+
 ## Stack cible (production)
 
 - **Hébergement** : OVH
 - **Base de données** : MySQL
 - **Nom de domaine** : à définir
+- **SMS** : Twilio
+- **Paiements** : Stripe
 
 ## Conventions du projet
 
