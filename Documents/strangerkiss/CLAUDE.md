@@ -21,11 +21,11 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 - **Système de consentement** : validation mutuelle obligatoire pour confirmer une rencontre
 - **Masquage après refus** : si un profil refuse une demande, il disparaît de la carte pour le profil refusé
 
-## Stack actuelle (prototype)
+## Stack (prototype et production)
 
 - **Framework** : Next.js + TypeScript (App Router) — lire `node_modules/next/dist/docs/` avant tout code
 - **Style** : Tailwind CSS
-- **Backend / DB** : Supabase (auth, base de données, realtime)
+- **Base de données** : Supabase (auth, base de données, realtime) — prototype et production
 - **Carte** : Leaflet + react-leaflet
 
 ## Monétisation
@@ -38,12 +38,12 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 - Chat et carte gratuits
 - Recharge : pack de crédits via carte bancaire, Apple Pay, Google Pay
 
-## Stack cible (production)
+## Production
 
-- **Nom de domaine** : strangerkiss.com (réservé sur Gandi)
-- **Hébergement** : Vercel (gratuit, Next.js natif)
-- **Base de données** : MySQL sur OVH mutualisé (1,49 €/mois — 250 Mo) — migration prévue depuis Supabase
-- **Paiements** : Stripe (Apple Pay et Google Pay inclus)
+- **Nom de domaine** : strangerkiss.com (Gandi)
+- **Hébergement** : Vercel (déjà déployé)
+- **Base de données** : Supabase
+- **Paiements** : Stripe (Apple Pay et Google Pay)
 - **SMS** : Twilio
 - **Traduction** : DeepL API
 
