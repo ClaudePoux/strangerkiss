@@ -1,3 +1,10 @@
+# StrangerKiss
+
+App web de géolocalisation pour voyageurs souhaitant échanger un hug ou un baiser avec un inconnu à proximité.
+Déployée sur [strangerkiss.com](https://strangerkiss.com) — Stack : Next.js · Supabase · Twilio · Stripe · DeepL.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
