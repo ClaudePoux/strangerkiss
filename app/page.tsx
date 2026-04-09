@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import LaunchSection from "@/components/LaunchSection";
@@ -28,6 +29,22 @@ function Tagline({ text }: { text: string }) {
 
 export default function HomePage() {
   const { t } = useI18n();
+  const router = useRouter();
+
+  function startDemo() {
+    try {
+      localStorage.setItem("sk_profile", JSON.stringify({
+        name: "Visiteur",
+        age: 28,
+        gender: "autre",
+        nationality: "",
+        bio: "",
+        appearance: "",
+        looking_for: "hug",
+      }));
+    } catch { /* ignore */ }
+    router.push("/map?demo=true");
+  }
 
   const steps = [
     { icon: "✏️", title: t("home.step1Title"), desc: t("home.step1Desc") },
@@ -73,9 +90,12 @@ export default function HomePage() {
 
           {/* Demo CTA */}
           <p className="mt-6 text-xs text-white/20">
-            <Link href="/profile" className="underline underline-offset-2 hover:text-white/40 transition-colors">
+            <button
+              onClick={startDemo}
+              className="underline underline-offset-2 hover:text-white/40 transition-colors"
+            >
               {t("home.ctaDemo")}
-            </Link>
+            </button>
           </p>
 
           <p className="mt-3 text-sm text-white/30">{t("home.disclaimer")}</p>

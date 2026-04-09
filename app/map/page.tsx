@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 
@@ -22,6 +23,20 @@ function getOrCreateMyId(): string {
 }
 
 
+// Paris centre
+const DEMO_CENTER: [number, number] = [48.8566, 2.3522];
+
+function getDemoPins(): UserPin[] {
+  const [lat, lng] = DEMO_CENTER;
+  return [
+    { id: "demo-0", name: "Sofia", age: 24, gender: "femme", nationality: "ES", bio: "Voyageuse solo de passage ✈️", appearance: "veste rouge, cheveux bouclés", looking_for: "french_kiss", lat: lat + 0.003, lng: lng + 0.004, created_at: new Date().toISOString() },
+    { id: "demo-1", name: "Liam", age: 29, gender: "homme", nationality: "IE", bio: "Backpacker irlandais 🍀", appearance: "t-shirt vert, sac à dos bleu", looking_for: "hug", lat: lat - 0.002, lng: lng + 0.005, created_at: new Date().toISOString() },
+    { id: "demo-2", name: "Yuki", age: 22, gender: "non-binaire", nationality: "JP", bio: "En vadrouille dans toute l'Europe 🌍", appearance: "bonnet orange, veste en jean", looking_for: "hug", lat: lat + 0.005, lng: lng - 0.003, created_at: new Date().toISOString() },
+    { id: "demo-3", name: "Marco", age: 31, gender: "homme", nationality: "IT", bio: "", appearance: "casquette noire, terrasse du Louvre", looking_for: "french_kiss", lat: lat - 0.004, lng: lng - 0.006, created_at: new Date().toISOString() },
+    { id: "demo-4", name: "Amara", age: 27, gender: "femme", nationality: "SN", bio: "Curieuse et libre 🌸", appearance: "robe jaune, près de la fontaine", looking_for: "hug", lat: lat + 0.001, lng: lng - 0.007, created_at: new Date().toISOString() },
+  ];
+}
+
 function flagEmoji(code: string): string {
   if (!code) return "";
   return [...code.toUpperCase()].map(c =>
@@ -39,8 +54,10 @@ async function fetchBlocked(pinId: string): Promise<string[]> {
   }
 }
 
-export default function MapPage() {
+function MapPageContent() {
   const { t, locale } = useI18n();
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
 
   const LABEL: Record<string, string> = {
     hug: t("map.hug"),
@@ -179,6 +196,12 @@ export default function MapPage() {
   }, [coords, myId, loading, refreshPins]);
 
   useEffect(() => {
+    if (isDemo) {
+      setCoords(DEMO_CENTER);
+      setPins(getDemoPins());
+      setLoading(false);
+      return;
+    }
     if (!navigator.geolocation) {
       setGeoErrorKey("map.geoNotSupported");
       setLoading(false);
@@ -192,7 +215,7 @@ export default function MapPage() {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, [loadMap]);
+  }, [loadMap, isDemo]);
 
 
   return (
@@ -236,6 +259,16 @@ export default function MapPage() {
           )}
         </div>
       </header>
+
+      {/* Bannière mode démo */}
+      {isDemo && (
+        <div className="flex items-center justify-between px-4 py-2 bg-[#7c3aed]/10 border-b border-[#7c3aed]/20 text-xs text-[#a78bfa]">
+          <span>🎭 {t("map.demoMode")} — Paris</span>
+          <Link href="/profile" className="underline hover:text-white transition-colors">
+            {t("map.createProfile")}
+          </Link>
+        </div>
+      )}
 
       {/* Map area */}
       <div className="flex-1 relative min-h-0">
@@ -311,5 +344,13 @@ export default function MapPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function MapPage() {
+  return (
+    <Suspense>
+      <MapPageContent />
+    </Suspense>
   );
 }
