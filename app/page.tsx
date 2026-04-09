@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import LaunchSection from "@/components/LaunchSection";
 
 function Tagline({ text }: { text: string }) {
   const parts = text.split(/(\{hug\}|\{frenchKiss\})/);
@@ -49,7 +50,7 @@ export default function HomePage() {
           <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full bg-[#7c3aed]/10 blur-[100px]" />
         </div>
 
-        <div className="relative z-10 max-w-2xl mx-auto">
+        <div className="relative z-10 max-w-2xl mx-auto w-full">
           <div className="text-7xl mb-6 select-none">💋</div>
 
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-4">
@@ -57,18 +58,27 @@ export default function HomePage() {
             <span className="text-[#e91e8c]">Kiss</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-white/60 mb-10 leading-relaxed">
+          <p className="text-lg sm:text-xl text-white/60 mb-4 leading-relaxed">
             <Tagline text={t("home.tagline")} />
           </p>
 
-          <Link
-            href="/profile"
-            className="inline-block bg-[#e91e8c] hover:bg-[#c2186f] text-white font-semibold text-lg px-10 py-4 rounded-full transition-all duration-200 shadow-[0_0_30px_rgba(233,30,140,0.4)] hover:shadow-[0_0_50px_rgba(233,30,140,0.6)] hover:scale-105 active:scale-95"
-          >
-            {t("home.cta")}
-          </Link>
+          {/* Badge "Bientôt disponible" */}
+          <div className="inline-flex items-center gap-2 bg-[#e91e8c]/10 border border-[#e91e8c]/25 rounded-full px-4 py-1.5 mb-2">
+            <span className="w-2 h-2 rounded-full bg-[#e91e8c] animate-pulse" />
+            <span className="text-xs text-[#e91e8c] font-medium">{t("home.launchingSoon")}</span>
+          </div>
 
-          <p className="mt-5 text-sm text-white/30">{t("home.disclaimer")}</p>
+          {/* Countdown + waitlist */}
+          <LaunchSection />
+
+          {/* Demo CTA */}
+          <p className="mt-6 text-xs text-white/20">
+            <Link href="/profile" className="underline underline-offset-2 hover:text-white/40 transition-colors">
+              {t("home.ctaDemo")}
+            </Link>
+          </p>
+
+          <p className="mt-3 text-sm text-white/30">{t("home.disclaimer")}</p>
         </div>
       </section>
 

@@ -10,7 +10,20 @@
     "step2Desc": "We pin you on the map. Others see you, you see them.",
     "step3Title": "3. Find a match",
     "step3Desc": "Get closer to people looking for the same thing.",
-    "footer": "StrangerKiss — prototype v0.1 · For consenting adults only"
+    "footer": "StrangerKiss — prototype v0.1 · For consenting adults only",
+    "launchingSoon": "Launching 9 May 2026",
+    "ctaDemo": "Explore the demo →",
+    "days": "days",
+    "hours": "hours",
+    "minutes": "min",
+    "seconds": "sec",
+    "waitlistTitle": "Sign up now and get 10 free credits at launch",
+    "waitlistPhone": "Your phone number",
+    "waitlistCta": "I want my 10 credits →",
+    "waitlistSuccess": "You're in! 🎉 10 credits are waiting for you at launch.",
+    "waitlistAlready": "This number is already registered.",
+    "waitlistError": "Something went wrong. Please try again.",
+    "waitlistCount": "{count} people already signed up"
   },
   "profile": {
     "header": "Tell us who you are",
@@ -85,7 +98,10 @@
     "reportSent": "Report sent.",
     "reportAlready": "You have already reported this profile.",
     "reportError": "Could not send the report.",
-    "moderationWarning": "⚠️ Your profile has received several reports. Please respect other users."
+    "moderationWarning": "⚠️ Your profile has received several reports. Please respect other users.",
+    "comingSoon": "Chat available at launch",
+    "comingSoonDesc": "The chat will be available on {date}. Sign up to be among the first.",
+    "comingSoonCta": "Join the waitlist →"
   },
   "mapView": {
     "itsYou": "That's you!",

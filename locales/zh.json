@@ -10,7 +10,20 @@
     "step2Desc": "我们将你标记在地图上，其他人可以看到你，你也能看到他们。",
     "step3Title": "3. 找到匹配",
     "step3Desc": "接近与你寻求相同事物的人。",
-    "footer": "StrangerKiss — 原型 v0.1 · 仅限成年人"
+    "footer": "StrangerKiss — 原型 v0.1 · 仅限成年人",
+    "launchingSoon": "2026年5月9日正式上线",
+    "ctaDemo": "体验演示 →",
+    "days": "天",
+    "hours": "时",
+    "minutes": "分",
+    "seconds": "秒",
+    "waitlistTitle": "立即注册，上线即获10枚免费积分",
+    "waitlistPhone": "你的手机号",
+    "waitlistCta": "我要10枚积分 →",
+    "waitlistSuccess": "注册成功！🎉 上线时10枚积分等你来领。",
+    "waitlistAlready": "该号码已注册。",
+    "waitlistError": "出现错误，请重试。",
+    "waitlistCount": "已有{count}人报名"
   },
   "profile": {
     "header": "告诉我们你是谁",
@@ -85,7 +98,10 @@
     "reportSent": "举报已发送。",
     "reportAlready": "你已经举报过该用户。",
     "reportError": "无法发送举报。",
-    "moderationWarning": "⚠️ 你的个人资料已收到多次举报，请尊重其他用户。"
+    "moderationWarning": "⚠️ 你的个人资料已收到多次举报，请尊重其他用户。",
+    "comingSoon": "聊天功能上线开放",
+    "comingSoonDesc": "聊天将于{date}上线。立即注册，成为首批用户。",
+    "comingSoonCta": "加入等待列表 →"
   },
   "mapView": {
     "itsYou": "就是你！",

@@ -141,7 +141,21 @@ alter table public.banned_phones enable row level security;
 create policy "service role only" on public.banned_phones using (false);
 
 -- ------------------------------------------------------------
--- 7. Fonctions RPC (appelées depuis les API routes via service_role)
+-- 7. Liste d'attente pré-lancement (waitlist)
+-- ------------------------------------------------------------
+create table if not exists public.waitlist (
+  id         uuid primary key default gen_random_uuid(),
+  phone      text not null,
+  created_at timestamptz not null default now(),
+  constraint uq_waitlist_phone unique (phone)
+);
+
+alter table public.waitlist enable row level security;
+create policy "lecture publique"   on public.waitlist for select using (true);
+create policy "insertion publique" on public.waitlist for insert with check (true);
+
+-- ------------------------------------------------------------
+-- 8. Fonctions RPC (appelées depuis les API routes via service_role)
 -- ------------------------------------------------------------
 
 -- Déduire 1 crédit de façon atomique

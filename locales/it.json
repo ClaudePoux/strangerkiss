@@ -10,7 +10,20 @@
     "step2Desc": "Ti posizioniamo sulla mappa. Gli altri ti vedono, tu li vedi.",
     "step3Title": "3. Trova un match",
     "step3Desc": "Avvicinati alle persone che cercano la stessa cosa.",
-    "footer": "StrangerKiss — prototipo v0.1 · Solo per adulti consenzienti"
+    "footer": "StrangerKiss — prototipo v0.1 · Solo per adulti consenzienti",
+    "launchingSoon": "Lancio il 9 maggio 2026",
+    "ctaDemo": "Esplora la demo →",
+    "days": "giorni",
+    "hours": "ore",
+    "minutes": "min",
+    "seconds": "sec",
+    "waitlistTitle": "Iscriviti ora e ricevi 10 crediti gratuiti al lancio",
+    "waitlistPhone": "Il tuo numero di telefono",
+    "waitlistCta": "Voglio i miei 10 crediti →",
+    "waitlistSuccess": "Sei dentro! 🎉 10 crediti ti aspettano al lancio.",
+    "waitlistAlready": "Questo numero è già registrato.",
+    "waitlistError": "Si è verificato un errore. Riprova.",
+    "waitlistCount": "{count} persone già iscritte"
   },
   "profile": {
     "header": "Presentati",
@@ -85,7 +98,10 @@
     "reportSent": "Segnalazione inviata.",
     "reportAlready": "Hai già segnalato questo profilo.",
     "reportError": "Impossibile inviare la segnalazione.",
-    "moderationWarning": "⚠️ Il tuo profilo ha ricevuto diverse segnalazioni. Rispetta gli altri utenti."
+    "moderationWarning": "⚠️ Il tuo profilo ha ricevuto diverse segnalazioni. Rispetta gli altri utenti.",
+    "comingSoon": "Chat disponibile al lancio",
+    "comingSoonDesc": "La chat sarà disponibile il {date}. Iscriviti per essere tra i primi.",
+    "comingSoonCta": "Unisciti alla lista →"
   },
   "mapView": {
     "itsYou": "Sei tu!",

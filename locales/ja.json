@@ -10,7 +10,20 @@
     "step2Desc": "マップにあなたを表示。他の人があなたを見て、あなたも彼らを見る。",
     "step3Title": "3. マッチを見つける",
     "step3Desc": "同じものを求めている人に近づきましょう。",
-    "footer": "StrangerKiss — プロトタイプ v0.1 · 同意した成人のみ"
+    "footer": "StrangerKiss — プロトタイプ v0.1 · 同意した成人のみ",
+    "launchingSoon": "2026年5月9日リリース",
+    "ctaDemo": "デモを試す →",
+    "days": "日",
+    "hours": "時間",
+    "minutes": "分",
+    "seconds": "秒",
+    "waitlistTitle": "今すぐ登録してリリース時に10クレジットを無料でもらおう",
+    "waitlistPhone": "電話番号",
+    "waitlistCta": "10クレジットをもらう →",
+    "waitlistSuccess": "登録完了！🎉 リリース時に10クレジットが待っています。",
+    "waitlistAlready": "この番号はすでに登録されています。",
+    "waitlistError": "エラーが発生しました。もう一度お試しください。",
+    "waitlistCount": "すでに{count}人が登録済み"
   },
   "profile": {
     "header": "自己紹介してください",
@@ -85,7 +98,10 @@
     "reportSent": "通報を送信しました。",
     "reportAlready": "このプロフィールはすでに通報済みです。",
     "reportError": "通報を送信できませんでした。",
-    "moderationWarning": "⚠️ あなたのプロフィールは複数の通報を受けています。他のユーザーを尊重してください。"
+    "moderationWarning": "⚠️ あなたのプロフィールは複数の通報を受けています。他のユーザーを尊重してください。",
+    "comingSoon": "チャットはリリース時に利用可能",
+    "comingSoonDesc": "チャットは{date}から利用できます。登録して最初のユーザーになりましょう。",
+    "comingSoonCta": "ウェイトリストに参加 →"
   },
   "mapView": {
     "itsYou": "あなたです！",

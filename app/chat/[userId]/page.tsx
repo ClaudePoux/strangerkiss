@@ -375,6 +375,43 @@ export default function ChatPage() {
     );
   }
 
+  // Chat désactivé jusqu'au lancement (9 mai 2026)
+  const LAUNCH_DATE = new Date("2026-05-09T00:00:00Z");
+  const prelaunch = Date.now() < LAUNCH_DATE.getTime();
+
+  if (prelaunch) {
+    return (
+      <main className="flex flex-col h-screen overflow-hidden">
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-white/[0.02]">
+          <button
+            onClick={() => router.back()}
+            className="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+            aria-label={t("chat.back")}
+          >
+            ←
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-white text-sm truncate">{otherName}</div>
+          </div>
+          <LanguageSwitcher />
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="text-5xl">🔒</div>
+          <h2 className="text-xl font-bold text-white">{t("chat.comingSoon")}</h2>
+          <p className="text-sm text-white/50 max-w-xs leading-relaxed">
+            {t("chat.comingSoonDesc", { date: "9 mai 2026" })}
+          </p>
+          <a
+            href="/"
+            className="mt-2 bg-[#e91e8c] hover:bg-[#c2186f] text-white text-sm font-semibold px-6 py-3 rounded-full transition-all shadow-[0_0_20px_rgba(233,30,140,0.3)]"
+          >
+            {t("chat.comingSoonCta")}
+          </a>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
