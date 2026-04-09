@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { UserPin } from "@/lib/supabase";
 
+// Route serveur : utilise service_role pour bypasser RLS (nécessaire pour UPDATE)
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 // GET /api/db/pins?lat=&lng=&radius=5
@@ -68,10 +69,25 @@ export async function POST(req: NextRequest) {
       .eq("id", pin_id)
       .select()
       .single());
-  }
-
-  // Insertion si pas de pin_id, ou si le pin n'existe plus en base
-  if (!pin_id || error) {
+    // PGRST116 = row not found (pin expiré ou supprimé) → on insère
+    if (error?.code === "PGRST116" || (!data && !error)) {
+      error = null;
+      ({ data, error } = await sb
+        .from("user_pins")
+        .insert({ ...payload, id: pin_id })
+        .select()
+        .single());
+      // Si INSERT avec l'ancien id échoue (conflit), INSERT sans id
+      if (error) {
+        ({ data, error } = await sb
+          .from("user_pins")
+          .insert(payload)
+          .select()
+          .single());
+      }
+    }
+  } else {
+    // Pas de pin_id connu : nouvelle insertion
     ({ data, error } = await sb
       .from("user_pins")
       .insert(payload)

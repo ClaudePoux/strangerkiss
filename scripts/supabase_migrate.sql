@@ -45,8 +45,10 @@ create index if not exists idx_pins_created  on public.user_pins (created_at);
 create index if not exists idx_pins_user     on public.user_pins (user_id);
 
 alter table public.user_pins enable row level security;
-create policy "lecture publique"  on public.user_pins for select using (true);
-create policy "insertion publique" on public.user_pins for insert with check (true);
+create policy "lecture publique"    on public.user_pins for select using (true);
+create policy "insertion publique"  on public.user_pins for insert with check (true);
+create policy "mise à jour publique" on public.user_pins for update using (true);
+create policy "suppression publique" on public.user_pins for delete using (true);
 
 -- ------------------------------------------------------------
 -- 3. Messages du chat
