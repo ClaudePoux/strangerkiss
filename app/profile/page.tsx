@@ -62,8 +62,8 @@ export default function ProfilePage() {
       {/* Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[#7c3aed]/10 blur-[120px] pointer-events-none" />
 
-      {/* Language switcher */}
-      <div className="absolute top-4 right-4 z-10">
+      {/* Language switcher — fixed pour éviter le conflit de stacking context avec backdrop-blur */}
+      <div className="fixed top-4 right-4 z-50">
         <LanguageSwitcher />
       </div>
 

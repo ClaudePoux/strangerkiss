@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -225,7 +225,6 @@ export default function MapPage() {
           Stranger<span className="text-[#e91e8c]">Kiss</span>
         </Link>
         <div className="flex items-center gap-3">
-          <LanguageSwitcher />
           {profile && (
             <div className="flex items-center gap-3">
               <div className="text-right">

@@ -36,17 +36,17 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col min-h-screen">
+      {/* Language switcher — hors du overflow-hidden pour que le dropdown soit visible */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+
       {/* Hero */}
       <section className="flex flex-col items-center justify-center flex-1 px-6 pt-20 pb-16 text-center relative overflow-hidden">
         {/* Background glow */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#e91e8c]/10 blur-[120px]" />
           <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full bg-[#7c3aed]/10 blur-[100px]" />
-        </div>
-
-        {/* Language switcher */}
-        <div className="absolute top-4 right-4 z-10">
-          <LanguageSwitcher />
         </div>
 
         <div className="relative z-10 max-w-2xl mx-auto">
