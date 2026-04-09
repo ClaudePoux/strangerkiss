@@ -21,28 +21,6 @@ function getOrCreateMyId(): string {
   }
 }
 
-function getMockPins(lat: number, lng: number): UserPin[] {
-  const offsets = [
-    { dlat: 0.003, dlng: 0.004, name: "Sofia", age: 24, gender: "femme", nationality: "ES", bio: "Voyageuse solo, j'adore les rencontres sincères ✈️", appearance: "veste rouge, cheveux bouclés, terrasse du café", looking_for: "french_kiss" },
-    { dlat: -0.002, dlng: 0.005, name: "Liam", age: 29, gender: "homme", nationality: "IE", bio: "Backpacker irlandais de passage 🍀", appearance: "t-shirt vert, sac à dos bleu marine", looking_for: "hug" },
-    { dlat: 0.005, dlng: -0.003, name: "Yuki", age: 22, gender: "non-binaire", nationality: "JP", bio: "En vadrouille dans toute l'Europe 🌍", appearance: "bonnet orange, veste en jean", looking_for: "hug" },
-    { dlat: -0.004, dlng: -0.006, name: "Marco", age: 31, gender: "homme", nationality: "IT", bio: "", appearance: "", looking_for: "french_kiss" },
-    { dlat: 0.001, dlng: -0.007, name: "Amara", age: 27, gender: "femme", nationality: "SN", bio: "Curieuse et libre 🌸", appearance: "robe jaune, près de la fontaine", looking_for: "hug" },
-  ];
-  return offsets.map((o, i) => ({
-    id: `demo-${i}`,
-    name: o.name,
-    age: o.age,
-    gender: o.gender as Gender,
-    nationality: o.nationality,
-    bio: o.bio,
-    appearance: o.appearance,
-    looking_for: o.looking_for as LookingFor,
-    lat: lat + o.dlat,
-    lng: lng + o.dlng,
-    created_at: new Date().toISOString(),
-  }));
-}
 
 function flagEmoji(code: string): string {
   if (!code) return "";
@@ -181,10 +159,8 @@ export default function MapPage() {
             )
           );
         } catch {
-          setPins(getMockPins(lat, lng));
+          setPins([]);
         }
-      } else {
-        setPins(getMockPins(lat, lng));
       }
       setLoading(false);
     },
