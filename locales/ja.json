@@ -37,7 +37,9 @@
     "nationalityLabel": "国籍",
     "nationalityPlaceholder": "国を選んでください…",
     "submit": "マップを見る →",
-    "loading": "読み込み中…"
+    "loading": "読み込み中…",
+    "errorBanned24h": "通報により、アカウントは24時間停止されています。",
+    "errorBannedPermanent": "アカウントが永久にBANされました。"
   },
   "map": {
     "age": "{age}歳",
@@ -77,7 +79,13 @@
     "meetingAccepted": "会う提案が承諾されました！🎉",
     "meetingRefused": "会う提案が拒否されました。",
     "selfie": "📷 自撮り",
-    "selfieError": "写真を送信できませんでした。"
+    "selfieError": "写真を送信できませんでした。",
+    "report": "🚩 通報",
+    "reportConfirm": "{name}を不適切な行為で通報しますか？",
+    "reportSent": "通報を送信しました。",
+    "reportAlready": "このプロフィールはすでに通報済みです。",
+    "reportError": "通報を送信できませんでした。",
+    "moderationWarning": "⚠️ あなたのプロフィールは複数の通報を受けています。他のユーザーを尊重してください。"
   },
   "mapView": {
     "itsYou": "あなたです！",

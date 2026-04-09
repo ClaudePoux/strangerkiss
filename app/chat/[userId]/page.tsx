@@ -57,6 +57,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [reported, setReported] = useState(false);
 
   // Translation state per message id
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -212,6 +213,29 @@ export default function ChatPage() {
     }
   }
 
+  // ── Report ───────────────────────────────────────────────────
+  async function handleReport() {
+    if (!myId || reported) return;
+    const confirmed = window.confirm(t("chat.reportConfirm", { name: otherName }));
+    if (!confirmed) return;
+    try {
+      const res = await fetch("/api/moderation/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reporter_pin_id: myId, reported_pin_id: otherId }),
+      });
+      const { action } = await res.json();
+      if (action === "already_reported") {
+        alert(t("chat.reportAlready"));
+      } else {
+        setReported(true);
+        alert(t("chat.reportSent"));
+      }
+    } catch {
+      alert(t("chat.reportError"));
+    }
+  }
+
   // ── Translation ───────────────────────────────────────────────
   async function handleTranslate(msgId: string, content: string) {
     if (translations[msgId]) {
@@ -236,6 +260,17 @@ export default function ChatPage() {
     const isMe = msg.from_id === myId;
     const translated = translations[msg.id];
     const isTranslating = translating[msg.id];
+
+    // Avertissement de modération (envoyé par le système à l'utilisateur signalé)
+    if (msg.content === "§MODERATION_WARNING§") {
+      return (
+        <div key={msg.id} className="flex justify-center">
+          <div className="max-w-[90%] px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 text-center">
+            {t("chat.moderationWarning")}
+          </div>
+        </div>
+      );
+    }
 
     // Meeting request card
     if (msg.content === SK_MEETING_REQUEST) {
@@ -412,6 +447,14 @@ export default function ChatPage() {
             className="hidden"
             onChange={handleSelfieFile}
           />
+          <button
+            onClick={handleReport}
+            disabled={reported}
+            className="ml-auto text-xs text-white/25 hover:text-red-400 bg-transparent border-none rounded-full px-2 py-1.5 transition-all disabled:opacity-30"
+            title={t("chat.report")}
+          >
+            🚩
+          </button>
         </div>
 
         {/* Text input */}

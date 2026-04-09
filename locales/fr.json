@@ -37,7 +37,9 @@
     "nationalityLabel": "Nationalité",
     "nationalityPlaceholder": "Choisir un pays…",
     "submit": "Voir la carte →",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "errorBanned24h": "Ton compte est suspendu pour 24h suite à des signalements.",
+    "errorBannedPermanent": "Ton compte est banni définitivement."
   },
   "map": {
     "age": "{age} ans",
@@ -77,7 +79,13 @@
     "meetingAccepted": "Rencontre acceptée ! 🎉",
     "meetingRefused": "Rencontre refusée.",
     "selfie": "📷 Selfie",
-    "selfieError": "Impossible d'envoyer la photo."
+    "selfieError": "Impossible d'envoyer la photo.",
+    "report": "🚩 Signaler",
+    "reportConfirm": "Signaler {name} pour comportement inapproprié ?",
+    "reportSent": "Signalement envoyé.",
+    "reportAlready": "Tu as déjà signalé ce profil.",
+    "reportError": "Impossible d'envoyer le signalement.",
+    "moderationWarning": "⚠️ Ton profil a reçu plusieurs signalements. Respecte les autres utilisateurs."
   },
   "mapView": {
     "itsYou": "C'est toi !",

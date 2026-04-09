@@ -37,7 +37,9 @@
     "nationalityLabel": "Nationalität",
     "nationalityPlaceholder": "Land auswählen…",
     "submit": "Zur Karte →",
-    "loading": "Laden…"
+    "loading": "Laden…",
+    "errorBanned24h": "Dein Konto ist wegen Meldungen für 24h gesperrt.",
+    "errorBannedPermanent": "Dein Konto wurde dauerhaft gesperrt."
   },
   "map": {
     "age": "{age} J.",
@@ -77,7 +79,13 @@
     "meetingAccepted": "Treffen angenommen! 🎉",
     "meetingRefused": "Treffen abgelehnt.",
     "selfie": "📷 Selfie",
-    "selfieError": "Foto konnte nicht gesendet werden."
+    "selfieError": "Foto konnte nicht gesendet werden.",
+    "report": "🚩 Melden",
+    "reportConfirm": "{name} wegen unangemessenem Verhalten melden?",
+    "reportSent": "Meldung gesendet.",
+    "reportAlready": "Du hast dieses Profil bereits gemeldet.",
+    "reportError": "Meldung konnte nicht gesendet werden.",
+    "moderationWarning": "⚠️ Dein Profil wurde mehrfach gemeldet. Bitte respektiere andere Nutzer."
   },
   "mapView": {
     "itsYou": "Das bist du!",

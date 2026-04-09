@@ -28,7 +28,7 @@ export default function ProfilePage() {
     { value: "autre", label: t("profile.genderAutre"), icon: "✨" },
   ];
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -38,6 +38,25 @@ export default function ProfilePage() {
       return setError(t("profile.errorAge"));
 
     setLoading(true);
+
+    // Vérification du ban si un numéro de téléphone est enregistré
+    try {
+      const phone = localStorage.getItem("sk_phone");
+      if (phone) {
+        const res = await fetch(`/api/moderation/check-ban?phone=${encodeURIComponent(phone)}`);
+        const { banned, ban_type } = await res.json();
+        if (banned) {
+          setLoading(false);
+          return setError(
+            ban_type === "permanent"
+              ? t("profile.errorBannedPermanent")
+              : t("profile.errorBanned24h")
+          );
+        }
+      }
+    } catch {
+      // Si la vérification échoue, on laisse passer (fail open)
+    }
 
     const profile = {
       name: name.trim(),

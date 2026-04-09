@@ -110,7 +110,38 @@ create policy "lecture publique"   on public.blocks for select using (true);
 create policy "insertion publique" on public.blocks for insert with check (true);
 
 -- ------------------------------------------------------------
--- 6. Fonctions RPC (appelées depuis les API routes via service_role)
+-- 6. Modération (signalements + bans)
+-- ------------------------------------------------------------
+create table if not exists public.reports (
+  id               uuid primary key default gen_random_uuid(),
+  reporter_pin_id  uuid not null,   -- user_pins.id du signalant
+  reported_pin_id  uuid not null,   -- user_pins.id du signalé
+  reason           text,
+  created_at       timestamptz not null default now(),
+  constraint uq_report unique (reporter_pin_id, reported_pin_id)
+);
+
+alter table public.reports enable row level security;
+create policy "lecture service role" on public.reports for select using (true);
+create policy "insertion publique"   on public.reports for insert with check (true);
+
+create table if not exists public.banned_phones (
+  id           uuid primary key default gen_random_uuid(),
+  phone        text not null,
+  ban_type     text not null default '24h',   -- '24h' ou 'permanent'
+  banned_until timestamptz,                   -- null si permanent
+  reason       text,
+  created_at   timestamptz not null default now(),
+  constraint uq_banned_phone unique (phone),
+  constraint chk_ban_type check (ban_type in ('24h', 'permanent'))
+);
+
+alter table public.banned_phones enable row level security;
+-- Lecture uniquement via service_role (vérification côté serveur)
+create policy "service role only" on public.banned_phones using (false);
+
+-- ------------------------------------------------------------
+-- 7. Fonctions RPC (appelées depuis les API routes via service_role)
 -- ------------------------------------------------------------
 
 -- Déduire 1 crédit de façon atomique
