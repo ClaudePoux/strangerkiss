@@ -89,14 +89,12 @@ export default function HomePage() {
           <LaunchSection />
 
           {/* Demo CTA */}
-          <p className="mt-6 text-xs text-white/20">
-            <button
-              onClick={startDemo}
-              className="underline underline-offset-2 hover:text-white/40 transition-colors"
-            >
-              {t("home.ctaDemo")}
-            </button>
-          </p>
+          <button
+            onClick={startDemo}
+            className="mt-6 inline-flex items-center gap-2 text-sm text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-5 py-2.5 transition-all"
+          >
+            {t("home.ctaDemo")}
+          </button>
 
           <p className="mt-3 text-sm text-white/30">{t("home.disclaimer")}</p>
         </div>
