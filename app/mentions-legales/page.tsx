@@ -32,7 +32,7 @@ export default function MentionsLegalesPage() {
             <p>France</p>
             <p className="pt-1">SIRET : 51401006500027</p>
             <p>Gérant : M. Claude Poux</p>
-            <p>Contact : <a href="mailto:contact@strangerkiss.com" className="text-[#e91e8c]/70 hover:text-[#e91e8c] transition-colors">contact@strangerkiss.com</a></p>
+            <p>Contact : <a href="mailto:claude.poux@twadeo.fr" className="text-[#e91e8c]/70 hover:text-[#e91e8c] transition-colors">claude.poux@twadeo.fr</a></p>
           </div>
         </section>
 

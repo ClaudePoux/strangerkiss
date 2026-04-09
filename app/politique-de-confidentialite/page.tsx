@@ -29,7 +29,7 @@ export default function PolitiqueConfidentialitePage() {
             <p><strong className="text-white/80">SARL TWADEO</strong></p>
             <p>24 rue de la Banque — 71100 Chalon-sur-Saône</p>
             <p>SIRET : 51401006500027</p>
-            <p>Contact : <a href="mailto:contact@strangerkiss.com" className="text-[#e91e8c]/70 hover:text-[#e91e8c] transition-colors">contact@strangerkiss.com</a></p>
+            <p>Contact : <a href="mailto:claude.poux@twadeo.fr" className="text-[#e91e8c]/70 hover:text-[#e91e8c] transition-colors">claude.poux@twadeo.fr</a></p>
           </div>
         </section>
 
@@ -123,7 +123,7 @@ export default function PolitiqueConfidentialitePage() {
             <li>Droit de retirer votre consentement à tout moment</li>
           </ul>
           <p className="mt-3">
-            Pour exercer ces droits : <a href="mailto:contact@strangerkiss.com" className="text-[#e91e8c]/70 hover:text-[#e91e8c] transition-colors">contact@strangerkiss.com</a>
+            Pour exercer ces droits : <a href="mailto:claude.poux@twadeo.fr" className="text-[#e91e8c]/70 hover:text-[#e91e8c] transition-colors">claude.poux@twadeo.fr</a>
           </p>
           <p className="mt-2">
             En cas de litige non résolu, vous pouvez saisir la <strong className="text-white/70">CNIL</strong> : <a href="https://www.cnil.fr" className="text-[#e91e8c]/70 hover:text-[#e91e8c] transition-colors">cnil.fr</a>
