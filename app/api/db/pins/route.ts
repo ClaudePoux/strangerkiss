@@ -32,31 +32,52 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ pins: data as UserPin[] });
 }
 
-// POST /api/db/pins — upsert du profil sur la carte
+// POST /api/db/pins — upsert du profil sur la carte (un seul profil actif par device)
+// Si pin_id est fourni, on met à jour le pin existant (updated_at rafraîchi).
+// Sinon, on insère un nouveau pin.
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, age, gender, nationality, bio, appearance, looking_for, lat, lng, user_id } = body;
+  const { pin_id, name, age, gender, nationality, bio, appearance, looking_for, lat, lng, user_id } = body;
 
   if (!name || !age || !gender || !looking_for || lat == null || lng == null) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
   }
 
-  const { data, error } = await sb
-    .from("user_pins")
-    .insert({
-      user_id: user_id ?? null,
-      name,
-      age,
-      gender,
-      nationality: nationality ?? "",
-      bio: bio ?? "",
-      appearance: appearance ?? "",
-      looking_for,
-      lat,
-      lng,
-    })
-    .select()
-    .single();
+  const payload = {
+    user_id: user_id ?? null,
+    name,
+    age,
+    gender,
+    nationality: nationality ?? "",
+    bio: bio ?? "",
+    appearance: appearance ?? "",
+    looking_for,
+    lat,
+    lng,
+    // Rafraîchir created_at pour réinitialiser le timer d'expiration 24h
+    created_at: new Date().toISOString(),
+  };
+
+  let data, error;
+
+  if (pin_id) {
+    // Mise à jour du pin existant
+    ({ data, error } = await sb
+      .from("user_pins")
+      .update(payload)
+      .eq("id", pin_id)
+      .select()
+      .single());
+  }
+
+  // Insertion si pas de pin_id, ou si le pin n'existe plus en base
+  if (!pin_id || error) {
+    ({ data, error } = await sb
+      .from("user_pins")
+      .insert(payload)
+      .select()
+      .single());
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ pin: data as UserPin });

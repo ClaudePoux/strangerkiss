@@ -125,11 +125,13 @@ export default function MapPage() {
         try {
           const userId = localStorage.getItem("sk_user_id") ?? undefined;
 
-          // Upsert du pin sur la carte
+          // Upsert du pin sur la carte (pin_id = identifiant stable du device)
+          const existingPinId = localStorage.getItem("sk_my_id") ?? undefined;
           const pinRes = await fetch("/api/db/pins", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              pin_id: existingPinId,
               name: profile.name,
               age: profile.age,
               gender: profile.gender,
