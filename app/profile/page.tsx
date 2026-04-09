@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState, FormEvent, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import CountrySelect from "@/components/CountrySelect";
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isDemo = searchParams.get("demo") === "true";
   const { t } = useI18n();
 
   const [name, setName] = useState("");
@@ -39,23 +41,25 @@ export default function ProfilePage() {
 
     setLoading(true);
 
-    // Vérification du ban si un numéro de téléphone est enregistré
-    try {
-      const phone = localStorage.getItem("sk_phone");
-      if (phone) {
-        const res = await fetch(`/api/moderation/check-ban?phone=${encodeURIComponent(phone)}`);
-        const { banned, ban_type } = await res.json();
-        if (banned) {
-          setLoading(false);
-          return setError(
-            ban_type === "permanent"
-              ? t("profile.errorBannedPermanent")
-              : t("profile.errorBanned24h")
-          );
+    // Vérification du ban si un numéro de téléphone est enregistré (sauf en mode démo)
+    if (!isDemo) {
+      try {
+        const phone = localStorage.getItem("sk_phone");
+        if (phone) {
+          const res = await fetch(`/api/moderation/check-ban?phone=${encodeURIComponent(phone)}`);
+          const { banned, ban_type } = await res.json();
+          if (banned) {
+            setLoading(false);
+            return setError(
+              ban_type === "permanent"
+                ? t("profile.errorBannedPermanent")
+                : t("profile.errorBanned24h")
+            );
+          }
         }
+      } catch {
+        // Si la vérification échoue, on laisse passer (fail open)
       }
-    } catch {
-      // Si la vérification échoue, on laisse passer (fail open)
     }
 
     const profile = {
@@ -73,7 +77,7 @@ export default function ProfilePage() {
       // localStorage unavailable
     }
 
-    router.push("/map");
+    router.push(isDemo ? "/map?demo=true" : "/map");
   }
 
   return (
@@ -257,5 +261,13 @@ export default function ProfilePage() {
         </form>
       </div>
     </main>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense>
+      <ProfilePageContent />
+    </Suspense>
   );
 }

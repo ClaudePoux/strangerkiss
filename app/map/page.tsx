@@ -23,20 +23,6 @@ function getOrCreateMyId(): string {
 }
 
 
-// Paris centre
-const DEMO_CENTER: [number, number] = [48.8566, 2.3522];
-
-function getDemoPins(): UserPin[] {
-  const [lat, lng] = DEMO_CENTER;
-  return [
-    { id: "demo-0", name: "Sofia", age: 24, gender: "femme", nationality: "ES", bio: "Voyageuse solo de passage ✈️", appearance: "veste rouge, cheveux bouclés", looking_for: "french_kiss", lat: lat + 0.003, lng: lng + 0.004, created_at: new Date().toISOString() },
-    { id: "demo-1", name: "Liam", age: 29, gender: "homme", nationality: "IE", bio: "Backpacker irlandais 🍀", appearance: "t-shirt vert, sac à dos bleu", looking_for: "hug", lat: lat - 0.002, lng: lng + 0.005, created_at: new Date().toISOString() },
-    { id: "demo-2", name: "Yuki", age: 22, gender: "non-binaire", nationality: "JP", bio: "En vadrouille dans toute l'Europe 🌍", appearance: "bonnet orange, veste en jean", looking_for: "hug", lat: lat + 0.005, lng: lng - 0.003, created_at: new Date().toISOString() },
-    { id: "demo-3", name: "Marco", age: 31, gender: "homme", nationality: "IT", bio: "", appearance: "casquette noire, terrasse du Louvre", looking_for: "french_kiss", lat: lat - 0.004, lng: lng - 0.006, created_at: new Date().toISOString() },
-    { id: "demo-4", name: "Amara", age: 27, gender: "femme", nationality: "SN", bio: "Curieuse et libre 🌸", appearance: "robe jaune, près de la fontaine", looking_for: "hug", lat: lat + 0.001, lng: lng - 0.007, created_at: new Date().toISOString() },
-  ];
-}
-
 function flagEmoji(code: string): string {
   if (!code) return "";
   return [...code.toUpperCase()].map(c =>
@@ -140,41 +126,42 @@ function MapPageContent() {
 
       if (profile) {
         try {
-          const userId = localStorage.getItem("sk_user_id") ?? undefined;
-
-          // Upsert du pin sur la carte (pin_id = identifiant stable du device)
-          const existingPinId = localStorage.getItem("sk_my_id") ?? undefined;
-          const pinRes = await fetch("/api/db/pins", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              pin_id: existingPinId,
-              name: profile.name,
-              age: profile.age,
-              gender: profile.gender,
-              nationality: profile.nationality ?? "",
-              bio: profile.bio,
-              appearance: profile.appearance,
-              looking_for: profile.looking_for,
-              lat,
-              lng,
-              user_id: userId ?? null,
-            }),
-          });
-          const { pin } = await pinRes.json();
-          if (pin?.id) {
-            localStorage.setItem("sk_my_id", pin.id);
-            setMyId(pin.id);
-            // Recharger les blocages avec le vrai pin.id Supabase
-            fetchBlocked(pin.id).then(setBlocked);
+          // En mode démo, on n'écrit pas de pin dans Supabase
+          if (!isDemo) {
+            const userId = localStorage.getItem("sk_user_id") ?? undefined;
+            const existingPinId = localStorage.getItem("sk_my_id") ?? undefined;
+            const pinRes = await fetch("/api/db/pins", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                pin_id: existingPinId,
+                name: profile.name,
+                age: profile.age,
+                gender: profile.gender,
+                nationality: profile.nationality ?? "",
+                bio: profile.bio,
+                appearance: profile.appearance,
+                looking_for: profile.looking_for,
+                lat,
+                lng,
+                user_id: userId ?? null,
+              }),
+            });
+            const { pin } = await pinRes.json();
+            if (pin?.id) {
+              localStorage.setItem("sk_my_id", pin.id);
+              setMyId(pin.id);
+              fetchBlocked(pin.id).then(setBlocked);
+            }
           }
 
-          // Récupérer les profils proches
+          // Récupérer les profils proches (démo et normal)
           const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
           const { pins: nearby } = await nearbyRes.json();
           setPins(
             (nearby as UserPin[]).filter(
-              (p) => Math.abs(p.lat - lat) > 0.0001 || Math.abs(p.lng - lng) > 0.0001
+              (p) => p.id !== myId &&
+                (Math.abs(p.lat - lat) > 0.0001 || Math.abs(p.lng - lng) > 0.0001)
             )
           );
         } catch {
@@ -183,7 +170,7 @@ function MapPageContent() {
       }
       setLoading(false);
     },
-    [profile]
+    [profile, isDemo, myId]
   );
 
   // Rafraîchissement automatique des pins toutes les 10 secondes
@@ -196,12 +183,6 @@ function MapPageContent() {
   }, [coords, myId, loading, refreshPins]);
 
   useEffect(() => {
-    if (isDemo) {
-      setCoords(DEMO_CENTER);
-      setPins(getDemoPins());
-      setLoading(false);
-      return;
-    }
     if (!navigator.geolocation) {
       setGeoErrorKey("map.geoNotSupported");
       setLoading(false);
@@ -263,9 +244,9 @@ function MapPageContent() {
       {/* Bannière mode démo */}
       {isDemo && (
         <div className="flex items-center justify-between px-4 py-2 bg-[#7c3aed]/10 border-b border-[#7c3aed]/20 text-xs text-[#a78bfa]">
-          <span>🎭 {t("map.demoMode")} — Paris</span>
-          <Link href="/profile" className="underline hover:text-white transition-colors">
-            {t("map.createProfile")}
+          <span>🎭 {t("map.demoMode")}</span>
+          <Link href="/profile?demo=true" className="underline hover:text-white transition-colors">
+            {t("map.modify")}
           </Link>
         </div>
       )}

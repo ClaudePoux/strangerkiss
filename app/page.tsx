@@ -32,18 +32,7 @@ export default function HomePage() {
   const router = useRouter();
 
   function startDemo() {
-    try {
-      localStorage.setItem("sk_profile", JSON.stringify({
-        name: "Visiteur",
-        age: 28,
-        gender: "autre",
-        nationality: "",
-        bio: "",
-        appearance: "",
-        looking_for: "hug",
-      }));
-    } catch { /* ignore */ }
-    router.push("/map?demo=true");
+    router.push("/profile?demo=true");
   }
 
   const steps = [
