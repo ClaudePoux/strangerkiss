@@ -96,8 +96,17 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-6 text-center text-xs text-white/20">
-        {t("home.footer")}
+      <footer className="border-t border-white/5 py-6 text-center text-xs text-white/20 space-y-2">
+        <p>{t("home.footer")}</p>
+        <p className="flex items-center justify-center gap-3">
+          <Link href="/mentions-legales" className="hover:text-white/50 transition-colors">
+            Mentions légales
+          </Link>
+          <span>·</span>
+          <Link href="/politique-de-confidentialite" className="hover:text-white/50 transition-colors">
+            Politique de confidentialité
+          </Link>
+        </p>
       </footer>
     </main>
   );
