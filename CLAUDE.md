@@ -47,6 +47,19 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 - **SMS** : Twilio
 - **Traduction** : DeepL API
 
+## Modération
+
+- Bouton "Signaler" dans le chat
+- 1er signalement : enregistré silencieusement en base temporaire
+- 2ème signalement (par 2 personnes différentes) : avertissement envoyé à l'utilisateur signalé
+- 3ème signalement : banni 24h
+- Récidive après ban 24h : banni définitivement
+- Protection abus : 1 seul signalement possible par signataire pour la même personne
+- Interface admin : permet de réapprouver un numéro banni
+- Pas de détection automatique des messages (système manuel suffisant)
+- Le bannissement se fait par numéro de téléphone (table `banned_phones`)
+- À implémenter en même temps que Twilio
+
 ## Conventions du projet
 
 - Composants dans `components/`
