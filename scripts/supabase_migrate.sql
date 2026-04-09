@@ -95,7 +95,22 @@ create policy "insertion publique" on public.match_requests for insert with chec
 create policy "mise à jour publique" on public.match_requests for update using (true);
 
 -- ------------------------------------------------------------
--- 5. Fonctions RPC (appelées depuis les API routes via service_role)
+-- 5. Blocages (masquage symétrique après refus de rencontre)
+-- ------------------------------------------------------------
+create table if not exists public.blocks (
+  id          uuid primary key default gen_random_uuid(),
+  blocker_id  uuid not null,   -- user_pins.id du profil qui bloque
+  blocked_id  uuid not null,   -- user_pins.id du profil bloqué
+  created_at  timestamptz not null default now(),
+  constraint uq_block unique (blocker_id, blocked_id)
+);
+
+alter table public.blocks enable row level security;
+create policy "lecture publique"   on public.blocks for select using (true);
+create policy "insertion publique" on public.blocks for insert with check (true);
+
+-- ------------------------------------------------------------
+-- 6. Fonctions RPC (appelées depuis les API routes via service_role)
 -- ------------------------------------------------------------
 
 -- Déduire 1 crédit de façon atomique

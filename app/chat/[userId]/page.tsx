@@ -41,18 +41,6 @@ function compressImage(file: File): Promise<string> {
   });
 }
 
-function getBlocked(): string[] {
-  try { return JSON.parse(localStorage.getItem("sk_blocked") ?? "[]"); } catch { return []; }
-}
-
-function addBlocked(id: string) {
-  try {
-    const list = getBlocked();
-    if (!list.includes(id)) {
-      localStorage.setItem("sk_blocked", JSON.stringify([...list, id]));
-    }
-  } catch {}
-}
 
 export default function ChatPage() {
   const params = useParams();
@@ -194,6 +182,12 @@ export default function ChatPage() {
     if (!myId || sending) return;
     setSending(true);
     await pushMessage(SK_MEETING_REQUEST);
+    // Enregistrer la demande en base (best-effort)
+    fetch("/api/matches/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requester_id: myId, target_id: otherId }),
+    }).catch(() => {});
     setSending(false);
   }
 
@@ -201,9 +195,20 @@ export default function ChatPage() {
     if (!myId) return;
     const content = accept ? SK_MEETING_ACCEPTED : SK_MEETING_REFUSED;
     await pushMessage(content);
-    if (!accept) {
-      // The person who asked (otherId) is now blocked from appearing on our map
-      addBlocked(otherId);
+    if (accept) {
+      // otherId est le demandeur, myId est le destinataire
+      fetch("/api/matches/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requester_id: otherId, target_id: myId }),
+      }).catch(() => {});
+    } else {
+      // Refus : blocage symétrique en base (les deux profils disparaissent mutuellement)
+      fetch("/api/matches/refuse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requester_id: otherId, target_id: myId }),
+      }).catch(() => {});
     }
   }
 

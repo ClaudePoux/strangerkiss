@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+
+const sb = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// Enregistre une demande de rencontre en base (status = 'pending').
+// Appelé quand le demandeur clique sur "💞 Proposer".
+export async function POST(req: NextRequest) {
+  const { requester_id, target_id } = await req.json();
+
+  if (!requester_id || !target_id) {
+    return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
+  }
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return NextResponse.json({ ok: true, persisted: false });
+  }
+
+  const { data, error } = await sb
+    .from("match_requests")
+    .upsert(
+      { requester_id, target_id, status: "pending", credit_spent: false },
+      { onConflict: "requester_id,target_id" }
+    )
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, match_request: data });
+}

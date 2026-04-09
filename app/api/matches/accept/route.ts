@@ -1,41 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pool, mysqlReady } from "@/lib/mysql";
+import { createClient } from "@supabase/supabase-js";
+
+// Utilise la service role key si dispo (pour spend_credit), sinon anon key
+// (spend_credit est SECURITY DEFINER → fonctionne aussi avec la clé anon)
+const sb = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // Appelé quand le destinataire accepte une demande de rencontre.
-// Déduit 1 crédit du demandeur (requester_pin_id → users.id).
+// 1. Met à jour match_requests → status = 'accepted'
+// 2. Déduit 1 crédit du demandeur (via RPC spend_credit)
 export async function POST(req: NextRequest) {
-  const { requester_pin_id } = await req.json();
+  const { requester_id, target_id } = await req.json();
 
-  if (!requester_pin_id) {
+  if (!requester_id || !target_id) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
   }
 
-  if (!mysqlReady) return NextResponse.json({ ok: true, credited: false });
-
-  // Retrouver le user_id du demandeur via son pin
-  const [pins] = await pool.execute(
-    `SELECT user_id FROM user_pins WHERE id = ?`,
-    [requester_pin_id]
-  );
-  const pin = (pins as { user_id: string | null }[])[0];
-
-  if (!pin?.user_id) {
-    // Pas de compte lié → pas de crédit à déduire
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return NextResponse.json({ ok: true, credited: false });
   }
 
-  // Déduction atomique : UPDATE conditionnel (credits >= 1)
-  const [result] = await pool.execute(
-    `UPDATE users SET credits = credits - 1 WHERE id = ? AND credits >= 1`,
-    [pin.user_id]
-  ) as unknown as [{ affectedRows: number }];
+  // 1. Marquer la demande comme acceptée
+  const { error: updateError } = await sb
+    .from("match_requests")
+    .update({ status: "accepted" })
+    .eq("requester_id", requester_id)
+    .eq("target_id", target_id)
+    .eq("status", "pending");
 
-  if (result.affectedRows === 0) {
-    return NextResponse.json(
-      { error: "Le demandeur n'a plus de crédits" },
-      { status: 402 }
-    );
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, credited: true });
+  // 2. Retrouver le user_id du demandeur (peut être null si pas de compte)
+  const { data: pin } = await sb
+    .from("user_pins")
+    .select("user_id")
+    .eq("id", requester_id)
+    .single();
+
+  if (!pin?.user_id) {
+    return NextResponse.json({ ok: true, credited: false });
+  }
+
+  // 3. Déduire 1 crédit de façon atomique via la RPC spend_credit
+  const { data: remaining, error: creditError } = await sb
+    .rpc("spend_credit", { p_user_id: pin.user_id });
+
+  if (creditError) {
+    if (creditError.message.includes("insufficient_credits")) {
+      return NextResponse.json({ error: "Crédits insuffisants" }, { status: 402 });
+    }
+    return NextResponse.json({ error: creditError.message }, { status: 500 });
+  }
+
+  // 4. Marquer le crédit comme dépensé
+  await sb
+    .from("match_requests")
+    .update({ credit_spent: true })
+    .eq("requester_id", requester_id)
+    .eq("target_id", target_id);
+
+  return NextResponse.json({ ok: true, credited: true, credits_remaining: remaining });
 }

@@ -51,10 +51,14 @@ function flagEmoji(code: string): string {
   ).join("");
 }
 
-function getBlocked(): string[] {
+async function fetchBlocked(pinId: string): Promise<string[]> {
   try {
-    return JSON.parse(localStorage.getItem("sk_blocked") ?? "[]");
-  } catch { return []; }
+    const res = await fetch(`/api/blocks?pin_id=${pinId}`);
+    const { blocked } = await res.json();
+    return blocked ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export default function MapPage() {
@@ -93,7 +97,10 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMyId(getOrCreateMyId());
+    const id = getOrCreateMyId();
+    setMyId(id);
+    // Charger les blocages depuis Supabase
+    fetchBlocked(id).then(setBlocked);
     try {
       const stored = localStorage.getItem("sk_profile");
       if (stored) setProfile(JSON.parse(stored));
@@ -114,7 +121,6 @@ export default function MapPage() {
     } catch {
       // ignore
     }
-    setBlocked(getBlocked());
   }, []);
 
   const loadMap = useCallback(
@@ -146,6 +152,8 @@ export default function MapPage() {
           if (pin?.id) {
             localStorage.setItem("sk_my_id", pin.id);
             setMyId(pin.id);
+            // Recharger les blocages avec le vrai pin.id Supabase
+            fetchBlocked(pin.id).then(setBlocked);
           }
 
           // Récupérer les profils proches
