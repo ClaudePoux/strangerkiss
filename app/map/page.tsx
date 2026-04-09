@@ -123,6 +123,22 @@ export default function MapPage() {
     }
   }, []);
 
+  const refreshPins = useCallback(async (lat: number, lng: number, currentMyId: string) => {
+    try {
+      const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
+      if (!nearbyRes.ok) return;
+      const { pins: nearby } = await nearbyRes.json();
+      setPins(
+        (nearby as UserPin[]).filter(
+          (p) => p.id !== currentMyId &&
+            (Math.abs(p.lat - lat) > 0.0001 || Math.abs(p.lng - lng) > 0.0001)
+        )
+      );
+    } catch {
+      // ignore — on réessaiera au prochain intervalle
+    }
+  }, []);
+
   const loadMap = useCallback(
     async (lat: number, lng: number) => {
       setCoords([lat, lng]);
@@ -174,6 +190,15 @@ export default function MapPage() {
     },
     [profile]
   );
+
+  // Rafraîchissement automatique des pins toutes les 10 secondes
+  useEffect(() => {
+    if (!coords || loading) return;
+    const [lat, lng] = coords;
+    const currentMyId = myId;
+    const interval = setInterval(() => refreshPins(lat, lng, currentMyId), 10000);
+    return () => clearInterval(interval);
+  }, [coords, myId, loading, refreshPins]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
