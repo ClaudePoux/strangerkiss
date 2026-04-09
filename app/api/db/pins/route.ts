@@ -1,34 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pool, mysqlReady } from "@/lib/mysql";
+import { createClient } from "@supabase/supabase-js";
 import type { UserPin } from "@/lib/supabase";
+
+const sb = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // GET /api/db/pins?lat=&lng=&radius=5
 export async function GET(req: NextRequest) {
-  if (!mysqlReady) return NextResponse.json({ pins: [] });
-
   const { searchParams } = new URL(req.url);
   const lat = parseFloat(searchParams.get("lat") ?? "0");
   const lng = parseFloat(searchParams.get("lng") ?? "0");
   const radiusKm = parseFloat(searchParams.get("radius") ?? "5");
   const delta = radiusKm / 111;
 
-  const [rows] = await pool.execute(
-    `SELECT * FROM user_pins
-     WHERE lat BETWEEN ? AND ?
-       AND lng BETWEEN ? AND ?
-       AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
-     ORDER BY created_at DESC
-     LIMIT 50`,
-    [lat - delta, lat + delta, lng - delta, lng + delta]
-  );
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  return NextResponse.json({ pins: rows as UserPin[] });
+  const { data, error } = await sb
+    .from("user_pins")
+    .select("*")
+    .gte("lat", lat - delta)
+    .lte("lat", lat + delta)
+    .gte("lng", lng - delta)
+    .lte("lng", lng + delta)
+    .gte("created_at", cutoff)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) return NextResponse.json({ pins: [] });
+  return NextResponse.json({ pins: data as UserPin[] });
 }
 
-// POST /api/db/pins  — upsert du profil sur la carte
+// POST /api/db/pins — upsert du profil sur la carte
 export async function POST(req: NextRequest) {
-  if (!mysqlReady) return NextResponse.json({ pin: null });
-
   const body = await req.json();
   const { name, age, gender, nationality, bio, appearance, looking_for, lat, lng, user_id } = body;
 
@@ -36,34 +41,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
   }
 
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-
-  await pool.execute(
-    `INSERT INTO user_pins
-      (id, user_id, name, age, gender, nationality, bio, appearance, looking_for, lat, lng, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      id,
-      user_id ?? null,
+  const { data, error } = await sb
+    .from("user_pins")
+    .insert({
+      user_id: user_id ?? null,
       name,
       age,
       gender,
-      nationality ?? "",
-      bio ?? "",
-      appearance ?? "",
+      nationality: nationality ?? "",
+      bio: bio ?? "",
+      appearance: appearance ?? "",
       looking_for,
       lat,
       lng,
-      now,
-    ]
-  );
+    })
+    .select()
+    .single();
 
-  const pin: UserPin = {
-    id, user_id, name, age, gender, nationality: nationality ?? "",
-    bio: bio ?? "", appearance: appearance ?? "", looking_for, lat, lng,
-    created_at: now,
-  };
-
-  return NextResponse.json({ pin });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ pin: data as UserPin });
 }
