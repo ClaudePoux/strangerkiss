@@ -28,6 +28,18 @@ Un utilisateur partage sa position sur une carte et renseigne un profil : préno
 - **Base de données** : Supabase (auth, base de données, realtime) — prototype et production
 - **Carte** : Leaflet + react-leaflet
 
+## Authentification
+
+Pas d'inscription classique — vérification invisible par SMS :
+
+1. L'utilisateur remplit son profil (pseudo, âge, sexe, type de rencontre, commentaire, pour me reconnaître)
+2. Avant d'apparaître sur la carte : "Entrez votre numéro pour recevoir vos 3 crédits gratuits"
+3. Code SMS envoyé via Twilio → validé → profil visible sur la carte
+
+- Pas de mot de passe, pas d'email
+- Le numéro de téléphone n'est **jamais visible** des autres utilisateurs
+- Il sert uniquement comme identifiant unique, pour la modération et les crédits
+
 ## Monétisation
 
 - Système de crédits + vérification par SMS
