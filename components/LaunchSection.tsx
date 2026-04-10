@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 
-// Date de lancement : 9 mai 2026
-const LAUNCH_DATE = new Date("2026-05-09T00:00:00Z");
+// Date de lancement : 24 mai 2026
+const LAUNCH_DATE = new Date("2026-05-24T00:00:00Z");
 
 function useCountdown() {
   const [diff, setDiff] = useState(() => Math.max(0, LAUNCH_DATE.getTime() - Date.now()));
@@ -29,14 +29,6 @@ export default function LaunchSection() {
 
   const [phone, setPhone]     = useState("");
   const [status, setStatus]   = useState<"idle" | "loading" | "success" | "already" | "error">("idle");
-  const [count, setCount]     = useState<number | null>(null);
-
-  useEffect(() => {
-    fetch("/api/waitlist")
-      .then((r) => r.json())
-      .then(({ count: c }) => setCount(c))
-      .catch(() => {});
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,7 +43,6 @@ export default function LaunchSection() {
       const data = await res.json();
       if (data.ok) {
         setStatus("success");
-        setCount((c) => (c ?? 0) + 1);
       } else if (data.error === "already_registered") {
         setStatus("already");
       } else {
@@ -126,12 +117,6 @@ export default function LaunchSection() {
           <p className="mt-2 text-center text-red-400/80 text-xs">{t("home.waitlistError")}</p>
         )}
 
-        {/* Social proof */}
-        {count !== null && count > 0 && (
-          <p className="mt-4 text-center text-xs text-white/30">
-            {t("home.waitlistCount", { count: String(count) })}
-          </p>
-        )}
       </div>
     </div>
   );

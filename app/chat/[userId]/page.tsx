@@ -375,8 +375,8 @@ export default function ChatPage() {
     );
   }
 
-  // Chat désactivé jusqu'au lancement (9 mai 2026)
-  const LAUNCH_DATE = new Date("2026-05-09T00:00:00Z");
+  // Chat désactivé jusqu'au lancement (24 mai 2026)
+  const LAUNCH_DATE = new Date("2026-05-24T00:00:00Z");
   const prelaunch = Date.now() < LAUNCH_DATE.getTime();
 
   if (prelaunch) {

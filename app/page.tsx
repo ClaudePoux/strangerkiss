@@ -36,9 +36,10 @@ export default function HomePage() {
   }
 
   const steps = [
-    { icon: "✏️", title: t("home.step1Title"), desc: t("home.step1Desc") },
-    { icon: "📍", title: t("home.step2Title"), desc: t("home.step2Desc") },
-    { icon: "💞", title: t("home.step3Title"), desc: t("home.step3Desc") },
+    { icon: "✏️", title: t("home.step1Title"), desc: t("home.step1Desc"), demo: false },
+    { icon: "📍", title: t("home.step2Title"), desc: t("home.step2Desc"), demo: false },
+    { icon: "💞", title: t("home.step3Title"), desc: t("home.step3Desc"), demo: false },
+    { icon: "🗺️", title: t("home.step4Title"), desc: t("home.step4Desc"), demo: true },
   ];
 
   return (
@@ -77,15 +78,7 @@ export default function HomePage() {
           {/* Countdown + waitlist */}
           <LaunchSection />
 
-          {/* Demo CTA */}
-          <button
-            onClick={startDemo}
-            className="mt-6 inline-flex items-center gap-2 text-sm text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-5 py-2.5 transition-all"
-          >
-            {t("home.ctaDemo")}
-          </button>
-
-          <p className="mt-3 text-sm text-white/30">{t("home.disclaimer")}</p>
+          <p className="mt-6 text-sm text-white/30">{t("home.disclaimer")}</p>
         </div>
       </section>
 
@@ -95,17 +88,27 @@ export default function HomePage() {
           <h2 className="text-center text-2xl font-semibold text-white/80 mb-10">
             {t("home.howItWorks")}
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {steps.map((step) => (
               <div
                 key={step.title}
-                className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:bg-white/[0.08] transition-colors"
+                className={`bg-white/5 border rounded-2xl p-6 text-center hover:bg-white/[0.08] transition-colors flex flex-col items-center ${
+                  step.demo ? "border-[#e91e8c]/25 shadow-[0_0_20px_rgba(233,30,140,0.06)]" : "border-white/10"
+                }`}
               >
                 <div className="text-4xl mb-3">{step.icon}</div>
                 <h3 className="font-semibold text-white mb-2">{step.title}</h3>
-                <p className="text-sm text-white/50 leading-relaxed">
+                <p className="text-sm text-white/50 leading-relaxed flex-1">
                   {step.desc}
                 </p>
+                {step.demo && (
+                  <button
+                    onClick={startDemo}
+                    className="mt-4 inline-flex items-center gap-2 text-sm text-white/70 hover:text-white bg-[#e91e8c]/10 hover:bg-[#e91e8c]/20 border border-[#e91e8c]/25 rounded-full px-5 py-2 transition-all"
+                  >
+                    {t("home.ctaDemo")}
+                  </button>
+                )}
               </div>
             ))}
           </div>

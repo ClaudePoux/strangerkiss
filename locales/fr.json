@@ -11,7 +11,7 @@
     "step3Title": "3. Trouve un match",
     "step3Desc": "Approche les gens qui cherchent la même chose que toi.",
     "footer": "StrangerKiss — prototype v0.1 · Pour adultes consentants uniquement",
-    "launchingSoon": "Lancement le 9 mai 2026",
+    "launchingSoon": "Lancement le 24 mai 2026",
     "ctaDemo": "Explorer la démo →",
     "days": "jours",
     "hours": "heures",
@@ -23,7 +23,9 @@
     "waitlistSuccess": "Vous êtes inscrit·e ! 🎉 10 crédits vous attendent au lancement.",
     "waitlistAlready": "Ce numéro est déjà inscrit.",
     "waitlistError": "Une erreur est survenue. Réessayez.",
-    "waitlistCount": "{count} personnes déjà inscrites"
+    "waitlistCount": "{count} personnes déjà inscrites",
+    "step4Title": "4. Explore la démo en live",
+    "step4Desc": "Teste avec de vrais profils. Le 24 mai, tu pourras chatter et rencontrer ton âme sœur éphémère."
   },
   "profile": {
     "header": "Dis-nous qui tu es",

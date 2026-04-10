@@ -11,7 +11,7 @@
     "step3Title": "3. マッチを見つける",
     "step3Desc": "同じものを求めている人に近づきましょう。",
     "footer": "StrangerKiss — プロトタイプ v0.1 · 同意した成人のみ",
-    "launchingSoon": "2026年5月9日リリース",
+    "launchingSoon": "2026年5月24日リリース",
     "ctaDemo": "デモを試す →",
     "days": "日",
     "hours": "時間",
@@ -23,7 +23,9 @@
     "waitlistSuccess": "登録完了！🎉 リリース時に10クレジットが待っています。",
     "waitlistAlready": "この番号はすでに登録されています。",
     "waitlistError": "エラーが発生しました。もう一度お試しください。",
-    "waitlistCount": "すでに{count}人が登録済み"
+    "waitlistCount": "すでに{count}人が登録済み",
+    "step4Title": "4. ライブデモを体験",
+    "step4Desc": "本物のプロフィールでテスト。5月24日から、チャットして束の間の運命の人に出会えます。"
   },
   "profile": {
     "header": "自己紹介してください",
