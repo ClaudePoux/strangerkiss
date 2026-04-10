@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-function adminFetch(phone: string, url: string, opts?: RequestInit) {
+function adminFetch(password: string, url: string, opts?: RequestInit) {
   return fetch(url, {
     ...opts,
-    headers: { ...(opts?.headers ?? {}), "X-Admin-Phone": phone, "Content-Type": "application/json" },
+    headers: { ...(opts?.headers ?? {}), "X-Admin-Password": password, "Content-Type": "application/json" },
   });
 }
 
@@ -17,40 +17,26 @@ function fmt(iso: string) {
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
-function AuthPanel({ onAuth }: { onAuth: (phone: string) => void }) {
-  const [step, setStep] = useState<"phone" | "code">("phone");
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
+function AuthPanel({ onAuth }: { onAuth: (password: string) => void }) {
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function sendCode(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(""); setLoading(true);
-    const res = await fetch("/api/admin/auth/send", {
+    const res = await fetch("/api/admin/auth/login", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: phone.trim() }),
-    });
-    const d = await res.json();
-    setLoading(false);
-    if (d.ok) setStep("code");
-    else setError(d.error === "not_admin" ? "Numéro non autorisé" : "Erreur d'envoi");
-  }
-
-  async function verify(e: React.FormEvent) {
-    e.preventDefault();
-    setError(""); setLoading(true);
-    const res = await fetch("/api/admin/auth/verify", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: phone.trim(), code: code.trim() }),
+      body: JSON.stringify({ password }),
     });
     const d = await res.json();
     setLoading(false);
     if (d.ok) {
-      try { localStorage.setItem("sk_admin_phone", phone.trim()); } catch { /* ignore */ }
-      onAuth(phone.trim());
+      try { localStorage.setItem("sk_admin_pw", password); } catch { /* ignore */ }
+      onAuth(password);
     } else {
-      setError(d.error === "code_invalid" ? "Code incorrect" : d.error === "not_admin" ? "Accès refusé" : "Erreur");
+      setError("Mot de passe incorrect");
+      setPassword("");
     }
   }
 
@@ -61,28 +47,15 @@ function AuthPanel({ onAuth }: { onAuth: (phone: string) => void }) {
           <div className="text-3xl mb-2">🔐</div>
           <h1 className="text-xl font-bold text-white">StrangerKiss <span className="text-[#e91e8c]">Admin</span></h1>
         </div>
-        {step === "phone" ? (
-          <form onSubmit={sendCode} className="space-y-3">
-            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-              placeholder="+33 6 12 34 56 78" required autoFocus
-              className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50" />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            <button disabled={loading} className="w-full bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold py-3 rounded-xl">
-              {loading ? "…" : "Recevoir le code"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={verify} className="space-y-3">
-            <input type="text" inputMode="numeric" maxLength={6} value={code} onChange={e => setCode(e.target.value)}
-              placeholder="123456" required autoFocus
-              className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 text-center tracking-widest text-lg" />
-            <p className="text-xs text-white/30 text-center">Envoyé au {phone} · <button type="button" onClick={() => { setStep("phone"); setCode(""); }} className="underline">Changer</button></p>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            <button disabled={loading} className="w-full bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold py-3 rounded-xl">
-              {loading ? "…" : "Valider"}
-            </button>
-          </form>
-        )}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="Mot de passe" required autoFocus
+            className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50" />
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          <button disabled={loading} className="w-full bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold py-3 rounded-xl">
+            {loading ? "…" : "Accéder"}
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -581,7 +554,6 @@ function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () 
           ))}
         </nav>
         <div className="px-3">
-          <p className="text-xs text-white/20 mb-2 truncate">{adminPhone}</p>
           <button onClick={onLogout} className="text-xs text-white/30 hover:text-white/60">Déconnexion</button>
         </div>
       </aside>
@@ -604,20 +576,20 @@ function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () 
 }
 
 export default function BossPage() {
-  const [adminPhone, setAdminPhone] = useState<string | null>(null);
+  const [adminPassword, setAdminPassword] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("sk_admin_phone");
-      if (stored) setAdminPhone(stored);
+      const stored = localStorage.getItem("sk_admin_pw");
+      if (stored) setAdminPassword(stored);
     } catch { /* ignore */ }
   }, []);
 
   function logout() {
-    try { localStorage.removeItem("sk_admin_phone"); } catch { /* ignore */ }
-    setAdminPhone(null);
+    try { localStorage.removeItem("sk_admin_pw"); } catch { /* ignore */ }
+    setAdminPassword(null);
   }
 
-  if (!adminPhone) return <AuthPanel onAuth={setAdminPhone} />;
-  return <Dashboard adminPhone={adminPhone} onLogout={logout} />;
+  if (!adminPassword) return <AuthPanel onAuth={setAdminPassword} />;
+  return <Dashboard adminPhone={adminPassword} onLogout={logout} />;
 }
