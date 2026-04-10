@@ -256,6 +256,44 @@ create policy "service role only" on public.referrals using (false);
 -- ------------------------------------------------------------
 
 -- ------------------------------------------------------------
+-- 12. Admins (accès à l'interface /boss)
+-- ------------------------------------------------------------
+create table if not exists public.admins (
+  id          uuid primary key default gen_random_uuid(),
+  phone       text not null,
+  name        text,
+  created_at  timestamptz not null default now(),
+  constraint uq_admins_phone unique (phone)
+);
+
+alter table public.admins enable row level security;
+create policy "service role only" on public.admins using (false);
+
+-- ------------------------------------------------------------
+-- 13. Surveillance VIP
+-- ------------------------------------------------------------
+create table if not exists public.vip_watches (
+  id          uuid primary key default gen_random_uuid(),
+  phone       text not null,
+  reason      text,
+  created_at  timestamptz not null default now(),
+  constraint uq_vip_phone unique (phone)
+);
+
+alter table public.vip_watches enable row level security;
+create policy "service role only" on public.vip_watches using (false);
+
+create table if not exists public.vip_alerts (
+  id           uuid primary key default gen_random_uuid(),
+  watch_id     uuid not null references public.vip_watches(id) on delete cascade,
+  phone        text not null,
+  connected_at timestamptz not null default now()
+);
+
+alter table public.vip_alerts enable row level security;
+create policy "service role only" on public.vip_alerts using (false);
+
+-- ------------------------------------------------------------
 -- 6. Nettoyage automatique des pins > 24h
 -- Option A : pg_cron (Supabase Pro)
 --   select cron.schedule('cleanup-pins', '0 * * * *',

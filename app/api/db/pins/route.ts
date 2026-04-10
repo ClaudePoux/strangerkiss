@@ -8,6 +8,16 @@ const sb = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+async function checkVip(userId: string) {
+  const { data: user } = await sb.from("users").select("phone").eq("id", userId).maybeSingle();
+  if (!user?.phone) return;
+  const { data: watch } = await sb
+    .from("vip_watches").select("id").eq("phone", user.phone).maybeSingle();
+  if (!watch) return;
+  await sb.from("vip_alerts").insert({ watch_id: watch.id, phone: user.phone });
+  console.log(`[VIP] Alerte — numéro surveillé connecté : ${user.phone.slice(0, 4)}****`);
+}
+
 // GET /api/db/pins?lat=&lng=&radius=5
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -111,5 +121,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Vérification VIP en arrière-plan (ne bloque pas la réponse)
+  if (resolvedUserId) {
+    checkVip(resolvedUserId).catch(() => {});
+  }
+
   return NextResponse.json({ pin: data as UserPin, user_id: resolvedUserId });
 }
