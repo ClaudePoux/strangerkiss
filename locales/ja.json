@@ -111,5 +111,26 @@
     "message": "💬 メッセージ",
     "distanceM": "{dist}m先",
     "distanceKm": "{dist}km先"
+  },
+  "verify": {
+    "title": "追加3クレジット",
+    "subtitle": "電話番号を確認して取得する",
+    "phonePlaceholder": "+81 90 1234 5678",
+    "sendCode": "コードを送る",
+    "codePlaceholder": "6桁のコード",
+    "verify": "確認する",
+    "successBonus": "+{credits} クレジット追加！",
+    "successWaitlist": "+{credits} クレジット！ようこそ、先行登録者さん 🎉",
+    "errorInvalid": "コードが違います",
+    "errorExpired": "コードが期限切れです、再試行してください",
+    "errorAlreadyVerified": "この番号はすでに使用されています",
+    "errorSendFailed": "送信エラー、再試行してください"
+  },
+  "referral": {
+    "title": "友達を紹介",
+    "subtitle": "認証済みの紹介者1人につき+5クレジット",
+    "shareBtn": "リンクをシェア",
+    "copied": "リンクをコピーしました！",
+    "stats": "{count} 人紹介済み — {credits} クレジット獲得"
   }
 }

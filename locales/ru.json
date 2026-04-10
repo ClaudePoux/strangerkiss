@@ -111,5 +111,26 @@
     "message": "💬 Написать",
     "distanceM": "{dist} м",
     "distanceKm": "{dist} км"
+  },
+  "verify": {
+    "title": "3 дополнительных кредита",
+    "subtitle": "Подтвердите номер телефона, чтобы получить их",
+    "phonePlaceholder": "+7 912 345-67-89",
+    "sendCode": "Отправить код",
+    "codePlaceholder": "6-значный код",
+    "verify": "Подтвердить",
+    "successBonus": "+{credits} кредита добавлено!",
+    "successWaitlist": "+{credits} кредитов! Добро пожаловать, ранний участник 🎉",
+    "errorInvalid": "Неверный код",
+    "errorExpired": "Код истёк, попробуйте снова",
+    "errorAlreadyVerified": "Этот номер уже используется",
+    "errorSendFailed": "Ошибка отправки, попробуйте снова"
+  },
+  "referral": {
+    "title": "Приглашайте друзей",
+    "subtitle": "+5 кредитов за каждого верифицированного",
+    "shareBtn": "Поделиться ссылкой",
+    "copied": "Ссылка скопирована!",
+    "stats": "{count} реферал(а) — {credits} кредитов получено"
   }
 }

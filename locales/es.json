@@ -111,5 +111,26 @@
     "message": "💬 Mensaje",
     "distanceM": "a {dist} m",
     "distanceKm": "a {dist} km"
+  },
+  "verify": {
+    "title": "3 créditos extra",
+    "subtitle": "Verifica tu número para obtenerlos",
+    "phonePlaceholder": "+34 612 345 678",
+    "sendCode": "Enviar código",
+    "codePlaceholder": "Código de 6 dígitos",
+    "verify": "Verificar",
+    "successBonus": "+{credits} créditos añadidos!",
+    "successWaitlist": "+{credits} créditos! Bienvenido/a, registrado anticipado 🎉",
+    "errorInvalid": "Código incorrecto",
+    "errorExpired": "Código expirado, inténtalo de nuevo",
+    "errorAlreadyVerified": "Este número ya está en uso",
+    "errorSendFailed": "Error de envío, inténtalo de nuevo"
+  },
+  "referral": {
+    "title": "Invita amigos",
+    "subtitle": "+5 créditos por referido verificado",
+    "shareBtn": "Compartir mi enlace",
+    "copied": "¡Enlace copiado!",
+    "stats": "{count} referido(s) — {credits} créditos ganados"
   }
 }

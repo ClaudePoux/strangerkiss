@@ -111,5 +111,26 @@
     "message": "💬 Message",
     "distanceM": "à {dist} m",
     "distanceKm": "à {dist} km"
+  },
+  "verify": {
+    "title": "3 crédits supplémentaires",
+    "subtitle": "Vérifiez votre numéro pour les obtenir",
+    "phonePlaceholder": "+33 6 12 34 56 78",
+    "sendCode": "Envoyer le code",
+    "codePlaceholder": "Code à 6 chiffres",
+    "verify": "Vérifier",
+    "successBonus": "+{credits} crédits ajoutés !",
+    "successWaitlist": "+{credits} crédits ! Bienvenue pré-inscrit·e 🎉",
+    "errorInvalid": "Code incorrect",
+    "errorExpired": "Code expiré, réessayez",
+    "errorAlreadyVerified": "Ce numéro est déjà utilisé",
+    "errorSendFailed": "Erreur d'envoi, réessayez"
+  },
+  "referral": {
+    "title": "Parrainez vos amis",
+    "subtitle": "+5 crédits par filleul vérifié",
+    "shareBtn": "Partager mon lien",
+    "copied": "Lien copié !",
+    "stats": "{count} filleul(s) — {credits} crédits gagnés"
   }
 }

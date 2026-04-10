@@ -111,5 +111,26 @@
     "message": "💬 发消息",
     "distanceM": "{dist}米外",
     "distanceKm": "{dist}千米外"
+  },
+  "verify": {
+    "title": "额外3个积分",
+    "subtitle": "验证手机号即可获得",
+    "phonePlaceholder": "+86 138 0013 8000",
+    "sendCode": "发送验证码",
+    "codePlaceholder": "6位验证码",
+    "verify": "验证",
+    "successBonus": "+{credits} 积分已添加！",
+    "successWaitlist": "+{credits} 积分！欢迎，早鸟用户 🎉",
+    "errorInvalid": "验证码错误",
+    "errorExpired": "验证码已过期，请重试",
+    "errorAlreadyVerified": "该号码已被使用",
+    "errorSendFailed": "发送失败，请重试"
+  },
+  "referral": {
+    "title": "邀请好友",
+    "subtitle": "每位已验证的被邀请者+5积分",
+    "shareBtn": "分享我的链接",
+    "copied": "链接已复制！",
+    "stats": "{count} 位被邀请者 — 获得 {credits} 积分"
   }
 }

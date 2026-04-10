@@ -8,7 +8,8 @@
 -- ------------------------------------------------------------
 create table if not exists public.users (
   id          uuid primary key default gen_random_uuid(),
-  phone       text not null,
+  phone       text,                               -- nullable : null = utilisateur anonyme (avant vérification SMS)
+  ref_code    text unique,                        -- code de parrainage généré à la vérification
   credits     integer not null default 3,
   created_at  timestamptz not null default now(),
   constraint uq_users_phone unique (phone),
@@ -199,6 +200,45 @@ begin
   return new_credits;
 end;
 $$;
+
+-- ------------------------------------------------------------
+-- 9. Codes OTP pour la vérification SMS
+-- ------------------------------------------------------------
+create table if not exists public.sms_codes (
+  id          uuid primary key default gen_random_uuid(),
+  phone       text not null,
+  code        text not null,
+  expires_at  timestamptz not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_sms_codes_phone on public.sms_codes (phone);
+
+alter table public.sms_codes enable row level security;
+create policy "service role only" on public.sms_codes using (false);
+
+-- ------------------------------------------------------------
+-- 10. Parrainages
+-- ------------------------------------------------------------
+create table if not exists public.referrals (
+  id                uuid primary key default gen_random_uuid(),
+  referrer_user_id  uuid not null references public.users(id) on delete cascade,
+  referred_user_id  uuid not null references public.users(id) on delete cascade,
+  created_at        timestamptz not null default now(),
+  constraint uq_referred unique (referred_user_id)  -- un seul parrain par filleul
+);
+
+alter table public.referrals enable row level security;
+create policy "service role only" on public.referrals using (false);
+
+-- ------------------------------------------------------------
+-- Mise à jour de la table users :
+--   - phone devient nullable (utilisateurs anonymes avant vérification)
+--   - ajout ref_code pour le système de parrainage
+-- À exécuter si la table existe déjà :
+--   alter table public.users alter column phone drop not null;
+--   alter table public.users add column if not exists ref_code text unique;
+-- ------------------------------------------------------------
 
 -- ------------------------------------------------------------
 -- 6. Nettoyage automatique des pins > 24h

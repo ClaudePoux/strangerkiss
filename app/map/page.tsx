@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
-
+import PhoneVerification from "@/components/PhoneVerification";
+import ReferralCard from "@/components/ReferralCard";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -71,25 +72,28 @@ function MapPageContent() {
   } | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
   const [myId, setMyId] = useState<string>("");
+  const [userId, setUserId] = useState<string>("");
   const [credits, setCredits] = useState<number | null>(null);
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [geoErrorKey, setGeoErrorKey] = useState("");
   const [pins, setPins] = useState<UserPin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [showVerify, setShowVerify] = useState(false);
 
   useEffect(() => {
     const id = getOrCreateMyId();
     setMyId(id);
-    // Charger les blocages depuis Supabase
     fetchBlocked(id).then(setBlocked);
     try {
       const stored = localStorage.getItem("sk_profile");
       if (stored) setProfile(JSON.parse(stored));
-      const userId = localStorage.getItem("sk_user_id");
-      if (userId) {
+      const storedUserId = localStorage.getItem("sk_user_id");
+      if (storedUserId) {
+        setUserId(storedUserId);
         const cached = localStorage.getItem("sk_user_credits");
         if (cached !== null) setCredits(parseInt(cached, 10));
-        fetch(`/api/credits/balance?user_id=${userId}`)
+        fetch(`/api/credits/balance?user_id=${storedUserId}`)
           .then((r) => r.json())
           .then(({ credits: c }) => {
             if (c != null) {
@@ -99,6 +103,8 @@ function MapPageContent() {
           })
           .catch(() => {});
       }
+      // Vérification : numéro déjà vérifié ?
+      if (localStorage.getItem("sk_phone")) setPhoneVerified(true);
     } catch {
       // ignore
     }
@@ -128,7 +134,7 @@ function MapPageContent() {
         try {
           // En mode démo, on n'écrit pas de pin dans Supabase
           if (!isDemo) {
-            const userId = localStorage.getItem("sk_user_id") ?? undefined;
+            const storedUserId = localStorage.getItem("sk_user_id") ?? undefined;
             const existingPinId = localStorage.getItem("sk_my_id") ?? undefined;
             const pinRes = await fetch("/api/db/pins", {
               method: "POST",
@@ -144,14 +150,23 @@ function MapPageContent() {
                 looking_for: profile.looking_for,
                 lat,
                 lng,
-                user_id: userId ?? null,
+                user_id: storedUserId ?? null,
               }),
             });
-            const { pin } = await pinRes.json();
+            const { pin, user_id: returnedUserId } = await pinRes.json();
             if (pin?.id) {
               localStorage.setItem("sk_my_id", pin.id);
               setMyId(pin.id);
               fetchBlocked(pin.id).then(setBlocked);
+            }
+            // Nouvel utilisateur anonyme créé côté serveur
+            if (returnedUserId && !storedUserId) {
+              localStorage.setItem("sk_user_id", returnedUserId);
+              setUserId(returnedUserId);
+              setCredits(3);
+              localStorage.setItem("sk_user_credits", "3");
+              // Proposer la vérification après quelques secondes
+              setTimeout(() => setShowVerify(true), 3000);
             }
           }
 
@@ -224,14 +239,25 @@ function MapPageContent() {
             </div>
           )}
           {credits !== null && (
-            <Link
-              href="/credits"
-              className="flex items-center gap-1 text-xs font-medium bg-white/5 border border-white/10 rounded-full px-3 py-1.5 hover:bg-white/10 transition-colors"
-              title="Mes crédits"
-            >
-              <span className="text-[#e91e8c]">💞</span>
-              <span className="text-white/70">{credits}</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/credits"
+                className="flex items-center gap-1 text-xs font-medium bg-white/5 border border-white/10 rounded-full px-3 py-1.5 hover:bg-white/10 transition-colors"
+                title="Mes crédits"
+              >
+                <span className="text-[#e91e8c]">💞</span>
+                <span className="text-white/70">{credits}</span>
+              </Link>
+              {!phoneVerified && !showVerify && userId && !isDemo && (
+                <button
+                  onClick={() => setShowVerify(true)}
+                  className="text-xs text-[#e91e8c]/70 hover:text-[#e91e8c] border border-[#e91e8c]/20 rounded-full px-2.5 py-1.5 transition-colors"
+                  title={t("verify.title")}
+                >
+                  +3
+                </button>
+              )}
+            </div>
           )}
           {!profile && (
             <Link href="/profile" className="text-sm text-[#e91e8c] hover:underline">
@@ -275,6 +301,26 @@ function MapPageContent() {
           <MapView currentUser={profile} pins={pins.filter(p => !blocked.includes(p.id))} center={coords} myId={myId} locale={locale} />
         )}
       </div>
+
+      {/* Vérification téléphone — bandeau proposé si non vérifié */}
+      {!loading && !isDemo && !phoneVerified && showVerify && userId && (
+        <PhoneVerification
+          userId={userId}
+          t={t}
+          onSuccess={(_bonus, _waitlisted, _refCode, newCredits) => {
+            setPhoneVerified(true);
+            setShowVerify(false);
+            setCredits(newCredits);
+            try { localStorage.setItem("sk_user_credits", String(newCredits)); } catch { /* ignore */ }
+          }}
+          onDismiss={() => setShowVerify(false)}
+        />
+      )}
+
+      {/* Carte de parrainage — visible après vérification */}
+      {!loading && !isDemo && phoneVerified && userId && (
+        <ReferralCard userId={userId} t={t} />
+      )}
 
       {/* Bottom panel */}
       {!loading && coords && (

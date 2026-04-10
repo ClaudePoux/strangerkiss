@@ -111,5 +111,26 @@
     "message": "💬 Nachricht",
     "distanceM": "{dist} m entfernt",
     "distanceKm": "{dist} km entfernt"
+  },
+  "verify": {
+    "title": "3 Extra-Credits",
+    "subtitle": "Verifiziere deine Nummer, um sie zu erhalten",
+    "phonePlaceholder": "+49 151 12345678",
+    "sendCode": "Code senden",
+    "codePlaceholder": "6-stelliger Code",
+    "verify": "Bestätigen",
+    "successBonus": "+{credits} Credits hinzugefügt!",
+    "successWaitlist": "+{credits} Credits! Willkommen, Frühbucher 🎉",
+    "errorInvalid": "Falscher Code",
+    "errorExpired": "Code abgelaufen, erneut versuchen",
+    "errorAlreadyVerified": "Diese Nummer wird bereits verwendet",
+    "errorSendFailed": "Sendefehler, bitte erneut versuchen"
+  },
+  "referral": {
+    "title": "Freunde werben",
+    "subtitle": "+5 Credits pro verifiziertem Geworbenen",
+    "shareBtn": "Link teilen",
+    "copied": "Link kopiert!",
+    "stats": "{count} Geworbene(r) — {credits} Credits verdient"
   }
 }

@@ -111,5 +111,26 @@
     "message": "💬 Message",
     "distanceM": "{dist} m away",
     "distanceKm": "{dist} km away"
+  },
+  "verify": {
+    "title": "3 extra credits",
+    "subtitle": "Verify your phone number to get them",
+    "phonePlaceholder": "+1 555 123 4567",
+    "sendCode": "Send code",
+    "codePlaceholder": "6-digit code",
+    "verify": "Verify",
+    "successBonus": "+{credits} credits added!",
+    "successWaitlist": "+{credits} credits! Welcome, early bird 🎉",
+    "errorInvalid": "Incorrect code",
+    "errorExpired": "Code expired, try again",
+    "errorAlreadyVerified": "This number is already in use",
+    "errorSendFailed": "Send failed, please retry"
+  },
+  "referral": {
+    "title": "Refer friends",
+    "subtitle": "+5 credits per verified referral",
+    "shareBtn": "Share my link",
+    "copied": "Link copied!",
+    "stats": "{count} referral(s) — {credits} credits earned"
   }
 }

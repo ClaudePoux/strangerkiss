@@ -111,5 +111,26 @@
     "message": "💬 Messaggio",
     "distanceM": "a {dist} m",
     "distanceKm": "a {dist} km"
+  },
+  "verify": {
+    "title": "3 crediti extra",
+    "subtitle": "Verifica il tuo numero per ottenerli",
+    "phonePlaceholder": "+39 312 345 6789",
+    "sendCode": "Invia codice",
+    "codePlaceholder": "Codice a 6 cifre",
+    "verify": "Verifica",
+    "successBonus": "+{credits} crediti aggiunti!",
+    "successWaitlist": "+{credits} crediti! Benvenuto/a, pre-registrato 🎉",
+    "errorInvalid": "Codice errato",
+    "errorExpired": "Codice scaduto, riprova",
+    "errorAlreadyVerified": "Questo numero è già in uso",
+    "errorSendFailed": "Errore di invio, riprova"
+  },
+  "referral": {
+    "title": "Invita amici",
+    "subtitle": "+5 crediti per referral verificato",
+    "shareBtn": "Condividi il mio link",
+    "copied": "Link copiato!",
+    "stats": "{count} referral — {credits} crediti guadagnati"
   }
 }

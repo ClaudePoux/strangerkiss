@@ -1,10 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, Suspense } from "react";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import LaunchSection from "@/components/LaunchSection";
+
+// Capture le code de parrainage depuis l'URL (?ref=XXXXXXXX)
+function RefCapture() {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      try { localStorage.setItem("sk_ref", ref); } catch { /* ignore */ }
+    }
+  }, [searchParams]);
+  return null;
+}
 
 function Tagline({ text }: { text: string }) {
   const parts = text.split(/(\{hug\}|\{frenchKiss\})/);
@@ -28,6 +41,7 @@ function Tagline({ text }: { text: string }) {
 }
 
 export default function HomePage() {
+  // useRouter est utilisé mais useSearchParams doit rester dans un Suspense boundary
   const { t } = useI18n();
   const router = useRouter();
 
@@ -44,6 +58,11 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col min-h-screen">
+      {/* Capture du code de parrainage depuis l'URL */}
+      <Suspense>
+        <RefCapture />
+      </Suspense>
+
       {/* Language switcher — hors du overflow-hidden pour que le dropdown soit visible */}
       <div className="fixed top-4 right-4 z-50">
         <LanguageSwitcher />

@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
 // POST /api/db/pins — upsert du profil sur la carte (un seul profil actif par device)
 // Si pin_id est fourni, on met à jour le pin existant (updated_at rafraîchi).
 // Sinon, on insère un nouveau pin.
+// Si user_id absent, crée un utilisateur anonyme (3 crédits) et retourne son id.
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { pin_id, name, age, gender, nationality, bio, appearance, looking_for, lat, lng, user_id } = body;
@@ -44,8 +45,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
   }
 
+  // Créer un utilisateur anonyme si aucun user_id fourni
+  let resolvedUserId: string | null = user_id ?? null;
+  if (!resolvedUserId) {
+    const { data: newUser } = await sb
+      .from("users")
+      .insert({ credits: 3 })
+      .select("id")
+      .single();
+    if (newUser) resolvedUserId = newUser.id;
+  }
+
   const payload = {
-    user_id: user_id ?? null,
+    user_id: resolvedUserId,
     name,
     age,
     gender,
@@ -96,5 +108,5 @@ export async function POST(req: NextRequest) {
   }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ pin: data as UserPin });
+  return NextResponse.json({ pin: data as UserPin, user_id: resolvedUserId });
 }
