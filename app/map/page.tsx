@@ -116,10 +116,7 @@ function MapPageContent() {
       if (!nearbyRes.ok) return;
       const { pins: nearby } = await nearbyRes.json();
       setPins(
-        (nearby as UserPin[]).filter(
-          (p) => p.id !== currentMyId &&
-            (Math.abs(p.lat - lat) > 0.0001 || Math.abs(p.lng - lng) > 0.0001)
-        )
+        (nearby as UserPin[]).filter((p) => p.id !== currentMyId)
       );
     } catch {
       // ignore — on réessaiera au prochain intervalle
@@ -173,11 +170,10 @@ function MapPageContent() {
           // Récupérer les profils proches (démo et normal)
           const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
           const { pins: nearby } = await nearbyRes.json();
+          // Exclure uniquement son propre pin (par id), pas par distance
+          const ownId = localStorage.getItem("sk_my_id");
           setPins(
-            (nearby as UserPin[]).filter(
-              (p) => p.id !== myId &&
-                (Math.abs(p.lat - lat) > 0.0001 || Math.abs(p.lng - lng) > 0.0001)
-            )
+            (nearby as UserPin[]).filter((p) => p.id !== ownId)
           );
         } catch {
           setPins([]);

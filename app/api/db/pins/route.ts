@@ -14,17 +14,20 @@ export async function GET(req: NextRequest) {
   const lat = parseFloat(searchParams.get("lat") ?? "0");
   const lng = parseFloat(searchParams.get("lng") ?? "0");
   const radiusKm = parseFloat(searchParams.get("radius") ?? "5");
-  const delta = radiusKm / 111;
+  // 1° de latitude ≈ 111 km (constant)
+  // 1° de longitude ≈ 111 km × cos(lat) — compense la compression aux hautes latitudes
+  const deltaLat = radiusKm / 111;
+  const deltaLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
 
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await sb
     .from("user_pins")
     .select("*")
-    .gte("lat", lat - delta)
-    .lte("lat", lat + delta)
-    .gte("lng", lng - delta)
-    .lte("lng", lng + delta)
+    .gte("lat", lat - deltaLat)
+    .lte("lat", lat + deltaLat)
+    .gte("lng", lng - deltaLng)
+    .lte("lng", lng + deltaLng)
     .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(50);
