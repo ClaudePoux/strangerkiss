@@ -5,17 +5,27 @@ const sb = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-/** Vérifie que la requête vient d'un admin via mot de passe.
- *  Le client envoie X-Admin-Password dans les headers.
- *  Comparaison avec la variable d'environnement BOSS_PASSWORD.
+/** Vérifie que la requête vient d'un admin via token de session.
+ *  Le client envoie X-Admin-Token dans les headers.
+ *  Le token est vérifié contre la table admin_sessions (expiration 24h).
  */
 export async function verifyAdmin(
   req: Request
 ): Promise<{ ok: boolean; phone: string | null }> {
-  const password = req.headers.get("X-Admin-Password")?.trim() ?? null;
-  const expected = process.env.BOSS_PASSWORD;
+  const token = req.headers.get("X-Admin-Token")?.trim() ?? null;
+  if (!token) return { ok: false, phone: null };
 
-  if (!expected || !password || password !== expected) {
+  const { data } = await sb
+    .from("admin_sessions")
+    .select("token, expires_at")
+    .eq("token", token)
+    .maybeSingle();
+
+  if (!data) return { ok: false, phone: null };
+
+  if (new Date(data.expires_at) < new Date()) {
+    // Session expirée — nettoyer
+    await sb.from("admin_sessions").delete().eq("token", token);
     return { ok: false, phone: null };
   }
 

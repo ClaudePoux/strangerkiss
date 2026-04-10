@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-function adminFetch(password: string, url: string, opts?: RequestInit) {
+function adminFetch(token: string, url: string, opts?: RequestInit) {
   return fetch(url, {
     ...opts,
-    headers: { ...(opts?.headers ?? {}), "X-Admin-Password": password, "Content-Type": "application/json" },
+    headers: { ...(opts?.headers ?? {}), "X-Admin-Token": token, "Content-Type": "application/json" },
   });
 }
 
@@ -17,7 +17,8 @@ function fmt(iso: string) {
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
-function AuthPanel({ onAuth }: { onAuth: (password: string) => void }) {
+function AuthPanel({ onAuth }: { onAuth: (token: string, expiresAt: string) => void }) {
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -27,15 +28,21 @@ function AuthPanel({ onAuth }: { onAuth: (password: string) => void }) {
     setError(""); setLoading(true);
     const res = await fetch("/api/admin/auth/login", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ login: login.trim(), password }),
     });
     const d = await res.json();
     setLoading(false);
     if (d.ok) {
-      try { localStorage.setItem("sk_admin_pw", password); } catch { /* ignore */ }
-      onAuth(password);
+      try {
+        localStorage.setItem("sk_admin_token", d.token);
+        localStorage.setItem("sk_admin_expires", d.expires_at);
+      } catch { /* ignore */ }
+      onAuth(d.token, d.expires_at);
+    } else if (d.error === "too_many_attempts") {
+      setError(`Trop de tentatives. Réessayez dans ${d.retry_after_minutes} minutes.`);
     } else {
-      setError("Mot de passe incorrect");
+      const remaining = d.attempts_remaining ?? 0;
+      setError(`Identifiants incorrects.${remaining > 0 ? ` ${remaining} tentative(s) restante(s).` : " Compte bloqué 15 min."}`);
       setPassword("");
     }
   }
@@ -48,8 +55,11 @@ function AuthPanel({ onAuth }: { onAuth: (password: string) => void }) {
           <h1 className="text-xl font-bold text-white">StrangerKiss <span className="text-[#e91e8c]">Admin</span></h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
+          <input type="text" value={login} onChange={e => setLogin(e.target.value)}
+            placeholder="Identifiant" required autoFocus autoComplete="username"
+            className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50" />
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="Mot de passe" required autoFocus
+            placeholder="Mot de passe" required autoComplete="current-password"
             className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50" />
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <button disabled={loading} className="w-full bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold py-3 rounded-xl">
@@ -576,20 +586,55 @@ function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () 
 }
 
 export default function BossPage() {
-  const [adminPassword, setAdminPassword] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("sk_admin_pw");
-      if (stored) setAdminPassword(stored);
+      const storedToken   = localStorage.getItem("sk_admin_token");
+      const storedExpires = localStorage.getItem("sk_admin_expires");
+      if (storedToken && storedExpires && new Date(storedExpires) > new Date()) {
+        setToken(storedToken);
+      } else {
+        // Session expirée — nettoyer silencieusement
+        localStorage.removeItem("sk_admin_token");
+        localStorage.removeItem("sk_admin_expires");
+      }
     } catch { /* ignore */ }
+    setChecking(false);
   }, []);
 
-  function logout() {
-    try { localStorage.removeItem("sk_admin_pw"); } catch { /* ignore */ }
-    setAdminPassword(null);
+  async function logout() {
+    try {
+      const t = localStorage.getItem("sk_admin_token");
+      if (t) {
+        await fetch("/api/admin/auth/logout", {
+          method: "POST",
+          headers: { "X-Admin-Token": t },
+        });
+      }
+      localStorage.removeItem("sk_admin_token");
+      localStorage.removeItem("sk_admin_expires");
+    } catch { /* ignore */ }
+    setToken(null);
   }
 
-  if (!adminPassword) return <AuthPanel onAuth={setAdminPassword} />;
-  return <Dashboard adminPhone={adminPassword} onLogout={logout} />;
+  function handleAuth(newToken: string, expiresAt: string) {
+    try {
+      localStorage.setItem("sk_admin_token", newToken);
+      localStorage.setItem("sk_admin_expires", expiresAt);
+    } catch { /* ignore */ }
+    setToken(newToken);
+  }
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
+        <div className="text-3xl animate-pulse">⏳</div>
+      </div>
+    );
+  }
+
+  if (!token) return <AuthPanel onAuth={handleAuth} />;
+  return <Dashboard adminPhone={token} onLogout={logout} />;
 }

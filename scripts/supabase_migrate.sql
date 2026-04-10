@@ -256,7 +256,37 @@ create policy "service role only" on public.referrals using (false);
 -- ------------------------------------------------------------
 
 -- ------------------------------------------------------------
--- 12. Admins (accès à l'interface /boss)
+-- 12. Sessions admin (expiration 24h)
+-- ------------------------------------------------------------
+create table if not exists public.admin_sessions (
+  token       text primary key,
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz not null default now() + interval '24 hours'
+);
+
+alter table public.admin_sessions enable row level security;
+create policy "service role only" on public.admin_sessions using (false);
+
+-- Nettoyage automatique des sessions expirées (optionnel avec pg_cron)
+-- select cron.schedule('cleanup-admin-sessions', '0 * * * *',
+--   'delete from public.admin_sessions where expires_at < now()');
+
+-- ------------------------------------------------------------
+-- 12b. Tentatives de connexion admin (rate limiting)
+-- ------------------------------------------------------------
+create table if not exists public.admin_attempts (
+  id           uuid primary key default gen_random_uuid(),
+  ip           text not null,
+  attempted_at timestamptz not null default now()
+);
+
+create index if not exists idx_admin_attempts_ip on public.admin_attempts (ip, attempted_at);
+
+alter table public.admin_attempts enable row level security;
+create policy "service role only" on public.admin_attempts using (false);
+
+-- ------------------------------------------------------------
+-- 13. Admins (accès à l'interface /boss)
 -- ------------------------------------------------------------
 create table if not exists public.admins (
   id          uuid primary key default gen_random_uuid(),
