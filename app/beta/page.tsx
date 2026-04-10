@@ -16,28 +16,47 @@ export default function BetaPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
-  const [alreadyVerified, setAlreadyVerified] = useState(false);
+  const [checking, setChecking] = useState(true);
 
-  // Récupère ou crée un user_id anonyme dès le chargement
   useEffect(() => {
-    try {
-      const phone = localStorage.getItem("sk_phone");
-      if (phone) { setAlreadyVerified(true); return; }
+    async function init() {
+      try {
+        const storedUserId = localStorage.getItem("sk_user_id");
+        const storedPhone  = localStorage.getItem("sk_phone");
 
-      const stored = localStorage.getItem("sk_user_id");
-      if (stored) { setUserId(stored); return; }
-    } catch { /* ignore */ }
+        if (storedUserId) {
+          // Valider la session contre Supabase
+          const res = await fetch(
+            `/api/session/check?user_id=${encodeURIComponent(storedUserId)}${storedPhone ? `&phone=${encodeURIComponent(storedPhone)}` : ""}`
+          );
+          const { valid } = await res.json();
 
-    fetch("/api/beta/init", { method: "POST" })
-      .then((r) => r.json())
-      .then(({ user_id }) => {
+          if (valid) {
+            // Session valide → redirection directe
+            router.replace("/profile");
+            return;
+          } else {
+            // Session corrompue ou expirée → nettoyer
+            localStorage.removeItem("sk_user_id");
+            localStorage.removeItem("sk_phone");
+            localStorage.removeItem("sk_my_id");
+            localStorage.removeItem("sk_user_credits");
+            localStorage.removeItem("sk_ref_code");
+          }
+        }
+
+        // Pas de session → créer un utilisateur anonyme pour la vérification
+        const r = await fetch("/api/beta/init", { method: "POST" });
+        const { user_id } = await r.json();
         if (user_id) {
           setUserId(user_id);
-          try { localStorage.setItem("sk_user_id", user_id); } catch { /* ignore */ }
+          localStorage.setItem("sk_user_id", user_id);
         }
-      })
-      .catch(() => {});
-  }, []);
+      } catch { /* ignore */ }
+      setChecking(false);
+    }
+    init();
+  }, [router]);
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
@@ -114,17 +133,10 @@ export default function BetaPage() {
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-sm">
-          {alreadyVerified ? (
-            <div className="text-center space-y-4">
-              <div className="text-3xl">✅</div>
-              <p className="text-white font-semibold">Numéro déjà vérifié</p>
-              <p className="text-white/40 text-sm">Tu as déjà accès bêta.</p>
-              <button
-                onClick={() => router.push("/profile")}
-                className="w-full bg-[#e91e8c] hover:bg-[#c2186f] text-white font-semibold py-3 rounded-2xl transition-all"
-              >
-                Accéder à l'app →
-              </button>
+          {checking ? (
+            <div className="text-center py-4">
+              <div className="text-3xl animate-pulse">⏳</div>
+              <p className="text-white/30 text-sm mt-2">Vérification de la session…</p>
             </div>
           ) : step === "success" ? (
             <div className="text-center space-y-4">
