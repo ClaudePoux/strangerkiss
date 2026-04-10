@@ -72,6 +72,57 @@ Pas d'inscription classique — vérification invisible par SMS :
 - Le bannissement se fait par numéro de téléphone (table `banned_phones`)
 - À implémenter en même temps que Twilio
 
+## Interface Admin
+
+### 1. Gestion des utilisateurs
+- Liste des inscrits (numéro masqué, date, crédits, statut)
+- Recherche par numéro de téléphone
+- Attribution manuelle de crédits gratuits
+- Bannissement manuel d'un numéro
+- Réapprobation d'un numéro banni
+
+### 2. Surveillance VIP
+- Base de numéros surveillés (alimentée manuellement par l'admin)
+- Alerte immédiate (email ou SMS) dès qu'un numéro surveillé se connecte
+- Historique des connexions des numéros surveillés
+- Motif de surveillance (notes internes)
+
+### 3. Modération
+- Liste des signalements en cours
+- Numéros en ban temporaire 24h avec date d'expiration
+- Numéros bannis définitivement
+- Réapprobation d'un numéro banni
+- Historique des signalements par utilisateur
+
+### 4. Statistiques (jour / semaine / mois / trimestre / année)
+- Inscrits
+- Connectés actifs
+- Pré-inscrits waitlist
+- Achats de crédits (nombre et montant)
+- Crédits consommés (rencontres validées)
+- Parrainages (parrains actifs, crédits distribués)
+- Signalements (nombre, taux de résolution)
+- Taux de conversion pré-inscrit → inscrit
+
+### 5. Gestion des crédits
+- Attribution gratuite à un numéro spécifique
+- Attribution en masse (campagne promo)
+- Historique des crédits offerts
+
+### 6. Waitlist pré-lancement
+- Liste des numéros pré-inscrits
+- Statut (en attente / converti)
+- Export de la liste
+
+### 7. Accès services externes
+- Lien direct vers dashboard Stripe
+- Lien direct vers console Twilio
+- Lien direct vers Supabase
+
+### 8. Sécurité
+- Accès protégé par numéro de téléphone super-admin
+- Journal des actions admin (qui a fait quoi et quand)
+
 ## Conventions du projet
 
 - Composants dans `components/`
