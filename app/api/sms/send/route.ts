@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,61 +11,88 @@ function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-async function sendTwilioSMS(to: string, body: string) {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
+// Signature OVH : "$AS+$CK+$METHOD+$URL+$BODY+$TIMESTAMP"
+function ovhSign(
+  appSecret: string,
+  consumerKey: string,
+  method: string,
+  url: string,
+  body: string,
+  timestamp: number
+): string {
+  const pre = [appSecret, consumerKey, method.toUpperCase(), url, body, timestamp].join("+");
+  return "$1$" + createHash("sha1").update(pre).digest("hex");
+}
 
-  console.log("[sms/send] Twilio config check —", {
-    sid_set: !!sid,
-    sid_prefix: sid?.slice(0, 6),
-    token_set: !!token,
-    from,
+async function sendOvhSMS(to: string, message: string) {
+  const ak = process.env.OVH_APP_KEY;
+  const as = process.env.OVH_APP_SECRET;
+  const ck = process.env.OVH_CONSUMER_KEY;
+  const serviceName = process.env.OVH_SMS_SERVICE_NAME;
+
+  console.log("[sms/send] OVH config check —", {
+    ak_set: !!ak,
+    as_set: !!as,
+    ck_set: !!ck,
+    serviceName,
     to,
   });
 
-  if (!sid || !token || !from) {
-    console.error("[sms/send] ERREUR : variables Twilio manquantes", {
-      TWILIO_ACCOUNT_SID: !!sid,
-      TWILIO_AUTH_TOKEN: !!token,
-      TWILIO_PHONE_NUMBER: !!from,
+  if (!ak || !as || !ck || !serviceName) {
+    console.error("[sms/send] ERREUR : variables OVH manquantes", {
+      OVH_APP_KEY: !!ak,
+      OVH_APP_SECRET: !!as,
+      OVH_CONSUMER_KEY: !!ck,
+      OVH_SMS_SERVICE_NAME: !!serviceName,
     });
-    throw new Error("Twilio not configured");
+    throw new Error("OVH SMS not configured");
   }
 
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
-  console.log("[sms/send] POST →", url);
+  const url = `https://eu.api.ovh.com/1.0/sms/${serviceName}/jobs`;
+  const bodyObj = {
+    message,
+    receivers: [to],
+    sender: "StrangerKis", // max 11 chars alphanumériques pour OVH
+  };
+  const bodyStr = JSON.stringify(bodyObj);
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signature = ovhSign(as, ck, "POST", url, bodyStr, timestamp);
+
+  console.log("[sms/send] POST →", url, "| timestamp:", timestamp);
 
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: "Basic " + Buffer.from(`${sid}:${token}`).toString("base64"),
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/json",
+      "X-Ovh-Application": ak,
+      "X-Ovh-Consumer": ck,
+      "X-Ovh-Timestamp": String(timestamp),
+      "X-Ovh-Signature": signature,
     },
-    body: new URLSearchParams({ To: to, From: from, Body: body }).toString(),
+    body: bodyStr,
   });
 
-  console.log("[sms/send] Twilio HTTP status:", res.status);
+  console.log("[sms/send] OVH HTTP status:", res.status);
 
   if (!res.ok) {
     const raw = await res.text();
     let parsed: Record<string, unknown> = {};
     try { parsed = JSON.parse(raw); } catch { /* non-JSON */ }
-    console.error("[sms/send] Twilio erreur —", {
+    console.error("[sms/send] OVH erreur —", {
       status: res.status,
-      code: parsed.code,
+      errorCode: parsed.errorCode,
       message: parsed.message,
-      more_info: parsed.more_info,
+      queryID: parsed.queryID,
       raw: raw.slice(0, 500),
     });
-    throw new Error(String(parsed.message ?? raw ?? "Twilio error"));
+    throw new Error(String(parsed.message ?? raw ?? "OVH SMS error"));
   }
 
   const result = await res.json();
   console.log("[sms/send] SMS envoyé —", {
-    sid: result.sid,
-    status: result.status,
-    to: result.to,
+    validReceivers: result.validReceivers,
+    invalidReceivers: result.invalidReceivers,
+    ids: result.ids,
   });
 }
 
@@ -130,9 +158,9 @@ export async function POST(req: NextRequest) {
   console.log("[sms/send] Code OTP stocké, envoi SMS…");
 
   try {
-    await sendTwilioSMS(phone, `StrangerKiss — votre code : ${code}`);
+    await sendOvhSMS(phone, `StrangerKiss — votre code : ${code}`);
   } catch (err) {
-    console.error("[sms/send] Échec Twilio:", err);
+    console.error("[sms/send] Échec OVH SMS:", err);
     return NextResponse.json({ error: "sms_failed" }, { status: 500 });
   }
 
