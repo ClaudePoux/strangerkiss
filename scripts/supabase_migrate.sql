@@ -202,7 +202,22 @@ end;
 $$;
 
 -- ------------------------------------------------------------
--- 9. Codes OTP pour la vérification SMS
+-- 9. Bêta-testeurs (accès anticipé complet avant le lancement)
+-- ------------------------------------------------------------
+create table if not exists public.beta_testers (
+  id          uuid primary key default gen_random_uuid(),
+  phone       text not null,
+  name        text,
+  created_at  timestamptz not null default now(),
+  constraint uq_beta_phone unique (phone)
+);
+
+alter table public.beta_testers enable row level security;
+-- Lecture uniquement via service_role (vérification côté serveur)
+create policy "service role only" on public.beta_testers using (false);
+
+-- ------------------------------------------------------------
+-- 10. Codes OTP pour la vérification SMS (sms_codes)
 -- ------------------------------------------------------------
 create table if not exists public.sms_codes (
   id          uuid primary key default gen_random_uuid(),
@@ -218,7 +233,7 @@ alter table public.sms_codes enable row level security;
 create policy "service role only" on public.sms_codes using (false);
 
 -- ------------------------------------------------------------
--- 10. Parrainages
+-- 11. Parrainages
 -- ------------------------------------------------------------
 create table if not exists public.referrals (
   id                uuid primary key default gen_random_uuid(),

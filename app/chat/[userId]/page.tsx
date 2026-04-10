@@ -58,6 +58,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [reported, setReported] = useState(false);
+  // null = vérification en cours, true/false = résultat connu
+  const [isBeta, setIsBeta] = useState<boolean | null>(null);
 
   // Translation state per message id
   const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -116,10 +118,22 @@ export default function ChatPage() {
       const id = stored ?? crypto.randomUUID();
       setMyId(id);
       loadChat(id).then((fn) => { unsub = fn; });
+
+      // Vérification bêta-testeur
+      const phone = localStorage.getItem("sk_phone");
+      if (phone) {
+        fetch(`/api/beta/check?phone=${encodeURIComponent(phone)}`)
+          .then((r) => r.json())
+          .then(({ is_beta }) => setIsBeta(!!is_beta))
+          .catch(() => setIsBeta(false));
+      } else {
+        setIsBeta(false);
+      }
     } catch {
       const id = crypto.randomUUID();
       setMyId(id);
       loadChat(id).then((fn) => { unsub = fn; });
+      setIsBeta(false);
     }
     return () => unsub?.();
   }, [loadChat]);
@@ -375,11 +389,20 @@ export default function ChatPage() {
     );
   }
 
-  // Chat désactivé jusqu'au lancement (24 mai 2026)
+  // Chat désactivé jusqu'au lancement (24 mai 2026) — sauf pour les bêta-testeurs
   const LAUNCH_DATE = new Date("2026-05-24T00:00:00Z");
-  const prelaunch = Date.now() < LAUNCH_DATE.getTime();
+  const isPrelaunch = Date.now() < LAUNCH_DATE.getTime();
 
-  if (prelaunch) {
+  // Attendre la réponse de la vérification bêta avant de rendre le verrou
+  if (isPrelaunch && isBeta === null) {
+    return (
+      <main className="flex flex-col h-screen overflow-hidden items-center justify-center">
+        <div className="text-4xl animate-pulse">⏳</div>
+      </main>
+    );
+  }
+
+  if (isPrelaunch && isBeta === false) {
     return (
       <main className="flex flex-col h-screen overflow-hidden">
         <header className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-white/[0.02]">
