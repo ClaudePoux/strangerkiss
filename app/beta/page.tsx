@@ -1,0 +1,211 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
+
+type Step = "phone" | "code" | "success";
+
+export default function BetaPage() {
+  const router = useRouter();
+  const { t } = useI18n();
+
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<Step>("phone");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
+
+  // Récupère ou crée un user_id anonyme dès le chargement
+  useEffect(() => {
+    try {
+      const phone = localStorage.getItem("sk_phone");
+      if (phone) { setAlreadyVerified(true); return; }
+
+      const stored = localStorage.getItem("sk_user_id");
+      if (stored) { setUserId(stored); return; }
+    } catch { /* ignore */ }
+
+    fetch("/api/beta/init", { method: "POST" })
+      .then((r) => r.json())
+      .then(({ user_id }) => {
+        if (user_id) {
+          setUserId(user_id);
+          try { localStorage.setItem("sk_user_id", user_id); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleSendCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!phone.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/sms/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setStep("code");
+      } else if (data.error === "already_verified") {
+        setError(t("verify.errorAlreadyVerified"));
+      } else {
+        setError(t("verify.errorSendFailed"));
+      }
+    } catch {
+      setError(t("verify.errorSendFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!code.trim() || !userId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/sms/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim(), code: code.trim(), user_id: userId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        try {
+          localStorage.setItem("sk_phone", phone.trim());
+          if (data.ref_code) localStorage.setItem("sk_ref_code", data.ref_code);
+        } catch { /* ignore */ }
+        setStep("success");
+      } else if (data.error === "code_invalid") {
+        setError(t("verify.errorInvalid"));
+      } else if (data.error === "code_expired") {
+        setError(t("verify.errorExpired"));
+        setStep("phone");
+        setCode("");
+      } else {
+        setError(t("verify.errorSendFailed"));
+      }
+    } catch {
+      setError(t("verify.errorSendFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="flex flex-col min-h-screen items-center justify-center px-4 py-12 relative">
+      {/* Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[#7c3aed]/10 blur-[120px] pointer-events-none" />
+
+      <div className="relative z-10 w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-3">🔑</div>
+          <h1 className="text-2xl font-bold text-white">
+            Stranger<span className="text-[#e91e8c]">Kiss</span>
+          </h1>
+          <p className="mt-2 text-white/40 text-sm">Accès bêta</p>
+        </div>
+
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-sm">
+          {alreadyVerified ? (
+            <div className="text-center space-y-4">
+              <div className="text-3xl">✅</div>
+              <p className="text-white font-semibold">Numéro déjà vérifié</p>
+              <p className="text-white/40 text-sm">Tu as déjà accès bêta.</p>
+              <button
+                onClick={() => router.push("/profile")}
+                className="w-full bg-[#e91e8c] hover:bg-[#c2186f] text-white font-semibold py-3 rounded-2xl transition-all"
+              >
+                Accéder à l'app →
+              </button>
+            </div>
+          ) : step === "success" ? (
+            <div className="text-center space-y-4">
+              <div className="text-4xl">🎉</div>
+              <p className="text-white font-bold text-lg">Accès bêta activé !</p>
+              <p className="text-white/50 text-sm">
+                Ton numéro est vérifié. Tu peux maintenant utiliser toutes les fonctionnalités.
+              </p>
+              <button
+                onClick={() => router.push("/profile")}
+                className="w-full bg-[#e91e8c] hover:bg-[#c2186f] text-white font-semibold py-3 rounded-2xl transition-all shadow-[0_0_20px_rgba(233,30,140,0.3)]"
+              >
+                Créer mon profil →
+              </button>
+            </div>
+          ) : step === "phone" ? (
+            <form onSubmit={handleSendCode} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Ton numéro de téléphone
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+33 6 12 34 56 78"
+                  required
+                  autoFocus
+                  className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/60 focus:ring-2 focus:ring-[#e91e8c]/20 transition-all"
+                />
+              </div>
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading || !userId}
+                className="w-full bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold py-3 rounded-2xl transition-all"
+              >
+                {loading ? "…" : "Recevoir le code SMS"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  Code reçu par SMS
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                  required
+                  autoFocus
+                  className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/60 focus:ring-2 focus:ring-[#e91e8c]/20 transition-all tracking-[0.3em] text-center text-lg"
+                />
+                <p className="mt-1.5 text-xs text-white/30">
+                  Envoyé au {phone} ·{" "}
+                  <button
+                    type="button"
+                    onClick={() => { setStep("phone"); setCode(""); setError(""); }}
+                    className="underline hover:text-white/60"
+                  >
+                    Changer
+                  </button>
+                </p>
+              </div>
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold py-3 rounded-2xl transition-all"
+              >
+                {loading ? "…" : "Valider"}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}
