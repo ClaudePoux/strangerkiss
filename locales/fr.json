@@ -25,7 +25,8 @@
     "waitlistError": "Une erreur est survenue. Réessayez.",
     "waitlistCount": "{count} personnes déjà inscrites",
     "step4Title": "4. Explore la démo en live",
-    "step4Desc": "Teste avec de vrais profils. Le 24 mai, tu pourras chatter et rencontrer ton âme sœur éphémère."
+    "step4Desc": "Teste avec de vrais profils. Le 24 mai, tu pourras chatter et rencontrer ton âme sœur éphémère.",
+    "ourStory": "Notre histoire"
   },
   "profile": {
     "header": "Dis-nous qui tu es",
@@ -132,5 +133,18 @@
     "shareBtn": "Partager mon lien",
     "copied": "Lien copié !",
     "stats": "{count} filleul(s) — {credits} crédits gagnés"
+  },
+  "story": {
+    "title": "Notre histoire",
+    "back": "← Retour",
+    "p1": "Tout a commencé avec une frustration simple.",
+    "p2": "Je voyageais seul à Lisbonne, assis dans un café bondé, entouré de gens que je ne connaissais pas. J'avais envie de connexion — pas d'une conversation longue, pas d'une histoire compliquée. Juste... un vrai moment humain avec quelqu'un de passage.",
+    "p3": "J'ai regardé autour de moi. Des gens seuls, comme moi. Des couples qui ne se parlaient pas. Des touristes perdus dans leur téléphone. Et j'ai pensé : et si on pouvait simplement... signaler qu'on est là, qu'on cherche juste ça ?",
+    "p4": "Un hug. Un frisson. Une seconde de vraie vie avec un inconnu.",
+    "p5": "L'idée a mûri pendant des mois. On l'a construite avec une obsession : que ça reste simple, safe et honnête. Pas de réseau social. Pas de profil permanent. Pas de jugement. Tu apparais sur la carte, tu vois qui est là, vous vous trouvez, vous vous touchez (ou pas), et chacun repart.",
+    "p6": "Le consentement est au cœur de tout. Aucune rencontre ne se confirme sans que les deux personnes aient dit oui. Si quelqu'un refuse, il disparaît de ta carte. Le respect n'est pas une option — c'est le seul mode de fonctionnement.",
+    "p7": "On n'a pas voulu construire une app de dating. On a voulu construire un espace pour les gens comme ce mec à Lisbonne — ceux qui voyagent, qui sont présents, qui cherchent juste un moment vrai avec un autre être humain.",
+    "p8": "Si tu lis ça, c'est que tu es peut-être l'un d'entre eux.",
+    "signature": "— L'équipe StrangerKiss"
   }
 }

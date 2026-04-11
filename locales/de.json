@@ -25,7 +25,8 @@
     "waitlistError": "Ein Fehler ist aufgetreten. Versuche es erneut.",
     "waitlistCount": "{count} Personen bereits angemeldet",
     "step4Title": "4. Entdecke die Live-Demo",
-    "step4Desc": "Teste mit echten Profilen. Ab 24. Mai kannst du chatten und deine flüchtige Seelenpartnerin finden."
+    "step4Desc": "Teste mit echten Profilen. Ab 24. Mai kannst du chatten und deine flüchtige Seelenpartnerin finden.",
+    "ourStory": "Unsere Geschichte"
   },
   "profile": {
     "header": "Sag uns, wer du bist",
@@ -132,5 +133,18 @@
     "shareBtn": "Link teilen",
     "copied": "Link kopiert!",
     "stats": "{count} Geworbene(r) — {credits} Credits verdient"
+  },
+  "story": {
+    "title": "Unsere Geschichte",
+    "back": "← Zurück",
+    "p1": "Es begann mit einer einfachen Frustration.",
+    "p2": "Ich reiste allein durch Lissabon, saß in einem überfüllten Café, umgeben von Menschen, die ich nicht kannte. Ich wollte Verbindung — kein langes Gespräch, keine komplizierte Geschichte. Einfach... einen echten menschlichen Moment mit jemandem auf der Durchreise.",
+    "p3": "Ich sah mich um. Menschen allein, wie ich. Paare, die nicht miteinander sprachen. Touristen, verloren in ihren Handys. Und ich dachte: Was, wenn wir einfach... signalisieren könnten, dass wir hier sind, dass wir genau das suchen?",
+    "p4": "Ein Hug. Ein Kribbeln. Eine Sekunde echtes Leben mit einem Fremden.",
+    "p5": "Die Idee reifte über Monate. Wir haben sie mit einer Obsession gebaut: Es soll einfach, sicher und ehrlich bleiben. Kein soziales Netzwerk. Kein dauerhaftes Profil. Kein Urteil. Du erscheinst auf der Karte, siehst, wer da ist, ihr findet euch, berührt euch (oder nicht), und jeder geht seiner Wege.",
+    "p6": "Einverständnis steht im Mittelpunkt von allem. Kein Treffen wird bestätigt, ohne dass beide Ja gesagt haben. Wenn jemand ablehnt, verschwindet er von deiner Karte. Respekt ist keine Option — es ist die einzige Funktionsweise.",
+    "p7": "Wir wollten keine Dating-App bauen. Wir wollten einen Raum für Menschen wie diesen Typen in Lissabon schaffen — die Reisenden, die präsent sind, die einfach einen echten Moment mit einem anderen Menschen suchen.",
+    "p8": "Wenn du das liest, bist du vielleicht einer von ihnen.",
+    "signature": "— Das StrangerKiss-Team"
   }
 }

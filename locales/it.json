@@ -25,7 +25,8 @@
     "waitlistError": "Si è verificato un errore. Riprova.",
     "waitlistCount": "{count} persone già iscritte",
     "step4Title": "4. Esplora la demo in diretta",
-    "step4Desc": "Prova con profili reali. Il 24 maggio potrai chattare e incontrare la tua anima gemella effimera."
+    "step4Desc": "Prova con profili reali. Il 24 maggio potrai chattare e incontrare la tua anima gemella effimera.",
+    "ourStory": "La nostra storia"
   },
   "profile": {
     "header": "Presentati",
@@ -132,5 +133,18 @@
     "shareBtn": "Condividi il mio link",
     "copied": "Link copiato!",
     "stats": "{count} referral — {credits} crediti guadagnati"
+  },
+  "story": {
+    "title": "La nostra storia",
+    "back": "← Indietro",
+    "p1": "Tutto è iniziato con una semplice frustrazione.",
+    "p2": "Stavo viaggiando da solo a Lisbona, seduto in un affollato caffè, circondato da persone che non conoscevo. Volevo connessione — non una lunga conversazione, non una storia complicata. Solo... un vero momento umano con qualcuno di passaggio.",
+    "p3": "Mi sono guardato intorno. Persone sole, come me. Coppie che non si parlavano. Turisti persi nei loro telefoni. E ho pensato: e se potessimo semplicemente... segnalare che siamo qui, che cerchiamo proprio questo?",
+    "p4": "Un hug. Un brivido. Un secondo di vera vita con uno sconosciuto.",
+    "p5": "L'idea è maturata per mesi. L'abbiamo costruita con un'ossessione: restare semplice, sicura e onesta. Nessun social network. Nessun profilo permanente. Nessun giudizio. Appari sulla mappa, vedi chi c'è, vi trovate, vi toccate (o no), e ognuno riparte.",
+    "p6": "Il consenso è al centro di tutto. Nessun incontro si conferma senza che entrambi abbiano detto sì. Se qualcuno rifiuta, scompare dalla tua mappa. Il rispetto non è un'opzione — è l'unico modo di funzionare.",
+    "p7": "Non volevamo costruire un'app di dating. Volevamo costruire uno spazio per le persone come quel tipo a Lisbona — quelli che viaggiano, che sono presenti, che cercano solo un momento vero con un altro essere umano.",
+    "p8": "Se stai leggendo questo, forse sei uno di loro.",
+    "signature": "— Il team di StrangerKiss"
   }
 }

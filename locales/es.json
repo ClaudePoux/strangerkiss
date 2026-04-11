@@ -25,7 +25,8 @@
     "waitlistError": "Algo salió mal. Inténtalo de nuevo.",
     "waitlistCount": "{count} personas ya registradas",
     "step4Title": "4. Explora la demo en vivo",
-    "step4Desc": "Prueba con perfiles reales. El 24 de mayo podrás chatear y conocer a tu alma gemela efímera."
+    "step4Desc": "Prueba con perfiles reales. El 24 de mayo podrás chatear y conocer a tu alma gemela efímera.",
+    "ourStory": "Nuestra historia"
   },
   "profile": {
     "header": "Cuéntanos quién eres",
@@ -132,5 +133,18 @@
     "shareBtn": "Compartir mi enlace",
     "copied": "¡Enlace copiado!",
     "stats": "{count} referido(s) — {credits} créditos ganados"
+  },
+  "story": {
+    "title": "Nuestra historia",
+    "back": "← Volver",
+    "p1": "Todo empezó con una simple frustración.",
+    "p2": "Viajaba solo por Lisboa, sentado en un café lleno de gente, rodeado de personas que no conocía. Quería conexión — no una larga conversación, no una historia complicada. Solo... un momento humano real con alguien de paso.",
+    "p3": "Miré a mi alrededor. Personas solas, como yo. Parejas que no se hablaban. Turistas perdidos en sus teléfonos. Y pensé: ¿y si pudiéramos simplemente... señalar que estamos aquí, que buscamos exactamente eso?",
+    "p4": "Un hug. Un escalofrío. Un segundo de vida real con un desconocido.",
+    "p5": "La idea maduró durante meses. La construimos con una obsesión: que fuera simple, segura y honesta. Sin red social. Sin perfil permanente. Sin juicios. Apareces en el mapa, ves quién está ahí, os encontráis, os tocáis (o no), y cada uno sigue su camino.",
+    "p6": "El consentimiento está en el centro de todo. Ningún encuentro se confirma sin que ambas personas hayan dicho sí. Si alguien rechaza, desaparece de tu mapa. El respeto no es una opción — es la única forma de funcionar.",
+    "p7": "No quisimos construir una app de citas. Quisimos construir un espacio para personas como ese tipo en Lisboa — los que viajan, los que están presentes, los que solo buscan un momento real con otro ser humano.",
+    "p8": "Si estás leyendo esto, quizás eres uno de ellos.",
+    "signature": "— El equipo de StrangerKiss"
   }
 }

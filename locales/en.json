@@ -25,7 +25,8 @@
     "waitlistError": "Something went wrong. Please try again.",
     "waitlistCount": "{count} people already signed up",
     "step4Title": "4. Explore the live demo",
-    "step4Desc": "Try it with real profiles. On May 24th, you'll be able to chat and meet your fleeting soulmate."
+    "step4Desc": "Try it with real profiles. On May 24th, you'll be able to chat and meet your fleeting soulmate.",
+    "ourStory": "Our story"
   },
   "profile": {
     "header": "Tell us who you are",
@@ -132,5 +133,18 @@
     "shareBtn": "Share my link",
     "copied": "Link copied!",
     "stats": "{count} referral(s) — {credits} credits earned"
+  },
+  "story": {
+    "title": "Our story",
+    "back": "← Back",
+    "p1": "It all started with a simple frustration.",
+    "p2": "I was travelling alone in Lisbon, sitting in a crowded café, surrounded by people I didn't know. I wanted connection — not a long conversation, not a complicated story. Just... a real human moment with someone passing through.",
+    "p3": "I looked around. People alone, like me. Couples who weren't talking to each other. Tourists lost in their phones. And I thought: what if we could simply... signal that we're here, that we're just looking for that?",
+    "p4": "A hug. A thrill. One second of real life with a stranger.",
+    "p5": "The idea matured over months. We built it with one obsession: keep it simple, safe and honest. No social network. No permanent profile. No judgement. You appear on the map, you see who's there, you find each other, you touch (or not), and each goes their own way.",
+    "p6": "Consent is at the heart of everything. No encounter is confirmed without both people saying yes. If someone refuses, they disappear from your map. Respect isn't optional — it's the only way it works.",
+    "p7": "We didn't want to build a dating app. We wanted to build a space for people like that guy in Lisbon — those who travel, who are present, who just want a real moment with another human being.",
+    "p8": "If you're reading this, you might be one of them.",
+    "signature": "— The StrangerKiss team"
   }
 }
