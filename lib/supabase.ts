@@ -23,6 +23,7 @@ export interface UserPin {
   lat: number;
   lng: number;
   created_at: string;
+  last_seen: string;
 }
 
 export interface Message {

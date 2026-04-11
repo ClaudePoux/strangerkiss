@@ -35,14 +35,33 @@ export default function BetaPage() {
             // Session valide → redirection directe
             router.replace("/profile");
             return;
-          } else {
-            // Session corrompue ou expirée → nettoyer
-            localStorage.removeItem("sk_user_id");
-            localStorage.removeItem("sk_phone");
-            localStorage.removeItem("sk_my_id");
-            localStorage.removeItem("sk_user_credits");
-            localStorage.removeItem("sk_ref_code");
           }
+
+          // Session invalide — si on a un numéro en local, tenter la restauration beta
+          if (storedPhone) {
+            const restore = await fetch("/api/beta/restore", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: storedPhone, user_id: storedUserId }),
+            });
+            const restoreData = await restore.json();
+            if (restoreData.ok) {
+              // Restauration réussie → mettre à jour le localStorage et rediriger
+              localStorage.setItem("sk_user_id", restoreData.user_id);
+              localStorage.setItem("sk_phone", storedPhone);
+              if (restoreData.ref_code) localStorage.setItem("sk_ref_code", restoreData.ref_code);
+              if (restoreData.credits != null) localStorage.setItem("sk_user_credits", String(restoreData.credits));
+              router.replace("/profile");
+              return;
+            }
+          }
+
+          // Session corrompue et pas de restauration possible → nettoyer
+          localStorage.removeItem("sk_user_id");
+          localStorage.removeItem("sk_phone");
+          localStorage.removeItem("sk_my_id");
+          localStorage.removeItem("sk_user_credits");
+          localStorage.removeItem("sk_ref_code");
         }
 
         // Pas de session → créer un utilisateur anonyme pour la vérification

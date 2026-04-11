@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -23,6 +23,54 @@ function getOrCreateMyId(): string {
   }
 }
 
+// Profils fictifs pour le mode démo — ne touchent pas à la base de données
+const DEMO_PINS: UserPin[] = [
+  {
+    id: "demo-1",
+    user_id: null,
+    name: "Sofia",
+    age: 26,
+    gender: "femme" as Gender,
+    nationality: "IT",
+    bio: "Backpackeuse en route pour Barcelone 🌞",
+    appearance: "Cheveux noirs, sac rouge, casque blanc",
+    looking_for: "hug" as LookingFor,
+    lat: 0,
+    lng: 0,
+    created_at: new Date().toISOString(),
+    last_seen: new Date().toISOString(),
+  },
+  {
+    id: "demo-2",
+    user_id: null,
+    name: "Luca",
+    age: 31,
+    gender: "homme" as Gender,
+    nationality: "DE",
+    bio: "Photojournaliste, toujours en transit 📷",
+    appearance: "Grand, lunettes rondes, veste kaki",
+    looking_for: "french_kiss" as LookingFor,
+    lat: 0,
+    lng: 0,
+    created_at: new Date().toISOString(),
+    last_seen: new Date().toISOString(),
+  },
+  {
+    id: "demo-3",
+    user_id: null,
+    name: "Amara",
+    age: 29,
+    gender: "femme" as Gender,
+    nationality: "GB",
+    bio: "Solo traveler, love spontaneous connections ✈️",
+    appearance: "Tresse africaine, manteau beige",
+    looking_for: "hug" as LookingFor,
+    lat: 0,
+    lng: 0,
+    created_at: new Date().toISOString(),
+    last_seen: new Date().toISOString(),
+  },
+];
 
 function flagEmoji(code: string): string {
   if (!code) return "";
@@ -81,6 +129,46 @@ function MapPageContent() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
 
+  // Référence pour le ping — conservée entre les renders
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pingPinIdRef = useRef<string>("");
+
+  // Nettoyage du ping à la fermeture/masquage de l'onglet
+  useEffect(() => {
+    function stopPing() {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    }
+    function handleVisibility() {
+      if (document.visibilityState === "hidden") stopPing();
+    }
+    window.addEventListener("beforeunload", stopPing);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("beforeunload", stopPing);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      stopPing();
+    };
+  }, []);
+
+  // Démarre le ping toutes les 4 minutes pour un pin donné
+  const startPing = useCallback((pinId: string) => {
+    if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+    pingPinIdRef.current = pinId;
+    const FOUR_MIN = 4 * 60 * 1000;
+    pingIntervalRef.current = setInterval(async () => {
+      try {
+        await fetch("/api/db/pins", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin_id: pingPinIdRef.current }),
+        });
+      } catch { /* ignore — le prochain ping réessaiera */ }
+    }, FOUR_MIN);
+  }, []);
+
   useEffect(() => {
     const id = getOrCreateMyId();
     setMyId(id);
@@ -103,7 +191,6 @@ function MapPageContent() {
           })
           .catch(() => {});
       }
-      // Vérification : numéro déjà vérifié ?
       if (localStorage.getItem("sk_phone")) setPhoneVerified(true);
     } catch {
       // ignore
@@ -129,8 +216,11 @@ function MapPageContent() {
 
       if (profile) {
         try {
-          // En mode démo, on n'écrit pas de pin dans Supabase
-          if (!isDemo) {
+          if (isDemo) {
+            // Mode démo : pins fictifs uniquement, pas de données réelles
+            setPins(DEMO_PINS);
+          } else {
+            // Mode réel : écrire dans Supabase et récupérer les profils actifs
             const storedUserId = localStorage.getItem("sk_user_id") ?? undefined;
             const existingPinId = localStorage.getItem("sk_my_id") ?? undefined;
             const pinRes = await fetch("/api/db/pins", {
@@ -155,6 +245,8 @@ function MapPageContent() {
               localStorage.setItem("sk_my_id", pin.id);
               setMyId(pin.id);
               fetchBlocked(pin.id).then(setBlocked);
+              // Démarrer le ping toutes les 4 minutes pour rester visible
+              startPing(pin.id);
             }
             // Nouvel utilisateur anonyme créé côté serveur
             if (returnedUserId && !storedUserId) {
@@ -162,36 +254,34 @@ function MapPageContent() {
               setUserId(returnedUserId);
               setCredits(3);
               localStorage.setItem("sk_user_credits", "3");
-              // Proposer la vérification après quelques secondes
               setTimeout(() => setShowVerify(true), 3000);
             }
-          }
 
-          // Récupérer les profils proches (démo et normal)
-          const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
-          const { pins: nearby } = await nearbyRes.json();
-          // Exclure uniquement son propre pin (par id), pas par distance
-          const ownId = localStorage.getItem("sk_my_id");
-          setPins(
-            (nearby as UserPin[]).filter((p) => p.id !== ownId)
-          );
+            // Récupérer les profils actifs (last_seen < 10min)
+            const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
+            const { pins: nearby } = await nearbyRes.json();
+            const ownId = localStorage.getItem("sk_my_id");
+            setPins(
+              (nearby as UserPin[]).filter((p) => p.id !== ownId)
+            );
+          }
         } catch {
-          setPins([]);
+          if (!isDemo) setPins([]);
         }
       }
       setLoading(false);
     },
-    [profile, isDemo, myId]
+    [profile, isDemo, startPing]
   );
 
-  // Rafraîchissement automatique des pins toutes les 10 secondes
+  // Rafraîchissement automatique des pins toutes les 10 secondes (mode réel uniquement)
   useEffect(() => {
-    if (!coords || loading) return;
+    if (!coords || loading || isDemo) return;
     const [lat, lng] = coords;
     const currentMyId = myId;
     const interval = setInterval(() => refreshPins(lat, lng, currentMyId), 10000);
     return () => clearInterval(interval);
-  }, [coords, myId, loading, refreshPins]);
+  }, [coords, myId, loading, isDemo, refreshPins]);
 
   useEffect(() => {
     if (!navigator.geolocation) {

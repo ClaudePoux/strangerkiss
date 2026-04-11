@@ -36,14 +36,19 @@ create table if not exists public.user_pins (
   lat         double precision not null,
   lng         double precision not null,
   created_at  timestamptz not null default now(),
+  last_seen   timestamptz not null default now(),          -- mis à jour toutes les 4 min (ping actif)
   constraint chk_age     check (age >= 18 and age <= 99),
   constraint chk_gender  check (gender in ('homme', 'femme', 'non-binaire', 'autre')),
   constraint chk_looking check (looking_for in ('hug', 'french_kiss'))
 );
 
-create index if not exists idx_pins_location on public.user_pins (lat, lng);
-create index if not exists idx_pins_created  on public.user_pins (created_at);
-create index if not exists idx_pins_user     on public.user_pins (user_id);
+create index if not exists idx_pins_location  on public.user_pins (lat, lng);
+create index if not exists idx_pins_created   on public.user_pins (created_at);
+create index if not exists idx_pins_user      on public.user_pins (user_id);
+create index if not exists idx_pins_last_seen on public.user_pins (last_seen);
+
+-- Colonne last_seen pour les tables déjà créées (migration incrémentale)
+alter table public.user_pins add column if not exists last_seen timestamptz not null default now();
 
 alter table public.user_pins enable row level security;
 create policy "lecture publique"    on public.user_pins for select using (true);

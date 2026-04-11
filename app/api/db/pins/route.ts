@@ -19,6 +19,7 @@ async function checkVip(userId: string) {
 }
 
 // GET /api/db/pins?lat=&lng=&radius=5
+// Ne retourne que les profils actifs (last_seen < 10 minutes)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const lat = parseFloat(searchParams.get("lat") ?? "0");
@@ -29,7 +30,8 @@ export async function GET(req: NextRequest) {
   const deltaLat = radiusKm / 111;
   const deltaLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
 
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  // Seuil d'activité : 10 minutes (profil fantôme si aucun ping depuis)
+  const activeCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
   const { data, error } = await sb
     .from("user_pins")
@@ -38,8 +40,8 @@ export async function GET(req: NextRequest) {
     .lte("lat", lat + deltaLat)
     .gte("lng", lng - deltaLng)
     .lte("lng", lng + deltaLng)
-    .gte("created_at", cutoff)
-    .order("created_at", { ascending: false })
+    .gte("last_seen", activeCutoff)
+    .order("last_seen", { ascending: false })
     .limit(50);
 
   if (error) return NextResponse.json({ pins: [] });
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/db/pins — upsert du profil sur la carte (un seul profil actif par device)
-// Si pin_id est fourni, on met à jour le pin existant (updated_at rafraîchi).
+// Si pin_id est fourni, on met à jour le pin existant (last_seen rafraîchi).
 // Sinon, on insère un nouveau pin.
 // Si user_id absent, crée un utilisateur anonyme (3 crédits) et retourne son id.
 export async function POST(req: NextRequest) {
@@ -69,6 +71,7 @@ export async function POST(req: NextRequest) {
     if (newUser) resolvedUserId = newUser.id;
   }
 
+  const now = new Date().toISOString();
   const payload = {
     user_id: resolvedUserId,
     name,
@@ -80,8 +83,8 @@ export async function POST(req: NextRequest) {
     looking_for,
     lat,
     lng,
-    // Rafraîchir created_at pour réinitialiser le timer d'expiration 24h
-    created_at: new Date().toISOString(),
+    created_at: now,
+    last_seen: now,
   };
 
   let data, error;
@@ -128,4 +131,19 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ pin: data as UserPin, user_id: resolvedUserId });
+}
+
+// PATCH /api/db/pins — ping de présence (met à jour last_seen uniquement)
+// Body: { pin_id: string }
+export async function PATCH(req: NextRequest) {
+  const { pin_id } = await req.json();
+  if (!pin_id) return NextResponse.json({ error: "pin_id manquant" }, { status: 400 });
+
+  const { error } = await sb
+    .from("user_pins")
+    .update({ last_seen: new Date().toISOString() })
+    .eq("id", pin_id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }
