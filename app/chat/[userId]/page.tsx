@@ -120,9 +120,14 @@ export default function ChatPage() {
       loadChat(id).then((fn) => { unsub = fn; });
 
       // Vérification bêta-testeur
-      const phone = localStorage.getItem("sk_phone");
-      if (phone) {
-        fetch(`/api/beta/check?phone=${encodeURIComponent(phone)}`)
+      // Stratégie double : par sk_phone (direct) + sk_user_id (fallback si phone absent/formaté différemment)
+      const phone  = localStorage.getItem("sk_phone");
+      const userId = localStorage.getItem("sk_user_id");
+      if (phone || userId) {
+        const params = new URLSearchParams();
+        if (phone)  params.set("phone",   phone);
+        if (userId) params.set("user_id", userId);
+        fetch(`/api/beta/check?${params}`)
           .then((r) => r.json())
           .then(({ is_beta }) => setIsBeta(!!is_beta))
           .catch(() => setIsBeta(false));

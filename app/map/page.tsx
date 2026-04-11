@@ -217,8 +217,12 @@ function MapPageContent() {
       if (profile) {
         try {
           if (isDemo) {
-            // Mode démo : pins fictifs uniquement, pas de données réelles
-            setPins(DEMO_PINS);
+            // Mode démo : pins fictifs proches de la position réelle (~100-200m)
+            setPins(DEMO_PINS.map((p, i) => {
+              const offsets = [[0.001, 0.0015], [-0.0012, 0.0008], [0.0006, -0.0013]];
+              const [dLat, dLng] = offsets[i] ?? [0.001, 0.001];
+              return { ...p, lat: lat + dLat, lng: lng + dLng };
+            }));
           } else {
             // Mode réel : écrire dans Supabase et récupérer les profils actifs
             const storedUserId = localStorage.getItem("sk_user_id") ?? undefined;
