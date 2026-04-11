@@ -11,10 +11,16 @@ function generateRefCode(): string {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
+/** Normalise un numéro : supprime espaces, tirets, points, parenthèses */
+function normalizePhone(p: string): string {
+  return p.replace(/[\s\-().]/g, "");
+}
+
 // POST /api/sms/verify  { phone, code, user_id, sponsor_ref? }
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const phone = (body.phone as string)?.trim();
+  // Normaliser le numéro pour garantir un format cohérent en base
+  const phone = normalizePhone((body.phone as string)?.trim() ?? "");
   const code = (body.code as string)?.trim();
   const userId = body.user_id as string;
   const sponsorRef = (body.sponsor_ref as string | undefined)?.trim();

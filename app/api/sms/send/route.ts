@@ -96,10 +96,15 @@ async function sendOvhSMS(to: string, message: string) {
   });
 }
 
+/** Normalise un numéro : supprime espaces, tirets, points, parenthèses */
+function normalizePhone(p: string): string {
+  return p.replace(/[\s\-().]/g, "");
+}
+
 // POST /api/sms/send  { phone }
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const phone = (body.phone as string)?.trim();
+  const phone = normalizePhone((body.phone as string)?.trim() ?? "");
   console.log("[sms/send] Demande reçue — phone:", phone ? phone.slice(0, 4) + "****" : "(vide)");
 
   if (!phone) {
