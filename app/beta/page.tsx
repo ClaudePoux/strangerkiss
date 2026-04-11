@@ -58,31 +58,42 @@ export default function BetaPage() {
             return;
           }
 
-          console.warn("[/beta] Session invalide:", sessionData);
+          // Sécurité : si la réponse est malformée (valid ni true ni false explicitement),
+          // ne pas effacer localStorage — afficher le formulaire prudemment.
+          if (sessionData.valid !== false) {
+            console.warn("[/beta] Réponse session/check inattendue (valid non booléen) → formulaire sans nettoyage", sessionData);
+            setUserId(storedUserId);
+            setChecking(false);
+            return;
+          }
 
-          // Session invalide — si on a un numéro, tenter la restauration beta
-          if (storedPhone) {
-            console.log("[/beta] → beta/restore avec phone:", storedPhone.slice(0, 4) + "****");
+          console.warn("[/beta] Session invalide (valid: false explicite):", sessionData);
+
+          // Session invalide — tenter la restauration beta si on a un numéro
+          const phoneForRestore = storedPhone;
+          if (phoneForRestore) {
+            console.log("[/beta] → beta/restore avec phone:", phoneForRestore.slice(0, 4) + "****");
             try {
               const restore = await fetch("/api/beta/restore", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone: storedPhone, user_id: storedUserId }),
+                body: JSON.stringify({ phone: phoneForRestore, user_id: storedUserId }),
                 signal: AbortSignal.timeout(8000),
               });
               const restoreData = await restore.json();
               console.log("[/beta] ← beta/restore:", restoreData);
               if (restore.ok && restoreData.ok) {
                 localStorage.setItem("sk_user_id", restoreData.user_id);
-                localStorage.setItem("sk_phone", storedPhone);
+                localStorage.setItem("sk_phone", phoneForRestore);
                 if (restoreData.ref_code) localStorage.setItem("sk_ref_code", restoreData.ref_code);
                 if (restoreData.credits != null) localStorage.setItem("sk_user_credits", String(restoreData.credits));
                 console.log("[/beta] Restauration OK → router.replace('/profile')");
                 router.replace("/profile");
                 return;
               }
-              console.warn("[/beta] Restauration échouée:", restoreData);
+              console.warn("[/beta] Restauration échouée (not_beta ou erreur API):", restoreData);
             } catch (err) {
+              // Erreur réseau sur beta/restore → NE PAS effacer localStorage
               console.warn("[/beta] beta/restore network error:", err);
               setUserId(storedUserId);
               setChecking(false);
@@ -90,13 +101,15 @@ export default function BetaPage() {
             }
           }
 
-          // Session définitivement invalide (confirmé par l'API) → nettoyer
-          console.warn("[/beta] Nettoyage localStorage (session invalide confirmée)");
+          // Nettoyage minimal : uniquement sk_user_id et données dérivées.
+          // sk_phone est conservé intentionnellement — il permet la restauration
+          // silencieuse via already_verified si l'utilisateur re-saisit son numéro.
+          console.warn("[/beta] Nettoyage sk_user_id (session invalide confirmée, phone conservé)");
           localStorage.removeItem("sk_user_id");
-          localStorage.removeItem("sk_phone");
           localStorage.removeItem("sk_my_id");
           localStorage.removeItem("sk_user_credits");
           localStorage.removeItem("sk_ref_code");
+          // sk_phone intentionnellement conservé pour permettre la restauration
 
         } catch (err) {
           // Erreur réseau (AbortError timeout, offline…) → NE PAS effacer localStorage
