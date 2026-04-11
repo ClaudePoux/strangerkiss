@@ -50,6 +50,11 @@ create index if not exists idx_pins_last_seen on public.user_pins (last_seen);
 -- Colonne last_seen pour les tables déjà créées (migration incrémentale)
 alter table public.user_pins add column if not exists last_seen timestamptz not null default now();
 
+-- Nettoyage immédiat des anciens pins sans last_seen ou expirés
+-- À exécuter dans Supabase → SQL Editor après avoir ajouté la colonne :
+--   DELETE FROM public.user_pins WHERE last_seen < now() - interval '10 minutes';
+-- Le nettoyage est aussi automatique : la route GET /api/db/pins le fait en arrière-plan.
+
 alter table public.user_pins enable row level security;
 create policy "lecture publique"    on public.user_pins for select using (true);
 create policy "insertion publique"  on public.user_pins for insert with check (true);

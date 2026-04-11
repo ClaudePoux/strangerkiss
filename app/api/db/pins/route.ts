@@ -19,7 +19,8 @@ async function checkVip(userId: string) {
 }
 
 // GET /api/db/pins?lat=&lng=&radius=5
-// Ne retourne que les profils actifs (last_seen < 10 minutes)
+// Ne retourne que les profils actifs (last_seen < 10 minutes).
+// Fallback sur created_at si la colonne last_seen n'existe pas encore en base.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const lat = parseFloat(searchParams.get("lat") ?? "0");
@@ -30,9 +31,10 @@ export async function GET(req: NextRequest) {
   const deltaLat = radiusKm / 111;
   const deltaLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
 
-  // Seuil d'activité : 10 minutes (profil fantôme si aucun ping depuis)
-  const activeCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const activeCutoff  = new Date(Date.now() - 10 * 60 * 1000).toISOString();       // 10 min
+  const legacyCutoff  = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();  // 24h (fallback)
 
+  // Tentative 1 : filtre last_seen (colonne ajoutée en migration)
   const { data, error } = await sb
     .from("user_pins")
     .select("*")
@@ -44,7 +46,35 @@ export async function GET(req: NextRequest) {
     .order("last_seen", { ascending: false })
     .limit(50);
 
-  if (error) return NextResponse.json({ pins: [] });
+  if (error) {
+    // Colonne last_seen absente ou autre erreur Supabase — fallback created_at
+    console.warn("[GET /api/db/pins] Erreur last_seen, fallback created_at:", error.message);
+    const { data: fallbackData, error: fallbackError } = await sb
+      .from("user_pins")
+      .select("*")
+      .gte("lat", lat - deltaLat)
+      .lte("lat", lat + deltaLat)
+      .gte("lng", lng - deltaLng)
+      .lte("lng", lng + deltaLng)
+      .gte("created_at", legacyCutoff)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (fallbackError) {
+      console.error("[GET /api/db/pins] Fallback échoué:", fallbackError.message);
+      return NextResponse.json({ pins: [] });
+    }
+    return NextResponse.json({ pins: fallbackData as UserPin[] });
+  }
+
+  // Nettoyage silencieux des pins expirés (fire-and-forget, ne bloque pas la réponse)
+  sb.from("user_pins")
+    .delete()
+    .lt("last_seen", activeCutoff)
+    .then(({ error: delErr }) => {
+      if (delErr) console.warn("[GET /api/db/pins] Cleanup échoué:", delErr.message);
+    });
+
   return NextResponse.json({ pins: data as UserPin[] });
 }
 
