@@ -401,7 +401,7 @@ export default function ChatPage() {
   // Attendre la réponse de la vérification bêta avant de rendre le verrou
   if (isPrelaunch && isBeta === null) {
     return (
-      <main className="flex flex-col h-screen overflow-hidden items-center justify-center">
+      <main className="flex flex-col w-full overflow-x-hidden items-center justify-center" style={{ height: "100dvh" }}>
         <div className="text-4xl animate-pulse">⏳</div>
       </main>
     );
@@ -409,8 +409,8 @@ export default function ChatPage() {
 
   if (isPrelaunch && isBeta === false) {
     return (
-      <main className="flex flex-col h-screen overflow-hidden">
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-white/[0.02]">
+      <main className="flex flex-col w-full overflow-x-hidden" style={{ height: "100dvh" }}>
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-white/[0.02] flex-shrink-0">
           <button
             onClick={() => router.back()}
             className="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
@@ -441,12 +441,12 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="flex flex-col h-screen overflow-hidden">
+    <main className="flex flex-col w-full overflow-x-hidden" style={{ height: "100dvh" }}>
       {/* Header */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-white/[0.02]">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-white/[0.02] flex-shrink-0">
         <button
           onClick={() => router.back()}
-          className="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+          className="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10 flex-shrink-0"
           aria-label={t("chat.back")}
         >
           ←
@@ -469,13 +469,13 @@ export default function ChatPage() {
 
       {/* Demo banner */}
       {demoMode && (
-        <div className="px-4 py-2.5 bg-amber-400/5 border-b border-amber-400/10 text-xs text-amber-400/60 text-center">
+        <div className="flex-shrink-0 px-4 py-2.5 bg-amber-400/5 border-b border-amber-400/10 text-xs text-amber-400/60 text-center">
           {t("chat.demoBanner")}
         </div>
       )}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      {/* Messages — min-h-0 requis pour que flex-1 ne force pas la hauteur */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-3">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="text-5xl">💌</div>
@@ -487,43 +487,45 @@ export default function ChatPage() {
       </div>
 
       {/* Action bar */}
-      <div className="border-t border-white/5 bg-white/[0.02]">
-        {/* Meeting request + selfie buttons */}
-        <div className="flex gap-2 px-4 pt-3 pb-1">
-          <button
-            onClick={handleSendMeetingRequest}
-            disabled={sending}
-            className="text-xs text-[#e91e8c]/70 hover:text-[#e91e8c] bg-[#e91e8c]/10 hover:bg-[#e91e8c]/20 border border-[#e91e8c]/20 rounded-full px-3 py-1.5 transition-all disabled:opacity-40"
-          >
-            {t("chat.meetingRequest")}
-          </button>
-          <button
-            onClick={() => cameraRef.current?.click()}
-            disabled={sending}
-            className="text-xs text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-3 py-1.5 transition-all disabled:opacity-40"
-          >
-            {t("chat.selfie")}
-          </button>
-          <input
-            ref={cameraRef}
-            type="file"
-            accept="image/*"
-            capture="user"
-            className="hidden"
-            onChange={handleSelfieFile}
-          />
+      <div className="flex-shrink-0 border-t border-white/5 bg-white/[0.02]">
+        {/* Meeting request + selfie + report */}
+        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+          <div className="flex gap-2 flex-1 min-w-0 overflow-x-auto">
+            <button
+              onClick={handleSendMeetingRequest}
+              disabled={sending}
+              className="flex-shrink-0 text-xs text-[#e91e8c]/70 hover:text-[#e91e8c] bg-[#e91e8c]/10 hover:bg-[#e91e8c]/20 border border-[#e91e8c]/20 rounded-full px-3 py-1.5 transition-all disabled:opacity-40"
+            >
+              {t("chat.meetingRequest")}
+            </button>
+            <button
+              onClick={() => cameraRef.current?.click()}
+              disabled={sending}
+              className="flex-shrink-0 text-xs text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-3 py-1.5 transition-all disabled:opacity-40"
+            >
+              {t("chat.selfie")}
+            </button>
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="hidden"
+              onChange={handleSelfieFile}
+            />
+          </div>
           <button
             onClick={handleReport}
             disabled={reported}
-            className="ml-auto text-xs text-white/25 hover:text-red-400 bg-transparent border-none rounded-full px-2 py-1.5 transition-all disabled:opacity-30"
+            className="flex-shrink-0 text-xs text-white/25 hover:text-red-400 bg-transparent border-none rounded-full px-2 py-1.5 transition-all disabled:opacity-30"
             title={t("chat.report")}
           >
             🚩
           </button>
         </div>
 
-        {/* Text input */}
-        <div className="px-4 py-3 flex gap-3 items-end">
+        {/* Text input — min-w-0 sur l'input pour qu'il ne dépasse pas en flex */}
+        <div className="px-4 py-3 flex gap-2 items-end">
           <input
             ref={inputRef}
             type="text"
@@ -533,12 +535,12 @@ export default function ChatPage() {
             placeholder={t("chat.inputPlaceholder", { name: otherName })}
             maxLength={500}
             disabled={sending}
-            className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all text-sm disabled:opacity-50"
+            className="flex-1 min-w-0 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all text-sm disabled:opacity-50"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || sending}
-            className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95 shadow-[0_0_16px_rgba(233,30,140,0.35)]"
+            className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-[0_0_16px_rgba(233,30,140,0.35)]"
             aria-label={t("chat.send")}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
