@@ -102,6 +102,8 @@ function MapPageContent() {
   // Ref vers startPing pour que le handler visibilitychange puisse l'appeler
   // sans dépendance d'ordre (startPing est déclaré via useCallback plus bas)
   const startPingRef    = useRef<(pinId: string) => void>(() => {});
+  // Ref vers pins pour l'effet inbox — évite de re-créer l'intervalle à chaque refresh pins
+  const pinsRef         = useRef<UserPin[]>([]);
 
   // Portal SSR-safe : monté uniquement après hydratation côté client
   useEffect(() => { setPortalMounted(true); }, []);
@@ -117,15 +119,30 @@ function MapPageContent() {
     function handleVisibility() {
       if (document.visibilityState === "hidden") {
         stopPing();
-      } else if (document.visibilityState === "visible" && pingPinIdRef.current) {
-        // Onglet redevenu visible → relancer le ping via ref pour éviter l'expiration du pin
+      } else if (document.visibilityState === "visible") {
+        // Onglet redevenu visible (retour du chat, switch d'app…)
+        // 1. Relancer le ping pour éviter l'expiration du pin
+        if (pingPinIdRef.current) startPingRef.current(pingPinIdRef.current);
+        // 2. Avancer le curseur inbox au moment du retour — les messages vus
+        //    dans le chat ne déclencheront pas une nouvelle notification,
+        //    et le prochain poll ne captera que les VRAIS nouveaux messages.
+        inboxSinceRef.current = new Date().toISOString();
+      }
+    }
+    // bfcache iOS Safari : pageshow avec persisted=true signifie que la page
+    // est restaurée depuis le cache sans remontage React → même traitement.
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted && pingPinIdRef.current) {
         startPingRef.current(pingPinIdRef.current);
+        inboxSinceRef.current = new Date().toISOString();
       }
     }
     window.addEventListener("beforeunload", stopPing);
+    window.addEventListener("pageshow", handlePageShow);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       window.removeEventListener("beforeunload", stopPing);
+      window.removeEventListener("pageshow", handlePageShow);
       document.removeEventListener("visibilitychange", handleVisibility);
       stopPing();
     };
@@ -148,6 +165,9 @@ function MapPageContent() {
 
   // Synchronise la ref dès que startPing est (re)créé
   useEffect(() => { startPingRef.current = startPing; }, [startPing]);
+
+  // Synchronise pinsRef à chaque update de pins (sans recréer l'effet inbox)
+  useEffect(() => { pinsRef.current = pins; }, [pins]);
 
   useEffect(() => {
     const id = getOrCreateMyId();
@@ -259,23 +279,26 @@ function MapPageContent() {
     return () => clearInterval(interval);
   }, [coords, myId, loading, isDemo, refreshPins]);
 
-  // Polling inbox toutes les 10s — notification si nouveau message reçu
+  // Polling inbox toutes les 10s — notification si nouveau message reçu.
+  // N'inclut PAS `pins` dans les deps : pins change toutes les 10s (refreshPins)
+  // et provoquerait un clear+restart de l'intervalle en permanence, empêchant
+  // le poll de tirer. pinsRef donne accès à la valeur courante sans dépendance.
   useEffect(() => {
     if (!myId || isDemo || loading) return;
     const interval = setInterval(async () => {
       try {
         const since = inboxSinceRef.current;
         inboxSinceRef.current = new Date().toISOString();
-        const res = await fetch(`/api/db/messages?inbox=${myId}&since=${encodeURIComponent(since)}`);
+        const res = await fetch(`/api/db/messages?inbox=${encodeURIComponent(myId)}&since=${encodeURIComponent(since)}`);
         if (!res.ok) return;
         const { messages } = await res.json();
         if (messages?.length > 0) {
           const senderId = messages[0].from_id as string;
-          // Chercher dans les pins visibles d'abord, sinon fetch direct le pin
-          let senderPin = pins.find((p) => p.id === senderId);
+          // Chercher dans les pins courants (via ref, sans dépendance de l'effet)
+          let senderPin = pinsRef.current.find((p) => p.id === senderId);
           if (!senderPin) {
             try {
-              const pr = await fetch(`/api/db/pins?pin_id=${senderId}`);
+              const pr = await fetch(`/api/db/pins?pin_id=${encodeURIComponent(senderId)}`);
               if (pr.ok) {
                 const { pin } = await pr.json();
                 senderPin = pin ?? undefined;
@@ -291,7 +314,8 @@ function MapPageContent() {
       } catch { /* ignore */ }
     }, 10000);
     return () => clearInterval(interval);
-  }, [myId, isDemo, loading, pins]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myId, isDemo, loading]); // pins intentionnellement exclu — voir pinsRef ci-dessus
 
   useEffect(() => {
     if (!navigator.geolocation) {
