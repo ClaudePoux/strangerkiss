@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -90,14 +91,22 @@ function MapPageContent() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
   const [unreadSender, setUnreadSender] = useState<{ id: string; name: string; appearance: string } | null>(null);
+  // Portal monté côté client uniquement (SSR-safe)
+  const [portalMounted, setPortalMounted] = useState(false);
 
   // Ping : ref conservée entre les renders
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pingPinIdRef = useRef<string>("");
+  const pingPinIdRef    = useRef<string>("");
   // Timestamp du dernier contrôle inbox (initialisé au chargement)
-  const inboxSinceRef = useRef<string>(new Date().toISOString());
+  const inboxSinceRef   = useRef<string>(new Date().toISOString());
+  // Ref vers startPing pour que le handler visibilitychange puisse l'appeler
+  // sans dépendance d'ordre (startPing est déclaré via useCallback plus bas)
+  const startPingRef    = useRef<(pinId: string) => void>(() => {});
 
-  // Stop ping à la fermeture / masquage de l'onglet
+  // Portal SSR-safe : monté uniquement après hydratation côté client
+  useEffect(() => { setPortalMounted(true); }, []);
+
+  // Stop/restart ping selon visibilité de l'onglet
   useEffect(() => {
     function stopPing() {
       if (pingIntervalRef.current) {
@@ -106,7 +115,12 @@ function MapPageContent() {
       }
     }
     function handleVisibility() {
-      if (document.visibilityState === "hidden") stopPing();
+      if (document.visibilityState === "hidden") {
+        stopPing();
+      } else if (document.visibilityState === "visible" && pingPinIdRef.current) {
+        // Onglet redevenu visible → relancer le ping via ref pour éviter l'expiration du pin
+        startPingRef.current(pingPinIdRef.current);
+      }
     }
     window.addEventListener("beforeunload", stopPing);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -131,6 +145,9 @@ function MapPageContent() {
       } catch { /* ignore — le prochain ping réessaiera */ }
     }, 4 * 60 * 1000);
   }, []);
+
+  // Synchronise la ref dès que startPing est (re)créé
+  useEffect(() => { startPingRef.current = startPing; }, [startPing]);
 
   useEffect(() => {
     const id = getOrCreateMyId();
@@ -254,7 +271,17 @@ function MapPageContent() {
         const { messages } = await res.json();
         if (messages?.length > 0) {
           const senderId = messages[0].from_id as string;
-          const senderPin = pins.find((p) => p.id === senderId);
+          // Chercher dans les pins visibles d'abord, sinon fetch direct le pin
+          let senderPin = pins.find((p) => p.id === senderId);
+          if (!senderPin) {
+            try {
+              const pr = await fetch(`/api/db/pins?pin_id=${senderId}`);
+              if (pr.ok) {
+                const { pin } = await pr.json();
+                senderPin = pin ?? undefined;
+              }
+            } catch { /* ignore */ }
+          }
           setUnreadSender({
             id: senderId,
             name: senderPin?.name ?? "Quelqu'un",
@@ -375,9 +402,12 @@ function MapPageContent() {
           />
         )}
 
-        {/* Toast nouveau message — z-index 1000+ pour passer au-dessus de Leaflet (400-600) */}
-        {unreadSender && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#1a1a2e]/95 border border-[#7c3aed]/40 rounded-2xl px-4 py-3 shadow-xl backdrop-blur-sm max-w-[90vw]" style={{ zIndex: 1000 }}>
+        {/* Toast rendu via portal dans document.body — échappe à tout stacking context */}
+        {portalMounted && unreadSender && createPortal(
+          <div
+            className="flex items-center gap-3 bg-[#1a1a2e]/95 border border-[#7c3aed]/40 rounded-2xl px-4 py-3 shadow-xl backdrop-blur-sm"
+            style={{ position: "fixed", bottom: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 9999, maxWidth: "90vw", width: "max-content" }}
+          >
             <span className="text-xl flex-shrink-0">💬</span>
             <Link
               href={`/chat/${unreadSender.id}?name=${encodeURIComponent(unreadSender.name)}&appearance=${encodeURIComponent(unreadSender.appearance)}`}
@@ -394,7 +424,8 @@ function MapPageContent() {
             >
               ×
             </button>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 

@@ -18,11 +18,23 @@ async function checkVip(userId: string) {
   console.log(`[VIP] Alerte — numéro surveillé connecté : ${user.phone.slice(0, 4)}****`);
 }
 
-// GET /api/db/pins?lat=&lng=&radius=5
-// Ne retourne que les profils actifs (last_seen < 10 minutes).
-// Fallback sur created_at si la colonne last_seen n'existe pas encore en base.
+// GET /api/db/pins?lat=&lng=&radius=5   — liste des pins actifs à proximité
+// GET /api/db/pins?pin_id=xxx           — récupère un pin spécifique par son id
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+
+  // Mode lookup par pin_id (pour résoudre le nom de l'expéditeur d'un message)
+  const pinId = searchParams.get("pin_id");
+  if (pinId) {
+    const { data, error } = await sb
+      .from("user_pins")
+      .select("id, name, appearance, nationality, looking_for, age, gender")
+      .eq("id", pinId)
+      .maybeSingle();
+    if (error) return NextResponse.json({ pin: null });
+    return NextResponse.json({ pin: data });
+  }
+
   const lat = parseFloat(searchParams.get("lat") ?? "0");
   const lng = parseFloat(searchParams.get("lng") ?? "0");
   const radiusKm = parseFloat(searchParams.get("radius") ?? "5");
