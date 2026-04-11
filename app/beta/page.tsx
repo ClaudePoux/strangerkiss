@@ -142,6 +142,23 @@ export default function BetaPage() {
       if (data.ok) {
         setStep("code");
       } else if (data.error === "already_verified") {
+        // Numéro déjà vérifié → récupérer la session silencieusement
+        try {
+          const restore = await fetch("/api/beta/restore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: phone.trim(), user_id: userId ?? undefined }),
+          });
+          const restoreData = await restore.json();
+          if (restore.ok && restoreData.ok) {
+            localStorage.setItem("sk_user_id", restoreData.user_id);
+            localStorage.setItem("sk_phone", phone.trim());
+            if (restoreData.ref_code)  localStorage.setItem("sk_ref_code",      restoreData.ref_code);
+            if (restoreData.credits != null) localStorage.setItem("sk_user_credits", String(restoreData.credits));
+            router.replace("/profile");
+            return;
+          }
+        } catch { /* ignore, affiche le formulaire normalement */ }
         setError(t("verify.errorAlreadyVerified"));
       } else {
         setError(t("verify.errorSendFailed"));
