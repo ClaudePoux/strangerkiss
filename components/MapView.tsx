@@ -66,10 +66,13 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
     let destroyed = false;
 
+    console.log("[MapView] Effet 1 — import Leaflet (locale:", locale, ")");
+
     import("leaflet").then((L) => {
       if (destroyed || !mapRef.current) return;
 
       leafletRef.current = L;
+      console.log("[MapView] Leaflet chargé — center:", center);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -120,6 +123,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       mapInstanceRef.current  = map;
 
       // Signal : la carte est prête. Effect 2 va se déclencher avec les pins courants.
+      console.log("[MapView] setMapReady(true)");
       setMapReady(true);
     });
 
@@ -137,10 +141,14 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   }, [locale]);
 
   // ── Effet 2 : mise à jour des marqueurs (pins OU mapReady changent) ─────────
-  // Si les pins arrivent avant que Leaflet soit chargé → Effect 2 attend mapReady.
-  // Si Leaflet est prêt avant les pins → mapReady déclenche Effect 2 avec les pins déjà là.
   useEffect(() => {
-    if (!mapReady || !leafletRef.current || !markersLayerRef.current) return;
+    console.log("[MapView] Effet 2 — mapReady:", mapReady, "| pins:", pins.length,
+      "| leaflet:", !!leafletRef.current, "| layer:", !!markersLayerRef.current);
+
+    if (!mapReady || !leafletRef.current || !markersLayerRef.current) {
+      console.log("[MapView] Effet 2 — skip (conditions non remplies)");
+      return;
+    }
 
     const L = leafletRef.current;
     markersLayerRef.current.clearLayers();
@@ -148,7 +156,9 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     const hugLabel  = t("map.hug");
     const kissLabel = t("map.frenchKiss");
 
+    console.log("[MapView] Effet 2 — rendu", pins.length, "marqueur(s)");
     pins.forEach((pin) => {
+      console.log("[MapView]   pin:", pin.name, "lat:", pin.lat, "lng:", pin.lng);
       const dist    = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
       const distStr = dist < 1
         ? t("mapView.distanceM", { dist: String(Math.round(dist * 1000)) })

@@ -23,32 +23,46 @@ export default function BetaPage() {
       const storedUserId = localStorage.getItem("sk_user_id");
       const storedPhone  = localStorage.getItem("sk_phone");
 
+      // ── DIAGNOSTIC ──────────────────────────────────────────────────────────
+      console.log("[/beta] init — localStorage:", {
+        sk_user_id:      storedUserId ? storedUserId.slice(0, 8) + "…" : null,
+        sk_phone:        storedPhone  ? storedPhone.slice(0, 4)  + "****" : null,
+        sk_my_id:        localStorage.getItem("sk_my_id")     ? "présent" : null,
+        sk_user_credits: localStorage.getItem("sk_user_credits"),
+      });
+      // ────────────────────────────────────────────────────────────────────────
+
       if (storedUserId) {
         try {
+          const url = `/api/session/check?user_id=${encodeURIComponent(storedUserId)}${storedPhone ? `&phone=${encodeURIComponent(storedPhone)}` : ""}`;
+          console.log("[/beta] → session/check:", url);
+
           // Valider la session contre Supabase
-          const res = await fetch(
-            `/api/session/check?user_id=${encodeURIComponent(storedUserId)}${storedPhone ? `&phone=${encodeURIComponent(storedPhone)}` : ""}`,
-            { signal: AbortSignal.timeout(8000) }   // timeout 8s pour cold-start Vercel
-          );
+          const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+
+          console.log("[/beta] ← session/check HTTP:", res.status, res.ok ? "OK" : "ERR");
 
           if (!res.ok) {
-            // Erreur serveur (5xx) : conserver le localStorage, réessayer au prochain chargement
-            console.warn("[/beta] session/check HTTP error:", res.status);
-            // Montrer le formulaire sans effacer la session
+            console.warn("[/beta] session/check HTTP error:", res.status, "→ formulaire sans effacer localStorage");
             setUserId(storedUserId);
             setChecking(false);
             return;
           }
 
-          const { valid } = await res.json();
+          const sessionData = await res.json();
+          console.log("[/beta] ← session/check body:", sessionData);
 
-          if (valid) {
+          if (sessionData.valid) {
+            console.log("[/beta] Session valide → router.replace('/profile')");
             router.replace("/profile");
             return;
           }
 
+          console.warn("[/beta] Session invalide:", sessionData);
+
           // Session invalide — si on a un numéro, tenter la restauration beta
           if (storedPhone) {
+            console.log("[/beta] → beta/restore avec phone:", storedPhone.slice(0, 4) + "****");
             try {
               const restore = await fetch("/api/beta/restore", {
                 method: "POST",
@@ -56,20 +70,20 @@ export default function BetaPage() {
                 body: JSON.stringify({ phone: storedPhone, user_id: storedUserId }),
                 signal: AbortSignal.timeout(8000),
               });
-              if (restore.ok) {
-                const restoreData = await restore.json();
-                if (restoreData.ok) {
-                  localStorage.setItem("sk_user_id", restoreData.user_id);
-                  localStorage.setItem("sk_phone", storedPhone);
-                  if (restoreData.ref_code) localStorage.setItem("sk_ref_code", restoreData.ref_code);
-                  if (restoreData.credits != null) localStorage.setItem("sk_user_credits", String(restoreData.credits));
-                  router.replace("/profile");
-                  return;
-                }
+              const restoreData = await restore.json();
+              console.log("[/beta] ← beta/restore:", restoreData);
+              if (restore.ok && restoreData.ok) {
+                localStorage.setItem("sk_user_id", restoreData.user_id);
+                localStorage.setItem("sk_phone", storedPhone);
+                if (restoreData.ref_code) localStorage.setItem("sk_ref_code", restoreData.ref_code);
+                if (restoreData.credits != null) localStorage.setItem("sk_user_credits", String(restoreData.credits));
+                console.log("[/beta] Restauration OK → router.replace('/profile')");
+                router.replace("/profile");
+                return;
               }
-            } catch {
-              // Erreur réseau sur beta/restore → conserver localStorage, montrer le formulaire
-              console.warn("[/beta] beta/restore network error");
+              console.warn("[/beta] Restauration échouée:", restoreData);
+            } catch (err) {
+              console.warn("[/beta] beta/restore network error:", err);
               setUserId(storedUserId);
               setChecking(false);
               return;
@@ -77,6 +91,7 @@ export default function BetaPage() {
           }
 
           // Session définitivement invalide (confirmé par l'API) → nettoyer
+          console.warn("[/beta] Nettoyage localStorage (session invalide confirmée)");
           localStorage.removeItem("sk_user_id");
           localStorage.removeItem("sk_phone");
           localStorage.removeItem("sk_my_id");
@@ -93,15 +108,20 @@ export default function BetaPage() {
       }
 
       // Pas de session → créer un utilisateur anonyme pour la vérification
+      console.log("[/beta] Pas de storedUserId → beta/init");
       try {
         const r = await fetch("/api/beta/init", { method: "POST" });
         const { user_id } = await r.json();
+        console.log("[/beta] beta/init → user_id:", user_id ? user_id.slice(0, 8) + "…" : null);
         if (user_id) {
           setUserId(user_id);
           localStorage.setItem("sk_user_id", user_id);
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.error("[/beta] beta/init error:", err);
+      }
 
+      console.log("[/beta] setChecking(false) → formulaire affiché");
       setChecking(false);
     }
     init();
