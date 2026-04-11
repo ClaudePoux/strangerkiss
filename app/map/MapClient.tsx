@@ -375,9 +375,9 @@ function MapPageContent() {
           />
         )}
 
-        {/* Toast nouveau message */}
+        {/* Toast nouveau message — z-index 1000+ pour passer au-dessus de Leaflet (400-600) */}
         {unreadSender && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#1a1a2e]/95 border border-[#7c3aed]/40 rounded-2xl px-4 py-3 shadow-xl backdrop-blur-sm max-w-[90vw]">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#1a1a2e]/95 border border-[#7c3aed]/40 rounded-2xl px-4 py-3 shadow-xl backdrop-blur-sm max-w-[90vw]" style={{ zIndex: 1000 }}>
             <span className="text-xl flex-shrink-0">💬</span>
             <Link
               href={`/chat/${unreadSender.id}?name=${encodeURIComponent(unreadSender.name)}&appearance=${encodeURIComponent(unreadSender.appearance)}`}
