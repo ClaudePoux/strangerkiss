@@ -100,7 +100,13 @@ export default function ChatPage() {
           .then((r) => r.json())
           .then(({ messages: newMsgs }) => {
             if (newMsgs?.length > 0) {
-              setMessages((p) => [...p, ...newMsgs]);
+              // Dédupliquer par ID — évite le double affichage du selfie quand le poll
+              // capture son `since` avant que pushMessage ait mis à jour l'état.
+              setMessages((p) => {
+                const existingIds = new Set(p.map((m) => m.id));
+                const truly_new = (newMsgs as typeof p).filter((m) => !existingIds.has(m.id));
+                return truly_new.length > 0 ? [...p, ...truly_new] : p;
+              });
             }
           })
           .catch(() => {});
@@ -349,9 +355,9 @@ export default function ChatPage() {
     if (isImageMsg(msg.content)) {
       return (
         <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-          <div className={`max-w-[65%] rounded-2xl overflow-hidden border ${isMe ? "border-[#e91e8c]/40 rounded-br-sm" : "border-white/15 rounded-bl-sm"}`}>
+          <div className={`max-w-[60%] rounded-2xl overflow-hidden border ${isMe ? "border-[#e91e8c]/40 rounded-br-sm" : "border-white/15 rounded-bl-sm"}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={msg.content} alt="selfie" className="block w-full" />
+            <img src={msg.content} alt="selfie" className="block w-full max-h-[200px] object-cover" />
             <p className={`text-[10px] px-2 py-1 ${isMe ? "text-right text-[#e91e8c]/60" : "text-white/30"}`}>
               {formatTime(msg.created_at, bcp47)}
             </p>
@@ -446,7 +452,7 @@ export default function ChatPage() {
       <header className="flex items-center gap-3 px-4 py-3 border-b border-white/5 bg-white/[0.02] flex-shrink-0">
         <button
           onClick={() => router.back()}
-          className="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10 flex-shrink-0"
+          className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-white/50 hover:text-white transition-colors rounded-xl hover:bg-white/10 text-lg"
           aria-label={t("chat.back")}
         >
           ←
@@ -535,7 +541,8 @@ export default function ChatPage() {
             placeholder={t("chat.inputPlaceholder", { name: otherName })}
             maxLength={500}
             disabled={sending}
-            className="flex-1 min-w-0 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all text-sm disabled:opacity-50"
+            style={{ fontSize: "16px" }}
+            className="flex-1 min-w-0 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all disabled:opacity-50"
           />
           <button
             onClick={handleSend}

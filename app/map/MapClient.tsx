@@ -89,10 +89,13 @@ function MapPageContent() {
   const [loading, setLoading] = useState(true);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
+  const [unreadSender, setUnreadSender] = useState<{ id: string; name: string; appearance: string } | null>(null);
 
   // Ping : ref conservée entre les renders
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pingPinIdRef = useRef<string>("");
+  // Timestamp du dernier contrôle inbox (initialisé au chargement)
+  const inboxSinceRef = useRef<string>(new Date().toISOString());
 
   // Stop ping à la fermeture / masquage de l'onglet
   useEffect(() => {
@@ -239,6 +242,30 @@ function MapPageContent() {
     return () => clearInterval(interval);
   }, [coords, myId, loading, isDemo, refreshPins]);
 
+  // Polling inbox toutes les 10s — notification si nouveau message reçu
+  useEffect(() => {
+    if (!myId || isDemo || loading) return;
+    const interval = setInterval(async () => {
+      try {
+        const since = inboxSinceRef.current;
+        inboxSinceRef.current = new Date().toISOString();
+        const res = await fetch(`/api/db/messages?inbox=${myId}&since=${encodeURIComponent(since)}`);
+        if (!res.ok) return;
+        const { messages } = await res.json();
+        if (messages?.length > 0) {
+          const senderId = messages[0].from_id as string;
+          const senderPin = pins.find((p) => p.id === senderId);
+          setUnreadSender({
+            id: senderId,
+            name: senderPin?.name ?? "Quelqu'un",
+            appearance: senderPin?.appearance ?? "",
+          });
+        }
+      } catch { /* ignore */ }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [myId, isDemo, loading, pins]);
+
   useEffect(() => {
     if (!navigator.geolocation) {
       setGeoErrorKey("map.geoNotSupported");
@@ -346,6 +373,28 @@ function MapPageContent() {
             myId={myId}
             locale={locale}
           />
+        )}
+
+        {/* Toast nouveau message */}
+        {unreadSender && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#1a1a2e]/95 border border-[#7c3aed]/40 rounded-2xl px-4 py-3 shadow-xl backdrop-blur-sm max-w-[90vw]">
+            <span className="text-xl flex-shrink-0">💬</span>
+            <Link
+              href={`/chat/${unreadSender.id}?name=${encodeURIComponent(unreadSender.name)}&appearance=${encodeURIComponent(unreadSender.appearance)}`}
+              className="flex-1 min-w-0"
+              onClick={() => setUnreadSender(null)}
+            >
+              <p className="text-white text-sm font-semibold truncate">{unreadSender.name}</p>
+              <p className="text-white/50 text-xs">Nouveau message →</p>
+            </Link>
+            <button
+              onClick={() => setUnreadSender(null)}
+              className="flex-shrink-0 text-white/30 hover:text-white/70 transition-colors text-lg leading-none"
+              aria-label="Fermer"
+            >
+              ×
+            </button>
+          </div>
         )}
       </div>
 
