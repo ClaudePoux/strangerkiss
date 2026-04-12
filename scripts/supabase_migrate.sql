@@ -341,3 +341,18 @@ create policy "service role only" on public.vip_alerts using (false);
 -- Option B : à appeler manuellement ou depuis une API route cron
 --   delete from public.user_pins where created_at < now() - interval '24 hours';
 -- ------------------------------------------------------------
+
+-- ------------------------------------------------------------
+-- 14. Attestation de majorité + enquête post-expérience
+-- Nouvelles colonnes sur la table users (migration incrémentale)
+-- À exécuter si la table users existe déjà :
+-- ------------------------------------------------------------
+
+-- Vérification d'âge (page d'accueil, première visite)
+alter table public.users add column if not exists age_verified boolean not null default false;
+alter table public.users add column if not exists birth_year  integer;
+
+-- Enquête post-expérience (une seule fois après meeting accepté/refusé)
+alter table public.users add column if not exists survey_done       boolean not null default false;
+alter table public.users add column if not exists gender_survey     text;   -- 'homme', 'femme', 'autre'
+alter table public.users add column if not exists travel_situation  text;   -- 'seul', 'couple', 'les_deux'

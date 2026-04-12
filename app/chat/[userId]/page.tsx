@@ -236,6 +236,12 @@ export default function ChatPage() {
         body: JSON.stringify({ requester_id: otherId, target_id: myId }),
       }).catch(() => {});
     }
+    // Déclencher l'enquête post-expérience (une seule fois)
+    try {
+      if (localStorage.getItem("sk_survey_done") !== "true") {
+        localStorage.setItem("sk_survey_pending", "true");
+      }
+    } catch { /* ignore */ }
   }
 
   // ── Report ───────────────────────────────────────────────────

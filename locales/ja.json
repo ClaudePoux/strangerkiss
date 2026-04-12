@@ -134,6 +134,36 @@
     "copied": "リンクをコピーしました！",
     "stats": "{count} 人紹介済み — {credits} クレジット獲得"
   },
+  "ageGate": {
+    "title": "年齢確認",
+    "subtitle": "StrangerKissは18歳以上の成人専用です。",
+    "yearLabel": "生まれた年",
+    "yearPlaceholder": "例：1995",
+    "cta": "確認する",
+    "errorInvalid": "無効な年です。",
+    "legal": "この情報は保存・共有されません。",
+    "blockedTitle": "StrangerKissは成人専用です",
+    "blockedDesc": "このアプリを利用するには18歳以上である必要があります。"
+  },
+  "survey": {
+    "title": "30秒でフィードバック",
+    "subtitle": "StrangerKissの改善にご協力ください",
+    "q1": "あなたは？",
+    "q1man": "男性",
+    "q1woman": "女性",
+    "q1other": "その他",
+    "q2": "旅のスタイルは？",
+    "q2alone": "ひとり旅",
+    "q2couple": "カップル旅",
+    "q2both": "どちらも",
+    "thankYou": "ありがとう！",
+    "msgManAlone": "何千ものひとり旅の人たちが、周りで同じことを求めています。StrangerKissはそのために作られました。",
+    "msgWomanAlone": "あなたの安全が私たちの最優先事項です。すべての出会いには相互の同意が必要です——あなたが常に主導権を持っています。",
+    "msgCouple": "一緒に旅することは、真のつながりを探さないということではありません。StrangerKissは一人ひとりのペースを尊重します。",
+    "msgDefault": "フィードバックをありがとう——StrangerKissをより良くするための大切な情報です。",
+    "close": "閉じる",
+    "skip": "スキップ"
+  },
   "story": {
     "title": "私たちのストーリー",
     "back": "← 戻る",

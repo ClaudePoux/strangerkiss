@@ -9,6 +9,7 @@ import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import PhoneVerification from "@/components/PhoneVerification";
 import ReferralCard from "@/components/ReferralCard";
+import SurveyModal from "@/components/SurveyModal";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -91,6 +92,7 @@ function MapPageContent() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
   const [unreadSender, setUnreadSender] = useState<{ id: string; name: string; appearance: string } | null>(null);
+  const [showSurvey, setShowSurvey] = useState(false);
   // Portal monté côté client uniquement (SSR-safe)
   const [portalMounted, setPortalMounted] = useState(false);
 
@@ -192,6 +194,14 @@ function MapPageContent() {
           .catch(() => {});
       }
       if (localStorage.getItem("sk_phone")) setPhoneVerified(true);
+      // Enquête post-expérience : déclencher si marquée pending et pas encore faite
+      if (
+        localStorage.getItem("sk_survey_pending") === "true" &&
+        localStorage.getItem("sk_survey_done") !== "true"
+      ) {
+        setShowSurvey(true);
+        localStorage.removeItem("sk_survey_pending");
+      }
     } catch { /* ignore */ }
   }, []);
 
@@ -471,6 +481,11 @@ function MapPageContent() {
       {/* Carte de parrainage */}
       {!loading && !isDemo && phoneVerified && userId && (
         <ReferralCard userId={userId} t={t} />
+      )}
+
+      {/* Enquête post-expérience (une seule fois) */}
+      {showSurvey && !isDemo && (
+        <SurveyModal t={t} onClose={() => setShowSurvey(false)} />
       )}
 
       {/* Panneau profils proches */}

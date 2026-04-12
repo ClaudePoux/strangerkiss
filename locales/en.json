@@ -134,6 +134,36 @@
     "copied": "Link copied!",
     "stats": "{count} referral(s) — {credits} credits earned"
   },
+  "ageGate": {
+    "title": "Age Verification",
+    "subtitle": "StrangerKiss is for adults aged 18 and over.",
+    "yearLabel": "Year of birth",
+    "yearPlaceholder": "E.g. 1995",
+    "cta": "Confirm",
+    "errorInvalid": "Invalid year.",
+    "legal": "This information is not stored or shared.",
+    "blockedTitle": "StrangerKiss is for adults only",
+    "blockedDesc": "You must be 18 or older to access this app."
+  },
+  "survey": {
+    "title": "30-second feedback",
+    "subtitle": "Help us improve StrangerKiss",
+    "q1": "You are?",
+    "q1man": "Male",
+    "q1woman": "Female",
+    "q1other": "Other",
+    "q2": "You travel?",
+    "q2alone": "Solo",
+    "q2couple": "As a couple",
+    "q2both": "Both",
+    "thankYou": "Thank you!",
+    "msgManAlone": "Thousands of solo travellers are looking for the same thing around them. StrangerKiss is built for you.",
+    "msgWomanAlone": "Your safety is our absolute priority. Every encounter requires mutual consent — you are always in control.",
+    "msgCouple": "Travelling together doesn't mean you can't seek authentic connections. StrangerKiss respects everyone's pace.",
+    "msgDefault": "Thanks for your feedback — it helps us make StrangerKiss a better place for everyone.",
+    "close": "Close",
+    "skip": "Skip"
+  },
   "story": {
     "title": "Our story",
     "back": "← Back",

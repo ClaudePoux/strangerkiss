@@ -134,6 +134,36 @@
     "copied": "Link kopiert!",
     "stats": "{count} Geworbene(r) — {credits} Credits verdient"
   },
+  "ageGate": {
+    "title": "Altersverifikation",
+    "subtitle": "StrangerKiss ist nur für Erwachsene ab 18 Jahren.",
+    "yearLabel": "Geburtsjahr",
+    "yearPlaceholder": "z. B. 1995",
+    "cta": "Bestätigen",
+    "errorInvalid": "Ungültiges Jahr.",
+    "legal": "Diese Information wird nicht gespeichert oder weitergegeben.",
+    "blockedTitle": "StrangerKiss ist nur für Erwachsene",
+    "blockedDesc": "Du musst mindestens 18 Jahre alt sein, um diese App zu nutzen."
+  },
+  "survey": {
+    "title": "30-Sekunden-Feedback",
+    "subtitle": "Hilf uns, StrangerKiss zu verbessern",
+    "q1": "Du bist?",
+    "q1man": "Mann",
+    "q1woman": "Frau",
+    "q1other": "Andere",
+    "q2": "Du reist?",
+    "q2alone": "Allein",
+    "q2couple": "Als Paar",
+    "q2both": "Beides",
+    "thankYou": "Danke!",
+    "msgManAlone": "Tausende Solo-Reisende suchen genau dasselbe um sie herum. StrangerKiss ist für euch gemacht.",
+    "msgWomanAlone": "Deine Sicherheit hat für uns höchste Priorität. Jede Begegnung erfordert gegenseitiges Einverständnis — du hast immer die Kontrolle.",
+    "msgCouple": "Als Paar zu reisen bedeutet nicht, keine echten Verbindungen zu suchen. StrangerKiss respektiert jedes Tempo.",
+    "msgDefault": "Danke für dein Feedback — es hilft uns, StrangerKiss zu einem besseren Erlebnis zu machen.",
+    "close": "Schließen",
+    "skip": "Überspringen"
+  },
   "story": {
     "title": "Unsere Geschichte",
     "back": "← Zurück",

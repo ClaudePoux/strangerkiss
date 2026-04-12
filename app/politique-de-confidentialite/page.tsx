@@ -60,6 +60,12 @@ export default function PolitiqueConfidentialitePage() {
                 <li><strong className="text-white/70">Photos selfie</strong> envoyées volontairement dans une conversation</li>
               </ul>
             </div>
+            <div>
+              <p className="text-white/80 font-medium mb-2">Enquête post-expérience (optionnelle)</p>
+              <ul className="space-y-1 pl-4 list-disc list-outside">
+                <li><strong className="text-white/70">Genre déclaré</strong> et <strong className="text-white/70">situation de voyage</strong> — collectés une seule fois, à usage statistique uniquement, pour adapter l'expérience et comprendre nos utilisateurs. Ces données ne sont jamais communiquées à des tiers.</li>
+              </ul>
+            </div>
           </div>
         </section>
 

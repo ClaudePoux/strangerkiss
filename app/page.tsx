@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import LaunchSection from "@/components/LaunchSection";
+import AgeGateModal from "@/components/AgeGateModal";
 
 // Capture le code de parrainage depuis l'URL (?ref=XXXXXXXX)
 function RefCapture() {
@@ -44,6 +45,15 @@ export default function HomePage() {
   // useRouter est utilisé mais useSearchParams doit rester dans un Suspense boundary
   const { t } = useI18n();
   const router = useRouter();
+  const [showAgeGate, setShowAgeGate] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem("sk_age_verified")) {
+        setShowAgeGate(true);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   function startDemo() {
     router.push("/profile?demo=true");
@@ -58,6 +68,9 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col min-h-screen">
+      {showAgeGate && (
+        <AgeGateModal t={t} onConfirmed={() => setShowAgeGate(false)} />
+      )}
       {/* Capture du code de parrainage depuis l'URL */}
       <Suspense>
         <RefCapture />

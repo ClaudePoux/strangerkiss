@@ -41,6 +41,15 @@ export async function POST(req: NextRequest) {
   // 2. Enregistrer le signalement
   await sb.from("reports").insert({ reporter_pin_id, reported_pin_id, reason: reason ?? null });
 
+  // 2b. Blocage symétrique immédiat : les deux profils disparaissent mutuellement de la carte
+  await sb.from("blocks").upsert(
+    [
+      { blocker_id: reporter_pin_id, blocked_id: reported_pin_id },
+      { blocker_id: reported_pin_id, blocked_id: reporter_pin_id },
+    ],
+    { onConflict: "blocker_id,blocked_id" }
+  );
+
   // 3. Compter les signalements uniques contre ce profil
   const { count } = await sb
     .from("reports")
