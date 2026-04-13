@@ -4,14 +4,14 @@ import { adminSb } from "@/lib/admin-auth";
 // GET /api/legal/[slug]?lang=fr — public, no auth required
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = params;
+  const { slug } = await params;
   const lang = _req.nextUrl.searchParams.get("lang") ?? "fr";
   const validLangs = ["fr", "en", "de", "it", "es", "ru", "zh", "ja"];
   const safeLang = validLangs.includes(lang) ? lang : "fr";
 
-  // Select all content fields; pick the right one client-side to avoid dynamic select type issues
+  // Select all content fields; pick the right one to avoid dynamic select type issues
   const { data, error } = await adminSb
     .from("legal_pages")
     .select("content_fr, content_en, content_de, content_it, content_es, content_ru, content_zh, content_ja, updated_at")
