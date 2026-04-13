@@ -1,10 +1,26 @@
 import Link from "next/link";
+import { adminSb } from "@/lib/admin-auth";
 
 export const metadata = {
   title: "Politique de confidentialité — StrangerKiss",
 };
 
-export default function PolitiqueConfidentialitePage() {
+async function getLegalContent(): Promise<string | null> {
+  try {
+    const { data } = await adminSb
+      .from("legal_pages")
+      .select("content_fr")
+      .eq("slug", "politique-de-confidentialite")
+      .maybeSingle();
+    return data?.content_fr || null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function PolitiqueConfidentialitePage() {
+  const dbContent = await getLegalContent();
+
   return (
     <main className="min-h-screen px-6 py-16 max-w-2xl mx-auto">
       <div className="mb-10">
@@ -22,6 +38,10 @@ export default function PolitiqueConfidentialitePage() {
       <p className="text-white/40 text-sm mb-10">Conforme au RGPD (Règlement UE 2016/679)</p>
 
       <div className="space-y-10 text-sm text-white/60 leading-relaxed">
+        {dbContent ? (
+          <p className="whitespace-pre-line">{dbContent}</p>
+        ) : (
+        <>
 
         <section>
           <h2 className="text-base font-semibold text-white/90 mb-3">1. Responsable du traitement</h2>
@@ -149,6 +169,8 @@ export default function PolitiqueConfidentialitePage() {
             Mentions légales
           </Link>
         </p>
+        </>
+        )}
       </div>
     </main>
   );

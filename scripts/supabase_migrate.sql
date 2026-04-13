@@ -356,3 +356,27 @@ alter table public.users add column if not exists birth_year  integer;
 alter table public.users add column if not exists survey_done       boolean not null default false;
 alter table public.users add column if not exists gender_survey     text;   -- 'homme', 'femme', 'autre'
 alter table public.users add column if not exists travel_situation  text;   -- 'seul', 'couple', 'les_deux'
+
+-- ------------------------------------------------------------
+-- 15. Pages légales éditables (mentions légales, CGU, etc.)
+-- ------------------------------------------------------------
+create table if not exists public.legal_pages (
+  id          uuid primary key default gen_random_uuid(),
+  slug        text not null,               -- 'mentions-legales', 'politique-de-confidentialite', 'notre-histoire', 'cgv'
+  content_fr  text not null default '',
+  content_en  text not null default '',
+  content_de  text not null default '',
+  content_it  text not null default '',
+  content_es  text not null default '',
+  content_ru  text not null default '',
+  content_zh  text not null default '',
+  content_ja  text not null default '',
+  updated_at  timestamptz not null default now(),
+  constraint uq_legal_pages_slug unique (slug)
+);
+
+alter table public.legal_pages enable row level security;
+-- Lecture publique (pour les pages publiques)
+create policy "lecture publique"   on public.legal_pages for select using (true);
+-- Écriture uniquement via service_role (API admin)
+create policy "service role only write" on public.legal_pages for all using (false) with check (false);

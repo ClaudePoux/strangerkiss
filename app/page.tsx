@@ -162,6 +162,10 @@ export default function HomePage() {
           <Link href="/notre-histoire" className="hover:text-white/50 transition-colors">
             {t("home.ourStory")}
           </Link>
+          <span>·</span>
+          <Link href="/cgv" className="hover:text-white/50 transition-colors">
+            CGU
+          </Link>
         </p>
       </footer>
     </main>

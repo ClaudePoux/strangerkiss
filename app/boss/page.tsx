@@ -73,7 +73,7 @@ function AuthPanel({ onAuth }: { onAuth: (token: string, expiresAt: string) => v
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
-type Tab = "stats" | "users" | "beta" | "vip" | "moderation" | "waitlist" | "credits";
+type Tab = "stats" | "users" | "beta" | "vip" | "moderation" | "waitlist" | "credits" | "legal";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "stats", label: "Statistiques", icon: "📊" },
@@ -83,6 +83,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "moderation", label: "Modération", icon: "🚩" },
   { id: "waitlist", label: "Waitlist", icon: "📋" },
   { id: "credits", label: "Crédits", icon: "💰" },
+  { id: "legal", label: "Pages légales", icon: "📄" },
 ];
 
 // ── Stats tab ────────────────────────────────────────────────────────────────
@@ -542,6 +543,160 @@ function CreditsTab({ phone }: { phone: string }) {
   );
 }
 
+// ── Legal tab ────────────────────────────────────────────────────────────────
+
+const LEGAL_PAGES = [
+  { slug: "mentions-legales",              label: "Mentions légales" },
+  { slug: "politique-de-confidentialite",  label: "Politique de confidentialité" },
+  { slug: "notre-histoire",                label: "Notre histoire" },
+  { slug: "cgv",                           label: "CGU" },
+] as const;
+
+type LegalSlug = (typeof LEGAL_PAGES)[number]["slug"];
+
+const LEGAL_LANGS = [
+  { code: "en", label: "English" },
+  { code: "de", label: "Deutsch" },
+  { code: "it", label: "Italiano" },
+  { code: "es", label: "Español" },
+  { code: "ru", label: "Русский" },
+  { code: "zh", label: "中文" },
+  { code: "ja", label: "日本語" },
+] as const;
+
+type LegalPageData = Record<string, string> & { updated_at?: string };
+
+function LegalTab({ phone }: { phone: string }) {
+  const [activeSlug, setActiveSlug] = useState<LegalSlug>("mentions-legales");
+  const [pages, setPages] = useState<Record<LegalSlug, LegalPageData>>({} as Record<LegalSlug, LegalPageData>);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg]       = useState("");
+  const [expandedLang, setExpandedLang] = useState<string | null>(null);
+  const [langSaving, setLangSaving] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    adminFetch(phone, "/api/admin/legal")
+      .then(r => r.json())
+      .then(d => {
+        const map: Record<string, LegalPageData> = {};
+        for (const p of (d.pages ?? [])) map[p.slug as LegalSlug] = p;
+        setPages(map as Record<LegalSlug, LegalPageData>);
+      })
+      .catch(() => {});
+  }, [phone]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const current = pages[activeSlug] ?? {};
+
+  function setField(field: string, value: string) {
+    setPages(prev => ({
+      ...prev,
+      [activeSlug]: { ...prev[activeSlug], [field]: value },
+    }));
+  }
+
+  async function saveAndTranslate() {
+    setSaving(true); setMsg("");
+    const r = await adminFetch(phone, "/api/admin/legal", {
+      method: "POST",
+      body: JSON.stringify({ slug: activeSlug, content_fr: current.content_fr ?? "" }),
+    });
+    const d = await r.json();
+    setSaving(false);
+    if (d.ok) {
+      setMsg(`✓ Sauvegardé et traduit en ${d.translated?.length ?? 0} langue(s)`);
+      load();
+    } else {
+      setMsg(`Erreur : ${d.error}`);
+    }
+  }
+
+  async function saveLang(lang: string) {
+    setLangSaving(lang); setMsg("");
+    const r = await adminFetch(phone, "/api/admin/legal", {
+      method: "PUT",
+      body: JSON.stringify({ slug: activeSlug, lang, content: current[`content_${lang}`] ?? "" }),
+    });
+    const d = await r.json();
+    setLangSaving(null);
+    setMsg(d.ok ? `✓ ${lang.toUpperCase()} sauvegardé` : `Erreur : ${d.error}`);
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Page selector */}
+      <div className="flex gap-2 flex-wrap">
+        {LEGAL_PAGES.map(p => (
+          <button key={p.slug} onClick={() => { setActiveSlug(p.slug); setMsg(""); setExpandedLang(null); }}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${activeSlug === p.slug ? "bg-[#e91e8c] text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {current.updated_at && (
+        <p className="text-xs text-white/20">Dernière mise à jour : {fmt(current.updated_at)}</p>
+      )}
+
+      {/* French textarea */}
+      <div className="space-y-2">
+        <label className="block text-xs text-white/40">Contenu en français</label>
+        <textarea
+          value={current.content_fr ?? ""}
+          onChange={e => setField("content_fr", e.target.value)}
+          rows={14}
+          placeholder="Saisissez le contenu en français…"
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#e91e8c]/40 resize-y font-mono leading-relaxed"
+        />
+      </div>
+
+      {msg && <p className={`text-sm ${msg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{msg}</p>}
+
+      <button
+        onClick={saveAndTranslate}
+        disabled={saving}
+        className="bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-all"
+      >
+        {saving ? "Traduction en cours…" : "Sauvegarder et traduire automatiquement"}
+      </button>
+
+      {/* Per-language manual override */}
+      <div className="space-y-2 pt-2">
+        <p className="text-xs text-white/30 uppercase tracking-wider">Corrections par langue</p>
+        {LEGAL_LANGS.map(({ code, label }) => (
+          <div key={code} className="border border-white/10 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setExpandedLang(expandedLang === code ? null : code)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-white/60 hover:bg-white/5 transition-colors"
+            >
+              <span>{label}</span>
+              <span className="text-white/20">{expandedLang === code ? "▲" : "▼"}</span>
+            </button>
+            {expandedLang === code && (
+              <div className="px-4 pb-4 space-y-2 bg-white/3">
+                <textarea
+                  value={current[`content_${code}`] ?? ""}
+                  onChange={e => setField(`content_${code}`, e.target.value)}
+                  rows={8}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-white/20 resize-y font-mono leading-relaxed"
+                />
+                <button
+                  onClick={() => saveLang(code)}
+                  disabled={langSaving === code}
+                  className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition-colors"
+                >
+                  {langSaving === code ? "…" : `Sauvegarder ${label}`}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () => void }) {
@@ -580,6 +735,7 @@ function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () 
         {tab === "moderation" && <ModerationTab phone={adminPhone} />}
         {tab === "waitlist"   && <WaitlistTab phone={adminPhone} />}
         {tab === "credits"    && <CreditsTab phone={adminPhone} />}
+        {tab === "legal"      && <LegalTab phone={adminPhone} />}
       </main>
     </div>
   );

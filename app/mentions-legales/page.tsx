@@ -1,10 +1,25 @@
 import Link from "next/link";
+import { adminSb } from "@/lib/admin-auth";
 
 export const metadata = {
   title: "Mentions légales — StrangerKiss",
 };
 
-export default function MentionsLegalesPage() {
+async function getLegalContent(): Promise<string | null> {
+  try {
+    const { data } = await adminSb
+      .from("legal_pages")
+      .select("content_fr")
+      .eq("slug", "mentions-legales")
+      .maybeSingle();
+    return data?.content_fr || null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function MentionsLegalesPage() {
+  const dbContent = await getLegalContent();
   return (
     <main className="min-h-screen px-6 py-16 max-w-2xl mx-auto">
       <div className="mb-10">
@@ -19,7 +34,10 @@ export default function MentionsLegalesPage() {
       <h1 className="text-3xl font-bold text-white mb-10">Mentions légales</h1>
 
       <div className="space-y-10 text-sm text-white/60 leading-relaxed">
-
+        {dbContent ? (
+          <p className="whitespace-pre-line">{dbContent}</p>
+        ) : (
+        <>
         <section>
           <h2 className="text-base font-semibold text-white/90 mb-3">Éditeur du site</h2>
           <p>
@@ -93,6 +111,8 @@ export default function MentionsLegalesPage() {
         <p className="text-white/20 text-xs pt-4 border-t border-white/5">
           Dernière mise à jour : avril 2026
         </p>
+        </>
+        )}
       </div>
     </main>
   );
