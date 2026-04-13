@@ -104,7 +104,12 @@ export default function BetaPage() {
           // Nettoyage minimal : uniquement sk_user_id et données dérivées.
           // sk_phone est conservé intentionnellement — il permet la restauration
           // silencieuse via already_verified si l'utilisateur re-saisit son numéro.
-          console.warn("[/beta] Nettoyage sk_user_id (session invalide confirmée, phone conservé)");
+          console.warn(
+            "[/beta] Nettoyage sk_user_id — session invalide confirmée, restore échoué.\n" +
+            "  storedUserId:", storedUserId?.slice(0, 8) + "…", "\n" +
+            "  storedPhone:", storedPhone ? storedPhone.slice(0, 4) + "****" : "absent",
+            "\n  Stack:", new Error().stack?.split("\n").slice(1, 4).join(" | ")
+          );
           localStorage.removeItem("sk_user_id");
           localStorage.removeItem("sk_my_id");
           localStorage.removeItem("sk_user_credits");
@@ -121,13 +126,14 @@ export default function BetaPage() {
       }
 
       // Pas de session → créer un utilisateur anonyme pour la vérification
-      console.log("[/beta] Pas de storedUserId → beta/init");
+      console.log("[/beta] Pas de storedUserId (nettoyé ou premier accès) → beta/init");
       try {
         const r = await fetch("/api/beta/init", { method: "POST" });
         const { user_id } = await r.json();
-        console.log("[/beta] beta/init → user_id:", user_id ? user_id.slice(0, 8) + "…" : null);
+        console.log("[/beta] beta/init → nouveau user_id anonyme:", user_id ? user_id.slice(0, 8) + "…" : null);
         if (user_id) {
           setUserId(user_id);
+          // Note : remplace l'éventuel ancien sk_user_id supprimé juste au-dessus
           localStorage.setItem("sk_user_id", user_id);
         }
       } catch (err) {

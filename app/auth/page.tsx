@@ -50,7 +50,7 @@ export default function AuthPage() {
     const user = data.user;
     try {
       localStorage.setItem("sk_user_id", user.id);
-      localStorage.setItem("sk_user_phone", user.phone);
+      localStorage.setItem("sk_phone", user.phone);   // fix: était sk_user_phone (mauvaise clé)
       localStorage.setItem("sk_user_credits", String(user.credits));
     } catch {}
     router.push("/profile");
