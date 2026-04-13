@@ -171,6 +171,21 @@ function MapPageContent() {
   // Synchronise pinsRef à chaque update de pins (sans recréer l'effet inbox)
   useEffect(() => { pinsRef.current = pins; }, [pins]);
 
+  // Déclenche la SurveyModal si sk_survey_pending est actif.
+  // Appelée au montage ET à chaque retour de visibilité (router cache Next.js).
+  function checkSurveyPending(source: string) {
+    try {
+      const pending = localStorage.getItem("sk_survey_pending");
+      const done    = localStorage.getItem("sk_survey_done");
+      console.log(`[MapClient] checkSurveyPending (${source}) — pending:`, pending, "done:", done);
+      if (pending === "true" && done !== "true") {
+        console.log("[MapClient] → setShowSurvey(true)");
+        setShowSurvey(true);
+        localStorage.removeItem("sk_survey_pending");
+      }
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => {
     const id = getOrCreateMyId();
     setMyId(id);
@@ -194,15 +209,19 @@ function MapPageContent() {
           .catch(() => {});
       }
       if (localStorage.getItem("sk_phone")) setPhoneVerified(true);
-      // Enquête post-expérience : déclencher si marquée pending et pas encore faite
-      if (
-        localStorage.getItem("sk_survey_pending") === "true" &&
-        localStorage.getItem("sk_survey_done") !== "true"
-      ) {
-        setShowSurvey(true);
-        localStorage.removeItem("sk_survey_pending");
-      }
+      // Enquête post-expérience : check initial au montage
+      checkSurveyPending("[MapClient] mount");
     } catch { /* ignore */ }
+
+    // Fallback pour le router cache Next.js (retour arrière sans remontage complet) :
+    // re-check au retour de visibilité (même onglet, même page redevenue visible)
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        checkSurveyPending("[MapClient] visibilitychange");
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
   const refreshPins = useCallback(async (lat: number, lng: number, currentMyId: string) => {
@@ -439,8 +458,8 @@ function MapPageContent() {
         {/* Toast rendu via portal dans document.body — échappe à tout stacking context */}
         {portalMounted && unreadSender && createPortal(
           <div
-            className="flex items-center gap-3 bg-[#1a1a2e]/95 border border-[#7c3aed]/40 rounded-2xl px-4 py-3 shadow-xl backdrop-blur-sm"
-            style={{ position: "fixed", bottom: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 9999, maxWidth: "90vw", width: "max-content" }}
+            className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 border-2 border-[#e91e8c]"
+            style={{ position: "fixed", bottom: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 9999, maxWidth: "90vw", width: "max-content", boxShadow: "0 4px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(233,30,140,0.15)" }}
           >
             <span className="text-xl flex-shrink-0">💬</span>
             <Link
@@ -448,12 +467,12 @@ function MapPageContent() {
               className="flex-1 min-w-0"
               onClick={() => setUnreadSender(null)}
             >
-              <p className="text-white text-sm font-semibold truncate">{unreadSender.name}</p>
-              <p className="text-white/50 text-xs">Nouveau message →</p>
+              <p className="text-[#1a1a2e] text-sm font-bold truncate">{unreadSender.name}</p>
+              <p className="text-[#e91e8c] text-xs font-medium">Nouveau message →</p>
             </Link>
             <button
               onClick={() => setUnreadSender(null)}
-              className="flex-shrink-0 text-white/30 hover:text-white/70 transition-colors text-lg leading-none"
+              className="flex-shrink-0 text-[#1a1a2e]/30 hover:text-[#1a1a2e]/70 transition-colors text-lg leading-none"
               aria-label="Fermer"
             >
               ×

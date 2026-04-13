@@ -89,15 +89,18 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         maxZoom: 19,
       }).addTo(map);
 
-      // Marqueur "moi"
+      // Marqueur "moi" — icône et gradient selon looking_for
+      const youIsHug = currentUser?.looking_for === "hug";
       const youIcon = L.divIcon({
         html: `<div style="
           width:44px;height:44px;border-radius:50%;
-          background:linear-gradient(135deg,#e91e8c,#7c3aed);
+          background:${youIsHug
+            ? "linear-gradient(135deg,#f59e0b,#ef4444)"
+            : "linear-gradient(135deg,#e91e8c,#7c3aed)"};
           display:flex;align-items:center;justify-content:center;
           font-size:22px;border:3px solid white;
           box-shadow:0 0 20px rgba(233,30,140,0.7);
-        ">💋</div>`,
+        ">${youIsHug ? "🤗" : "💋"}</div>`,
         className: "",
         iconSize: [44, 44],
         iconAnchor: [22, 22],
