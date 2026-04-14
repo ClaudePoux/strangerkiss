@@ -502,9 +502,10 @@ function MapPageContent() {
         <ReferralCard userId={userId} t={t} />
       )}
 
-      {/* Enquête post-expérience (une seule fois) */}
-      {showSurvey && !isDemo && (
-        <SurveyModal t={t} onClose={() => setShowSurvey(false)} />
+      {/* Enquête post-expérience — portal dans document.body pour passer au-dessus de Leaflet */}
+      {portalMounted && showSurvey && !isDemo && createPortal(
+        <SurveyModal t={t} onClose={() => setShowSurvey(false)} />,
+        document.body
       )}
 
       {/* Panneau profils proches */}

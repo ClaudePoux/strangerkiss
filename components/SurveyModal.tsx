@@ -51,7 +51,7 @@ export default function SurveyModal({ t, onClose }: Props) {
     "py-3 rounded-xl bg-white/5 hover:bg-[#e91e8c]/15 border border-white/10 hover:border-[#e91e8c]/30 text-white/80 hover:text-white text-sm transition-all active:scale-95";
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center px-4" style={{ zIndex: 9999 }}>
       <div className="bg-[#0d0d1a] border border-white/10 rounded-2xl p-8 max-w-sm w-full shadow-2xl">
 
         {step === "q1" && (
