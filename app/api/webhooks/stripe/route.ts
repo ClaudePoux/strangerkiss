@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { pool, mysqlReady } from "@/lib/mysql";
+import { adminSb } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
   if (!stripe) {
@@ -15,26 +15,32 @@ export async function POST(req: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
-    console.error("Stripe webhook signature error:", err);
+    console.error("[stripe/webhook] Signature invalide:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    const userId = session.metadata?.user_id;
+    const userId  = session.metadata?.user_id;
     const credits = parseInt(session.metadata?.credits ?? "0", 10);
 
     if (!userId || !credits) {
+      console.error("[stripe/webhook] Metadata manquante:", session.metadata);
       return NextResponse.json({ error: "Metadata manquante" }, { status: 400 });
     }
 
-    if (mysqlReady) {
-      // Incrément atomique MySQL
-      await pool.execute(
-        `UPDATE users SET credits = credits + ? WHERE id = ?`,
-        [credits, userId]
-      );
+    // Incrément atomique via la fonction RPC Supabase (security definer)
+    const { error } = await adminSb.rpc("add_credits", {
+      p_user_id: userId,
+      p_amount: credits,
+    });
+
+    if (error) {
+      console.error("[stripe/webhook] add_credits RPC error:", error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    console.log(`[stripe/webhook] +${credits} crédits → user ${userId.slice(0, 8)}…`);
   }
 
   return NextResponse.json({ received: true });

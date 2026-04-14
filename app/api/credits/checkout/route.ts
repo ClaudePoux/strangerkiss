@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    // Laisser Stripe auto-détecter les méthodes disponibles (card + Apple Pay + Google Pay)
     payment_method_types: ["card"],
     line_items: [
       {
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
           unit_amount: pack.price,
           product_data: {
             name: `StrangerKiss — Pack ${pack.label}`,
-            description: `${pack.credits} crédits`,
+            description: `${pack.credits} crédits · Tarif année de lancement`,
           },
         },
       },
@@ -36,9 +37,10 @@ export async function POST(req: NextRequest) {
     metadata: {
       user_id: userId,
       credits: String(pack.credits),
+      pack_id: pack.id,
     },
-    success_url: `${appUrl}/credits?success=1`,
-    cancel_url: `${appUrl}/credits?cancelled=1`,
+    success_url: `${appUrl}/credits/success?credits=${pack.credits}&pack=${pack.label}`,
+    cancel_url:  `${appUrl}/credits/cancel`,
   });
 
   return NextResponse.json({ url: session.url });

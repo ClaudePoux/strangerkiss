@@ -1,56 +1,52 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CREDIT_PACKS } from "@/lib/stripe";
 
 function CreditsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [credits, setCredits] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
 
-  const success = searchParams.get("success") === "1";
-  const cancelled = searchParams.get("cancelled") === "1";
-
   useEffect(() => {
     try {
       const id = localStorage.getItem("sk_user_id");
-      if (!id) { router.push("/auth"); return; }
+      if (!id) { router.push("/beta"); return; }
       setUserId(id);
-      // Rafraîchir le solde depuis MySQL via API
+      const cached = localStorage.getItem("sk_user_credits");
+      if (cached !== null) setCredits(parseInt(cached, 10));
       fetch(`/api/credits/balance?user_id=${id}`)
         .then((r) => r.json())
         .then(({ credits: c }) => {
-          if (c !== null) {
+          if (c != null) {
             setCredits(c);
             localStorage.setItem("sk_user_credits", String(c));
-          } else {
-            setCredits(parseInt(localStorage.getItem("sk_user_credits") ?? "0", 10));
           }
         })
-        .catch(() => {
-          setCredits(parseInt(localStorage.getItem("sk_user_credits") ?? "0", 10));
-        });
+        .catch(() => {});
     } catch {
-      router.push("/auth");
+      router.push("/beta");
     }
-  }, [router, success]);
+  }, [router]);
 
   async function handleBuy(packId: string) {
     if (!userId) return;
     setBuying(packId);
-    const res = await fetch("/api/credits/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ packId, userId }),
-    });
-    const data = await res.json();
-    setBuying(null);
-    if (data.url) {
-      window.location.href = data.url;
+    try {
+      const res = await fetch("/api/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packId, userId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } finally {
+      setBuying(null);
     }
   }
 
@@ -90,23 +86,17 @@ function CreditsContent() {
           )}
         </div>
 
-        {/* Notifications */}
-        {success && (
-          <div className="mb-4 px-4 py-3 bg-green-500/15 border border-green-500/25 rounded-2xl text-green-300 text-sm text-center">
-            Paiement confirmé ! Vos crédits ont été ajoutés.
-          </div>
-        )}
-        {cancelled && (
-          <div className="mb-4 px-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white/50 text-sm text-center">
-            Paiement annulé.
-          </div>
-        )}
-
         {/* Packs */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
-            Recharger
-          </h2>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
+              Recharger
+            </h2>
+            <span className="text-[10px] font-semibold text-[#e91e8c] bg-[#e91e8c]/10 border border-[#e91e8c]/20 px-2.5 py-1 rounded-full">
+              🚀 Tarifs année de lancement
+            </span>
+          </div>
+
           {CREDIT_PACKS.map((pack) => (
             <button
               key={pack.id}
@@ -131,8 +121,12 @@ function CreditsContent() {
                 <div className="font-bold text-white">
                   {(pack.price / 100).toFixed(2).replace(".", ",")} €
                 </div>
-                {buying === pack.id && (
+                {buying === pack.id ? (
                   <div className="text-xs text-white/40 animate-pulse">Chargement…</div>
+                ) : (
+                  <div className="text-xs text-white/30">
+                    {(pack.price / pack.credits / 100).toFixed(2).replace(".", ",")} €/crédit
+                  </div>
                 )}
               </div>
             </button>

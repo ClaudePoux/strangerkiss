@@ -8,14 +8,14 @@ export const CREDIT_PACKS = [
   {
     id: "starter",
     credits: 5,
-    price: 399, // centimes EUR
+    price: 200, // 2,00 € — tarif année de lancement
     label: "Starter",
     description: "5 crédits",
   },
   {
     id: "explorer",
     credits: 15,
-    price: 999,
+    price: 500, // 5,00 € — tarif année de lancement
     label: "Explorer",
     description: "15 crédits",
     popular: true,
@@ -23,7 +23,7 @@ export const CREDIT_PACKS = [
   {
     id: "nomad",
     credits: 35,
-    price: 1999,
+    price: 1000, // 10,00 € — tarif année de lancement
     label: "Nomad",
     description: "35 crédits",
   },
