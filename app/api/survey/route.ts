@@ -7,10 +7,9 @@ const sb = createClient(
 );
 
 // POST /api/survey
-// Body: { user_id: string, gender_survey: string, travel_situation: string }
-// Enregistre les réponses à l'enquête post-expérience.
+// Body: { user_id, travel_situation, discovery_channel }
 export async function POST(req: NextRequest) {
-  const { user_id, gender_survey, travel_situation } = await req.json();
+  const { user_id, travel_situation, discovery_channel } = await req.json();
 
   if (!user_id) {
     return NextResponse.json({ error: "user_id manquant" }, { status: 400 });
@@ -22,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   const { error } = await sb
     .from("users")
-    .update({ survey_done: true, gender_survey, travel_situation })
+    .update({ survey_done: true, travel_situation, discovery_channel })
     .eq("id", user_id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

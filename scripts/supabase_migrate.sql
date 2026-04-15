@@ -380,3 +380,14 @@ alter table public.legal_pages enable row level security;
 create policy "lecture publique"   on public.legal_pages for select using (true);
 -- Écriture uniquement via service_role (API admin)
 create policy "service role only write" on public.legal_pages for all using (false) with check (false);
+
+-- ------------------------------------------------------------
+-- 16. Enquête post-expérience — ajout discovery_channel
+--     (comment l'utilisateur a connu l'app)
+-- ------------------------------------------------------------
+alter table public.users add column if not exists discovery_channel text;
+
+-- gender_survey n'est plus collecté (remplacé par le genre du profil).
+-- Conserver la colonne pour ne pas perdre les données existantes.
+-- Pour la supprimer une fois les données archivées :
+--   alter table public.users drop column if exists gender_survey;
