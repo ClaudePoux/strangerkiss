@@ -67,7 +67,6 @@ function MapPageContent() {
       femme: t("profile.genderFemme"),
       homme: t("profile.genderHomme"),
       "non-binaire": t("profile.genderNonBinaire"),
-      autre: t("profile.genderAutre"),
     };
     return m[g] ?? g;
   }

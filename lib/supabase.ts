@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 export type LookingFor = "hug" | "french_kiss";
-export type Gender = "homme" | "femme" | "non-binaire" | "autre";
+export type Gender = "homme" | "femme" | "non-binaire";
 
 export interface User {
   id: string;

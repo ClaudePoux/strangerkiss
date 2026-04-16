@@ -27,7 +27,6 @@ function ProfilePageContent() {
     { value: "femme", label: t("profile.genderFemme"), icon: "♀️" },
     { value: "homme", label: t("profile.genderHomme"), icon: "♂️" },
     { value: "non-binaire", label: t("profile.genderNonBinaire"), icon: "⚧" },
-    { value: "autre", label: t("profile.genderAutre"), icon: "✨" },
   ];
 
   async function handleSubmit(e: FormEvent) {
@@ -142,7 +141,7 @@ function ProfilePageContent() {
             <label className="block text-sm font-medium text-white/70">
               {t("profile.genderLabel")}
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {GENDERS.map((opt) => (
                 <button
                   key={opt.value}
