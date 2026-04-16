@@ -34,7 +34,7 @@ Pas d'inscription classique — vérification invisible par SMS :
 
 1. L'utilisateur remplit son profil (pseudo, âge, sexe, type de rencontre, commentaire, pour me reconnaître)
 2. Avant d'apparaître sur la carte : "Entrez votre numéro pour recevoir vos 3 crédits gratuits"
-3. Code SMS envoyé via Twilio → validé → profil visible sur la carte
+3. Code SMS envoyé via OVH → validé → profil visible sur la carte
 
 - Pas de mot de passe, pas d'email
 - Le numéro de téléphone n'est **jamais visible** des autres utilisateurs
@@ -56,7 +56,7 @@ Pas d'inscription classique — vérification invisible par SMS :
 - **Hébergement** : Vercel (déjà déployé)
 - **Base de données** : Supabase
 - **Paiements** : Stripe (Apple Pay et Google Pay)
-- **SMS** : Twilio
+- **SMS** : OVH
 - **Traduction** : DeepL API
 
 ### Migration base de données prévue
@@ -80,7 +80,7 @@ Pas d'inscription classique — vérification invisible par SMS :
 - Interface admin : permet de réapprouver un numéro banni
 - Pas de détection automatique des messages (système manuel suffisant)
 - Le bannissement se fait par numéro de téléphone (table `banned_phones`)
-- À implémenter en même temps que Twilio
+- À implémenter en même temps que OVH SMS
 
 ## Interface Admin
 
@@ -126,7 +126,7 @@ Pas d'inscription classique — vérification invisible par SMS :
 
 ### 7. Accès services externes
 - Lien direct vers dashboard Stripe
-- Lien direct vers console Twilio
+- Lien direct vers console OVH SMS
 - Lien direct vers Supabase
 
 ### 8. Sécurité
