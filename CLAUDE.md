@@ -59,6 +59,16 @@ Pas d'inscription classique — vérification invisible par SMS :
 - **SMS** : Twilio
 - **Traduction** : DeepL API
 
+### Migration base de données prévue
+
+- **Supabase (actuel)** : gratuit, utilisé pour les tests et le lancement
+- **Cible** : solution européenne après le lancement selon la croissance
+  - Option 1 : Scaleway PostgreSQL managé (Paris, ~15€/mois)
+  - Option 2 : Clever Cloud PostgreSQL (France, ~10€/mois)
+  - Option 3 : VPS OVH avec PostgreSQL (si volume important)
+- Migration simple car même moteur PostgreSQL
+- À planifier quand les limites du plan gratuit Supabase approchent
+
 ## Modération
 
 - Bouton "Signaler" dans le chat
