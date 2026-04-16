@@ -25,14 +25,43 @@ function getOrCreateMyId(): string {
   }
 }
 
-// Données de base des profils fictifs (sans lat/lng ni timestamps).
-// Les coordonnées et timestamps sont injectés dans loadMap() pour éviter
-// que new Date() au niveau module crée un mismatch d'hydratation SSR/client.
-const DEMO_PIN_DATA = [
-  { id: "demo-1", name: "Sofia",  age: 26, gender: "femme"  as Gender, nationality: "IT", bio: "Backpackeuse en route pour Barcelone 🌞",          appearance: "Cheveux noirs, sac rouge, casque blanc", looking_for: "hug"          as LookingFor },
-  { id: "demo-2", name: "Luca",   age: 31, gender: "homme"  as Gender, nationality: "DE", bio: "Photojournaliste, toujours en transit 📷",          appearance: "Grand, lunettes rondes, veste kaki",     looking_for: "french_kiss"   as LookingFor },
-  { id: "demo-3", name: "Amara",  age: 29, gender: "femme"  as Gender, nationality: "GB", bio: "Solo traveler, love spontaneous connections ✈️",    appearance: "Tresse africaine, manteau beige",        looking_for: "hug"          as LookingFor },
-];
+/** Maps browser locale to a demo_pins country code. */
+function localeToCountry(locale: string): string {
+  const map: Record<string, string> = {
+    fr: "fr", it: "it", de: "de", es: "es", en: "en",
+    pl: "ee", cs: "ee", hu: "ee", sk: "ee", ro: "ee",
+  };
+  return map[locale.split(/[-_]/)[0].toLowerCase()] ?? "fr";
+}
+
+/** Minimal seeded PRNG (LCG) — deterministic for a given seed. */
+function seededRng(seed: number) {
+  let s = (seed ^ 0xdeadbeef) >>> 0;
+  return () => {
+    s = ((s * 1664525 + 1013904223) & 0xffffffff) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
+/** Returns [lat, lng] offset by `distM` metres in direction `angleDeg`. */
+function offsetLatLng(
+  lat: number, lng: number, distM: number, angleDeg: number
+): [number, number] {
+  const R = 6371000;
+  const d = distM / R;
+  const a = (angleDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(a)
+  );
+  const lng2 =
+    (lng * Math.PI) / 180 +
+    Math.atan2(
+      Math.sin(a) * Math.sin(d) * Math.cos(lat1),
+      Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+    );
+  return [(lat2 * 180) / Math.PI, (lng2 * 180) / Math.PI];
+}
 
 function flagEmoji(code: string): string {
   if (!code) return "";
@@ -239,17 +268,50 @@ function MapPageContent() {
       if (profile) {
         try {
           if (isDemo) {
-            // Pins fictifs créés ici (pas au niveau module) pour éviter new Date() côté SSR
-            const now = new Date().toISOString();
-            const offsets: [number, number][] = [[0.001, 0.0015], [-0.0012, 0.0008], [0.0006, -0.0013]];
-            setPins(DEMO_PIN_DATA.map((d, i) => ({
-              ...d,
-              user_id: undefined,
-              lat: lat + offsets[i][0],
-              lng: lng + offsets[i][1],
-              created_at: now,
-              last_seen:  now,
-            })));
+            // Sélectionner 3-5 profils fictifs depuis Supabase selon la langue du navigateur.
+            // Rotation toutes les 6h basée sur une seed déterministe.
+            const country = localeToCountry(locale);
+            const cacheKey = `sk_demo_pins_${country}`;
+            let pool: UserPin[] | null = null;
+            try {
+              const cached = sessionStorage.getItem(cacheKey);
+              if (cached) pool = JSON.parse(cached) as UserPin[];
+            } catch { /* ignore */ }
+
+            if (!pool) {
+              try {
+                const res = await fetch(`/api/demo/pins?country=${country}`);
+                const { pins: fetched } = await res.json();
+                pool = fetched as UserPin[];
+                sessionStorage.setItem(cacheKey, JSON.stringify(pool));
+              } catch { pool = []; }
+            }
+
+            if (pool && pool.length > 0) {
+              // Seed basée sur l'heure arrondie à la tranche de 6h
+              const slot = Math.floor(Date.now() / (6 * 3600 * 1000));
+              const rng = seededRng(slot);
+              const count = 3 + Math.floor(rng() * 3); // 3–5 profils
+              const shuffled = [...pool].sort(() => rng() - 0.5);
+              const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+              const now = new Date().toISOString();
+              setPins(
+                selected.map((d, i) => {
+                  const dist = 200 + Math.floor(rng() * 800); // 200–1000 m
+                  const angle = rng() * 360;
+                  const [pLat, pLng] = offsetLatLng(lat, lng, dist, angle);
+                  return {
+                    ...d,
+                    id: `demo-${i + 1}`,
+                    user_id: undefined,
+                    lat: pLat,
+                    lng: pLng,
+                    created_at: now,
+                    last_seen: now,
+                  };
+                })
+              );
+            }
           } else {
             const storedUserId  = localStorage.getItem("sk_user_id") ?? undefined;
             const existingPinId = localStorage.getItem("sk_my_id")   ?? undefined;
