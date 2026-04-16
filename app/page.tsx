@@ -90,11 +90,10 @@ export default function HomePage() {
         </div>
 
         <div className="relative z-10 max-w-2xl mx-auto w-full">
-          <div className="text-7xl mb-6 select-none">💋</div>
+          <img src="/levres.svg" alt="" className="w-20 h-20 mb-6 mx-auto select-none" />
 
-          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-4">
-            <span className="text-white">Stranger</span>
-            <span className="text-[#e91e8c]">Kiss</span>
+          <h1 className="mb-4">
+            <img src="/logo-StrangerKiss-blanc.svg" alt="StrangerKiss" className="h-14 sm:h-16 mx-auto" />
           </h1>
 
           <p className="text-lg sm:text-xl text-white/60 mb-4 leading-relaxed">

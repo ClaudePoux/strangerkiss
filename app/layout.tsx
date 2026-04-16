@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "StrangerKiss — Find a hug or a kiss nearby",
   description:
     "Meet travellers around you to share a hug or a French kiss.",
+  icons: { icon: "/levres.svg" },
 };
 
 export default function RootLayout({

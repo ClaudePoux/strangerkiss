@@ -427,8 +427,8 @@ function MapPageContent() {
     <main className="flex flex-col h-screen overflow-hidden">
       {/* Top bar */}
       <header className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-        <Link href="/" className="text-xl font-bold">
-          Stranger<span className="text-[#e91e8c]">Kiss</span>
+        <Link href="/">
+          <img src="/logo-StrangerKiss-blanc.svg" alt="StrangerKiss" className="h-7" />
         </Link>
         <div className="flex items-center gap-3">
           {profile && (
@@ -591,7 +591,7 @@ function MapPageContent() {
                 key={pin.id}
                 className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl p-4 min-w-[180px] max-w-[210px] flex flex-col gap-1.5"
               >
-                <div className="text-2xl">{pin.looking_for === "hug" ? "🤗" : "💋"}</div>
+                <div className="text-2xl">{pin.looking_for === "hug" ? "🤗" : <img src="/levres.svg" alt="kiss" className="w-8 h-8" />}</div>
                 <div className="font-semibold text-white text-sm">
                   {flagEmoji(pin.nationality)}{pin.nationality ? " " : ""}{pin.name}, {t("map.age", { age: String(pin.age) })}
                 </div>

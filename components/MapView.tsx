@@ -100,7 +100,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
           display:flex;align-items:center;justify-content:center;
           font-size:22px;border:3px solid white;
           box-shadow:0 0 20px rgba(233,30,140,0.7);
-        ">${youIsHug ? "🤗" : "💋"}</div>`,
+        ">${youIsHug ? "🤗" : '<img src="/levres.svg" style="width:22px;height:22px;object-fit:contain" />'}</div>`,
         className: "",
         iconSize: [44, 44],
         iconAnchor: [22, 22],
@@ -177,7 +177,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
           display:flex;align-items:center;justify-content:center;
           font-size:18px;border:2px solid rgba(255,255,255,0.5);
           box-shadow:0 0 12px rgba(0,0,0,0.5);
-        ">${isHug ? "🤗" : "💋"}</div>`,
+        ">${isHug ? "🤗" : '<img src="/levres.svg" style="width:18px;height:18px;object-fit:contain" />'}</div>`,
         className: "",
         iconSize: [38, 38],
         iconAnchor: [19, 19],
