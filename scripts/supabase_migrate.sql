@@ -391,3 +391,57 @@ alter table public.users add column if not exists discovery_channel text;
 -- Conserver la colonne pour ne pas perdre les données existantes.
 -- Pour la supprimer une fois les données archivées :
 --   alter table public.users drop column if exists gender_survey;
+
+-- ------------------------------------------------------------
+-- 17. Sécurité RLS — toutes les tables en service_role only
+--
+-- Contexte : l'alerte Supabase signale des tables avec RLS activé
+-- mais des policies permissives (using true) accessibles via anon key.
+-- Toutes les opérations passent par les API routes Next.js (service_role).
+-- Le client anon ne doit jamais accéder directement aux données.
+--
+-- À exécuter dans Supabase → SQL Editor → New Query
+-- ------------------------------------------------------------
+
+-- user_pins : remplacer les 4 policies publiques
+drop policy if exists "lecture publique"     on public.user_pins;
+drop policy if exists "insertion publique"   on public.user_pins;
+drop policy if exists "mise à jour publique" on public.user_pins;
+drop policy if exists "suppression publique" on public.user_pins;
+create policy "service role only" on public.user_pins using (false);
+
+-- messages : remplacer les 2 policies publiques
+-- Note : le realtime Supabase fonctionne via service_role côté serveur
+drop policy if exists "lecture publique"   on public.messages;
+drop policy if exists "insertion publique" on public.messages;
+create policy "service role only" on public.messages using (false);
+
+-- match_requests : remplacer les 3 policies publiques
+drop policy if exists "lecture publique"     on public.match_requests;
+drop policy if exists "insertion publique"   on public.match_requests;
+drop policy if exists "mise à jour publique" on public.match_requests;
+create policy "service role only" on public.match_requests using (false);
+
+-- blocks : remplacer les 2 policies publiques
+drop policy if exists "lecture publique"   on public.blocks;
+drop policy if exists "insertion publique" on public.blocks;
+create policy "service role only" on public.blocks using (false);
+
+-- reports : remplacer les 2 policies (select using true + insert with check true)
+drop policy if exists "lecture service role" on public.reports;
+drop policy if exists "insertion publique"   on public.reports;
+create policy "service role only" on public.reports using (false);
+
+-- waitlist : remplacer les 2 policies publiques
+drop policy if exists "lecture publique"   on public.waitlist;
+drop policy if exists "insertion publique" on public.waitlist;
+create policy "service role only" on public.waitlist using (false);
+
+-- legal_pages : remplacer la lecture publique + la policy d'écriture partielle
+drop policy if exists "lecture publique"        on public.legal_pages;
+drop policy if exists "service role only write" on public.legal_pages;
+create policy "service role only" on public.legal_pages using (false);
+
+-- Tables déjà correctement configurées (aucune action requise) :
+--   users, banned_phones, beta_testers, sms_codes, referrals,
+--   admin_sessions, admin_attempts, admins, vip_watches, vip_alerts
