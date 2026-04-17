@@ -546,10 +546,33 @@ function CreditsTab({ phone }: { phone: string }) {
 
 // ── Launch tab ───────────────────────────────────────────────────────────────
 
+interface DiagResult {
+  ok: boolean;
+  config: Record<string, string | null>;
+  missing: string[];
+  connectivity: {
+    status: number;
+    ok: boolean;
+    body: unknown;
+    error?: string;
+  } | null;
+  sms_queue_count: number | null;
+  error?: string;
+}
+
+interface LaunchResult {
+  ok: boolean;
+  total: number;
+  sent: number;
+  credited: number;
+  errors: { phone: string; error: string }[];
+  error?: string;
+}
+
 function LaunchTab({ phone }: { phone: string }) {
-  const [diagResult, setDiagResult] = useState<Record<string, unknown> | null>(null);
+  const [diagResult, setDiagResult] = useState<DiagResult | null>(null);
   const [diagLoading, setDiagLoading] = useState(false);
-  const [launchResult, setLaunchResult] = useState<Record<string, unknown> | null>(null);
+  const [launchResult, setLaunchResult] = useState<LaunchResult | null>(null);
   const [launchLoading, setLaunchLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -591,7 +614,7 @@ function LaunchTab({ phone }: { phone: string }) {
             {/* Variables d'environnement */}
             <div className="bg-black/30 rounded-xl p-4 space-y-1.5">
               <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Variables d'environnement</p>
-              {Object.entries((diagResult.config ?? {}) as Record<string, string | null>).map(([k, v]: [string, string | null]) => (
+              {Object.entries(diagResult.config ?? {}).map(([k, v]) => (
                 <div key={k} className="flex items-center justify-between text-xs font-mono">
                   <span className="text-white/50">{k}</span>
                   <span className={v ? "text-green-400" : "text-red-400"}>{v ?? "— MANQUANT —"}</span>
@@ -599,10 +622,10 @@ function LaunchTab({ phone }: { phone: string }) {
               ))}
             </div>
             {/* Manquants */}
-            {Array.isArray(diagResult.missing) && diagResult.missing.length > 0 && (
+            {diagResult.missing.length > 0 && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-xs text-red-300">
                 <p className="font-semibold mb-1">Variables manquantes :</p>
-                {(diagResult.missing as string[]).map(k => <p key={k}>• {k}</p>)}
+                {diagResult.missing.map(k => <p key={k}>• {k}</p>)}
               </div>
             )}
             {/* Connectivité */}
@@ -611,18 +634,18 @@ function LaunchTab({ phone }: { phone: string }) {
                 <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Réponse OVH API</p>
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-white/50">HTTP status :</span>
-                  <span className={((diagResult.connectivity as Record<string,unknown>).ok) ? "text-green-400" : "text-red-400"}>
-                    {String((diagResult.connectivity as Record<string,unknown>).status)}
+                  <span className={diagResult.connectivity.ok ? "text-green-400" : "text-red-400"}>
+                    {diagResult.connectivity.status}
                   </span>
                 </div>
-                {(diagResult.connectivity as Record<string,unknown>).error && (
+                {diagResult.connectivity.error && (
                   <p className="text-xs text-red-300 break-all">
-                    Erreur : {String((diagResult.connectivity as Record<string,unknown>).error)}
+                    Erreur : {diagResult.connectivity.error}
                   </p>
                 )}
-                {(diagResult.connectivity as Record<string,unknown>).body && (
+                {diagResult.connectivity.body && (
                   <pre className="text-xs text-white/40 overflow-auto max-h-32 mt-2">
-                    {JSON.stringify((diagResult.connectivity as Record<string,unknown>).body, null, 2)}
+                    {JSON.stringify(diagResult.connectivity.body, null, 2)}
                   </pre>
                 )}
               </div>
@@ -687,15 +710,15 @@ function LaunchTab({ phone }: { phone: string }) {
                     { label: "Crédités", value: launchResult.credited },
                   ].map(c => (
                     <div key={c.label}>
-                      <p className="text-2xl font-bold text-white">{String(c.value)}</p>
+                      <p className="text-2xl font-bold text-white">{c.value}</p>
                       <p className="text-xs text-white/40">{c.label}</p>
                     </div>
                   ))}
                 </div>
-                {Array.isArray(launchResult.errors) && launchResult.errors.length > 0 && (
+                {launchResult.errors.length > 0 && (
                   <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3 space-y-1">
-                    <p className="text-xs text-red-300 font-semibold">Erreurs ({(launchResult.errors as unknown[]).length}) :</p>
-                    {(launchResult.errors as { phone: string; error: string }[]).map((e, i) => (
+                    <p className="text-xs text-red-300 font-semibold">Erreurs ({launchResult.errors.length}) :</p>
+                    {launchResult.errors.map((e, i) => (
                       <p key={i} className="text-xs text-red-400 font-mono">{e.phone} — {e.error}</p>
                     ))}
                   </div>
