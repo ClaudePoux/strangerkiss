@@ -241,15 +241,26 @@ function MapPageContent() {
       checkSurveyPending("[MapClient] mount");
     } catch { /* ignore */ }
 
-    // Fallback pour le router cache Next.js (retour arrière sans remontage complet) :
-    // re-check au retour de visibilité (même onglet, même page redevenue visible)
+    // Fallback 1 : retour de visibilité (changement d'onglet ou d'app)
     function onVisibilityChange() {
       if (document.visibilityState === "visible") {
         checkSurveyPending("[MapClient] visibilitychange");
       }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+
+    // Fallback 2 : navigation client-side Next.js depuis /chat (router cache).
+    // Quand MapClient reste monté en mémoire, ni mount ni visibilitychange ne se
+    // déclenchent. Le chat dispatche sk:survey_check juste après avoir posé le flag.
+    function onSurveyCheck() {
+      checkSurveyPending("[MapClient] sk:survey_check");
+    }
+    window.addEventListener("sk:survey_check", onSurveyCheck);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("sk:survey_check", onSurveyCheck);
+    };
   }, []);
 
   const refreshPins = useCallback(async (lat: number, lng: number, currentMyId: string) => {

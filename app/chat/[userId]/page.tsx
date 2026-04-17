@@ -238,8 +238,16 @@ export default function ChatPage() {
     }
     // Déclencher l'enquête post-expérience (une seule fois)
     try {
-      if (localStorage.getItem("sk_survey_done") !== "true") {
+      const surveyDone = localStorage.getItem("sk_survey_done");
+      console.log("[chat] handleMeetingResponse — accept:", accept, "| sk_survey_done:", surveyDone);
+      if (surveyDone !== "true") {
         localStorage.setItem("sk_survey_pending", "true");
+        console.log("[chat] sk_survey_pending = true → dispatch sk:survey_check");
+        // Notifier MapClient s'il est déjà monté en mémoire (router cache Next.js).
+        // Si MapClient est fresh-mounted, son useEffect de mount lira sk_survey_pending.
+        window.dispatchEvent(new Event("sk:survey_check"));
+      } else {
+        console.log("[chat] survey déjà effectué — pas de pending");
       }
     } catch { /* ignore */ }
   }

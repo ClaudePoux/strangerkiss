@@ -73,7 +73,7 @@ function AuthPanel({ onAuth }: { onAuth: (token: string, expiresAt: string) => v
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
-type Tab = "stats" | "users" | "beta" | "vip" | "moderation" | "waitlist" | "credits" | "legal";
+type Tab = "stats" | "users" | "beta" | "vip" | "moderation" | "waitlist" | "credits" | "legal" | "launch";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "stats", label: "Statistiques", icon: "📊" },
@@ -84,6 +84,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "waitlist", label: "Waitlist", icon: "📋" },
   { id: "credits", label: "Crédits", icon: "💰" },
   { id: "legal", label: "Pages légales", icon: "📄" },
+  { id: "launch", label: "Lancement 🚀", icon: "🚀" },
 ];
 
 // ── Stats tab ────────────────────────────────────────────────────────────────
@@ -543,6 +544,171 @@ function CreditsTab({ phone }: { phone: string }) {
   );
 }
 
+// ── Launch tab ───────────────────────────────────────────────────────────────
+
+function LaunchTab({ phone }: { phone: string }) {
+  const [diagResult, setDiagResult] = useState<Record<string, unknown> | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [launchResult, setLaunchResult] = useState<Record<string, unknown> | null>(null);
+  const [launchLoading, setLaunchLoading] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+
+  async function runDiag() {
+    setDiagLoading(true); setDiagResult(null);
+    const r = await adminFetch(phone, "/api/admin/sms-diagnostic");
+    const d = await r.json();
+    setDiagResult(d);
+    setDiagLoading(false);
+  }
+
+  async function runLaunch() {
+    setLaunchLoading(true); setLaunchResult(null);
+    const r = await adminFetch(phone, "/api/admin/launch-sms", { method: "POST", body: "{}" });
+    const d = await r.json();
+    setLaunchResult(d);
+    setLaunchLoading(false);
+    setConfirmed(false);
+  }
+
+  return (
+    <div className="space-y-8 max-w-2xl">
+
+      {/* Diagnostic OVH */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 className="text-white font-semibold">🔍 Diagnostic OVH SMS</h3>
+          <p className="text-xs text-white/40 mt-1">Vérifie la configuration et la connectivité sans envoyer de SMS.</p>
+        </div>
+        <button onClick={runDiag} disabled={diagLoading}
+          className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm px-5 py-2.5 rounded-xl transition-all">
+          {diagLoading ? "Test en cours…" : "Lancer le diagnostic"}
+        </button>
+        {diagResult && (
+          <div className="space-y-3">
+            <div className={`flex items-center gap-2 text-sm font-medium ${diagResult.ok ? "text-green-400" : "text-red-400"}`}>
+              {diagResult.ok ? "✓ OVH opérationnel" : "✗ Problème détecté"}
+            </div>
+            {/* Variables d'environnement */}
+            <div className="bg-black/30 rounded-xl p-4 space-y-1.5">
+              <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Variables d'environnement</p>
+              {Object.entries((diagResult.config ?? {}) as Record<string, string | null>).map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-white/50">{k}</span>
+                  <span className={v ? "text-green-400" : "text-red-400"}>{v ?? "— MANQUANT —"}</span>
+                </div>
+              ))}
+            </div>
+            {/* Manquants */}
+            {Array.isArray(diagResult.missing) && diagResult.missing.length > 0 && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-xs text-red-300">
+                <p className="font-semibold mb-1">Variables manquantes :</p>
+                {(diagResult.missing as string[]).map(k => <p key={k}>• {k}</p>)}
+              </div>
+            )}
+            {/* Connectivité */}
+            {diagResult.connectivity && (
+              <div className="bg-black/30 rounded-xl p-4 space-y-1">
+                <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Réponse OVH API</p>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-white/50">HTTP status :</span>
+                  <span className={((diagResult.connectivity as Record<string,unknown>).ok) ? "text-green-400" : "text-red-400"}>
+                    {String((diagResult.connectivity as Record<string,unknown>).status)}
+                  </span>
+                </div>
+                {(diagResult.connectivity as Record<string,unknown>).error && (
+                  <p className="text-xs text-red-300 break-all">
+                    Erreur : {String((diagResult.connectivity as Record<string,unknown>).error)}
+                  </p>
+                )}
+                {(diagResult.connectivity as Record<string,unknown>).body && (
+                  <pre className="text-xs text-white/40 overflow-auto max-h-32 mt-2">
+                    {JSON.stringify((diagResult.connectivity as Record<string,unknown>).body, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* SMS de lancement */}
+      <div className="bg-white/5 border border-[#e91e8c]/20 rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 className="text-white font-semibold">🚀 SMS de lancement — Waitlist</h3>
+          <p className="text-xs text-white/40 mt-1">
+            Envoie un SMS à <strong className="text-white/70">tous les numéros de la waitlist</strong> et attribue
+            automatiquement <strong className="text-white/70">10 crédits</strong> à chaque compte existant.
+          </p>
+          <div className="mt-3 bg-black/30 rounded-xl px-4 py-3 text-xs text-white/60 font-mono italic">
+            "StrangerKiss est live ! Vos 10 crédits vous attendent sur strangerkiss.com 💋"
+          </div>
+        </div>
+
+        {!confirmed ? (
+          <button onClick={() => setConfirmed(true)}
+            className="bg-[#e91e8c]/80 hover:bg-[#e91e8c] text-white text-sm font-semibold px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(233,30,140,0.25)]">
+            🚀 Envoyer SMS de lancement
+          </button>
+        ) : (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 space-y-3">
+            <p className="text-amber-300 text-sm font-semibold">⚠️ Confirmation requise</p>
+            <p className="text-white/60 text-xs">
+              Cette action enverra un SMS à tous les numéros de la waitlist. Elle est irréversible.
+              Vérifiez que le diagnostic OVH est OK avant de continuer.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={runLaunch} disabled={launchLoading}
+                className="bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all">
+                {launchLoading ? "Envoi en cours…" : "✓ Confirmer l'envoi"}
+              </button>
+              <button onClick={() => setConfirmed(false)} disabled={launchLoading}
+                className="bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-sm px-5 py-2.5 rounded-xl transition-all">
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+
+        {launchLoading && (
+          <p className="text-xs text-white/40 animate-pulse">Envoi en cours, ne pas fermer cette page…</p>
+        )}
+
+        {launchResult && (
+          <div className="space-y-3">
+            <div className={`flex items-center gap-2 text-sm font-medium ${launchResult.ok ? "text-green-400" : "text-red-400"}`}>
+              {launchResult.ok ? "✓ Envoi terminé" : `✗ Erreur : ${launchResult.error}`}
+            </div>
+            {launchResult.ok && (
+              <div className="bg-black/30 rounded-xl p-4 space-y-1.5">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  {[
+                    { label: "Total waitlist", value: launchResult.total },
+                    { label: "SMS envoyés", value: launchResult.sent },
+                    { label: "Crédités", value: launchResult.credited },
+                  ].map(c => (
+                    <div key={c.label}>
+                      <p className="text-2xl font-bold text-white">{String(c.value)}</p>
+                      <p className="text-xs text-white/40">{c.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {Array.isArray(launchResult.errors) && launchResult.errors.length > 0 && (
+                  <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3 space-y-1">
+                    <p className="text-xs text-red-300 font-semibold">Erreurs ({(launchResult.errors as unknown[]).length}) :</p>
+                    {(launchResult.errors as { phone: string; error: string }[]).map((e, i) => (
+                      <p key={i} className="text-xs text-red-400 font-mono">{e.phone} — {e.error}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Legal tab ────────────────────────────────────────────────────────────────
 
 const LEGAL_PAGES = [
@@ -736,6 +902,7 @@ function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () 
         {tab === "waitlist"   && <WaitlistTab phone={adminPhone} />}
         {tab === "credits"    && <CreditsTab phone={adminPhone} />}
         {tab === "legal"      && <LegalTab phone={adminPhone} />}
+        {tab === "launch"     && <LaunchTab phone={adminPhone} />}
       </main>
     </div>
   );
