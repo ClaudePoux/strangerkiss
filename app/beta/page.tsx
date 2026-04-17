@@ -160,6 +160,8 @@ export default function BetaPage() {
       const data = await res.json();
       if (data.ok) {
         setStep("code");
+      } else if (data.error === "phone_invalid") {
+        setError("Format invalide. Utilisez le format international : +33 6 12 34 56 78");
       } else if (data.error === "already_verified") {
         // Numéro déjà vérifié → récupérer la session silencieusement
         try {

@@ -96,9 +96,20 @@ async function sendOvhSMS(to: string, message: string) {
   });
 }
 
-/** Normalise un numéro : supprime espaces, tirets, points, parenthèses */
+/**
+ * Normalise un numéro de téléphone vers le format E.164 requis par OVH.
+ * - Supprime espaces, tirets, points, parenthèses
+ * - Convertit le préfixe `00XX` en `+XX` (ex: 0033... → +33...)
+ * - Retourne une chaîne vide si le numéro ne commence pas par `+` après normalisation
+ */
 function normalizePhone(p: string): string {
-  return p.replace(/[\s\-().]/g, "");
+  // Supprimer les séparateurs courants
+  let n = p.replace(/[\s\-().]/g, "");
+  // Convertir 00XX → +XX (format international sans +)
+  if (n.startsWith("00")) n = "+" + n.slice(2);
+  // Valider le format E.164 : doit commencer par + suivi de 7 à 15 chiffres
+  if (!/^\+\d{7,15}$/.test(n)) return "";
+  return n;
 }
 
 // POST /api/sms/send  { phone }
@@ -108,7 +119,13 @@ export async function POST(req: NextRequest) {
   console.log("[sms/send] Demande reçue — phone:", phone ? phone.slice(0, 4) + "****" : "(vide)");
 
   if (!phone) {
-    return NextResponse.json({ error: "phone_required" }, { status: 400 });
+    const raw = ((body.phone as string)?.trim() ?? "");
+    const isFormatError = raw.length > 0; // non vide mais format invalide
+    console.warn("[sms/send] Format téléphone invalide — reçu:", raw ? raw.slice(0, 4) + "****" : "(vide)");
+    return NextResponse.json(
+      { error: isFormatError ? "phone_invalid" : "phone_required" },
+      { status: 400 }
+    );
   }
 
   // Déjà vérifié ?

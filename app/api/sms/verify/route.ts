@@ -11,9 +11,17 @@ function generateRefCode(): string {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
-/** Normalise un numéro : supprime espaces, tirets, points, parenthèses */
+/**
+ * Normalise un numéro de téléphone vers le format E.164.
+ * - Supprime espaces, tirets, points, parenthèses
+ * - Convertit le préfixe `00XX` en `+XX`
+ * - Retourne une chaîne vide si le format est invalide
+ */
 function normalizePhone(p: string): string {
-  return p.replace(/[\s\-().]/g, "");
+  let n = p.replace(/[\s\-().]/g, "");
+  if (n.startsWith("00")) n = "+" + n.slice(2);
+  if (!/^\+\d{7,15}$/.test(n)) return "";
+  return n;
 }
 
 // POST /api/sms/verify  { phone, code, user_id, sponsor_ref? }
