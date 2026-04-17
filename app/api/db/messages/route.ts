@@ -4,7 +4,7 @@ import type { Message } from "@/lib/supabase";
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 // GET /api/db/messages?from=&to=&since=   (since = ISO string, optionnel — pour le polling)

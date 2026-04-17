@@ -5,7 +5,7 @@ import type { UserPin } from "@/lib/supabase";
 // Route serveur : utilise service_role pour bypasser RLS (nécessaire pour UPDATE)
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 async function checkVip(userId: string) {
