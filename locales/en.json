@@ -18,7 +18,7 @@
     "minutes": "min",
     "seconds": "sec",
     "waitlistTitle": "Sign up now and get 10 free credits at launch",
-    "waitlistPhone": "Your phone number",
+    "waitlistPhone": "+12125551234",
     "waitlistCta": "I want my 10 credits →",
     "waitlistSuccess": "You're in! 🎉 10 credits are waiting for you at launch.",
     "waitlistAlready": "This number is already registered.",
@@ -115,7 +115,8 @@
   "verify": {
     "title": "3 extra credits",
     "subtitle": "Verify your phone number to get them",
-    "phonePlaceholder": "+1 555 123 4567",
+    "phonePlaceholder": "+12125551234",
+    "phoneHint": "International format required (e.g. +12125551234)",
     "sendCode": "Send code",
     "codePlaceholder": "6-digit code",
     "verify": "Verify",
@@ -124,6 +125,7 @@
     "errorInvalid": "Incorrect code",
     "errorExpired": "Code expired, try again",
     "errorAlreadyVerified": "This number is already in use",
+    "errorPhoneInvalid": "Invalid format. Use international format: +12125551234",
     "errorSendFailed": "Send failed, please retry"
   },
   "referral": {

@@ -26,7 +26,7 @@ function ProfilePageContent() {
   const GENDERS: { value: Gender; label: string; icon: string }[] = [
     { value: "femme", label: t("profile.genderFemme"), icon: "♀️" },
     { value: "homme", label: t("profile.genderHomme"), icon: "♂️" },
-    { value: "non-binaire", label: t("profile.genderNonBinaire"), icon: "⚧" },
+    { value: "non-binaire", label: t("profile.genderNonBinaire"), icon: "⚧\uFE0E" },
   ];
 
   async function handleSubmit(e: FormEvent) {

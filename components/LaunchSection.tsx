@@ -91,22 +91,25 @@ export default function LaunchSection() {
             {t("home.waitlistSuccess")}
           </p>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder={t("home.waitlistPhone")}
-              required
-              className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all text-sm"
-            />
-            <button
-              type="submit"
-              disabled={status === "loading"}
-              className="bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold text-sm px-6 py-3 rounded-2xl transition-all shadow-[0_0_20px_rgba(233,30,140,0.3)] hover:shadow-[0_0_35px_rgba(233,30,140,0.5)] hover:scale-[1.02] active:scale-95 whitespace-nowrap"
-            >
-              {status === "loading" ? "…" : t("home.waitlistCta")}
-            </button>
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t("home.waitlistPhone")}
+                required
+                className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/50 focus:ring-2 focus:ring-[#e91e8c]/15 transition-all text-sm"
+              />
+              <button
+                type="submit"
+                disabled={status === "loading"}
+                className="bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold text-sm px-6 py-3 rounded-2xl transition-all shadow-[0_0_20px_rgba(233,30,140,0.3)] hover:shadow-[0_0_35px_rgba(233,30,140,0.5)] hover:scale-[1.02] active:scale-95 whitespace-nowrap"
+              >
+                {status === "loading" ? "…" : t("home.waitlistCta")}
+              </button>
+            </div>
+            <p className="text-xs text-white/30 text-center">{t("verify.phoneHint")}</p>
           </form>
         )}
 

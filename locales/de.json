@@ -18,7 +18,7 @@
     "minutes": "Min.",
     "seconds": "Sek.",
     "waitlistTitle": "Jetzt anmelden und 10 Gratis-Credits beim Start erhalten",
-    "waitlistPhone": "Deine Telefonnummer",
+    "waitlistPhone": "+4915112345678",
     "waitlistCta": "Ich will meine 10 Credits →",
     "waitlistSuccess": "Du bist dabei! 🎉 10 Credits warten beim Launch auf dich.",
     "waitlistAlready": "Diese Nummer ist bereits registriert.",
@@ -115,7 +115,8 @@
   "verify": {
     "title": "3 Extra-Credits",
     "subtitle": "Verifiziere deine Nummer, um sie zu erhalten",
-    "phonePlaceholder": "+49 151 12345678",
+    "phonePlaceholder": "+4915112345678",
+    "phoneHint": "Internationales Format erforderlich (z.B. +4915112345678)",
     "sendCode": "Code senden",
     "codePlaceholder": "6-stelliger Code",
     "verify": "Bestätigen",
@@ -124,6 +125,7 @@
     "errorInvalid": "Falscher Code",
     "errorExpired": "Code abgelaufen, erneut versuchen",
     "errorAlreadyVerified": "Diese Nummer wird bereits verwendet",
+    "errorPhoneInvalid": "Ungültiges Format. Bitte verwenden: +4915112345678",
     "errorSendFailed": "Sendefehler, bitte erneut versuchen"
   },
   "referral": {

@@ -18,7 +18,7 @@
     "minutes": "分",
     "seconds": "秒",
     "waitlistTitle": "立即注册，上线即获10枚免费积分",
-    "waitlistPhone": "你的手机号",
+    "waitlistPhone": "+8613800138000",
     "waitlistCta": "我要10枚积分 →",
     "waitlistSuccess": "注册成功！🎉 上线时10枚积分等你来领。",
     "waitlistAlready": "该号码已注册。",
@@ -115,7 +115,8 @@
   "verify": {
     "title": "额外3个积分",
     "subtitle": "验证手机号即可获得",
-    "phonePlaceholder": "+86 138 0013 8000",
+    "phonePlaceholder": "+8613800138000",
+    "phoneHint": "需要国际格式（例如：+8613800138000）",
     "sendCode": "发送验证码",
     "codePlaceholder": "6位验证码",
     "verify": "验证",
@@ -124,6 +125,7 @@
     "errorInvalid": "验证码错误",
     "errorExpired": "验证码已过期，请重试",
     "errorAlreadyVerified": "该号码已被使用",
+    "errorPhoneInvalid": "格式无效。请使用国际格式：+8613800138000",
     "errorSendFailed": "发送失败，请重试"
   },
   "referral": {

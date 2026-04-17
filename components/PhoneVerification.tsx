@@ -33,6 +33,8 @@ export default function PhoneVerification({ userId, onSuccess, onDismiss, t }: P
         setStep("code");
       } else if (data.error === "already_verified") {
         setError(t("verify.errorAlreadyVerified"));
+      } else if (data.error === "phone_invalid") {
+        setError(t("verify.errorPhoneInvalid"));
       } else if (data.error === "banned") {
         setError(t("profile.errorBanned24h"));
       } else {
@@ -126,22 +128,25 @@ export default function PhoneVerification({ userId, onSuccess, onDismiss, t }: P
           </div>
 
           {step === "phone" ? (
-            <form onSubmit={handleSendCode} className="flex gap-2">
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder={t("verify.phonePlaceholder")}
-                required
-                className="flex-1 bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:border-[#e91e8c]/50 transition-all"
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all whitespace-nowrap"
-              >
-                {loading ? "…" : t("verify.sendCode")}
-              </button>
+            <form onSubmit={handleSendCode} className="space-y-1.5">
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder={t("verify.phonePlaceholder")}
+                  required
+                  className="flex-1 bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 text-sm outline-none focus:border-[#e91e8c]/50 transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all whitespace-nowrap"
+                >
+                  {loading ? "…" : t("verify.sendCode")}
+                </button>
+              </div>
+              <p className="text-xs text-white/30">{t("verify.phoneHint")}</p>
             </form>
           ) : (
             <form onSubmit={handleVerifyCode} className="flex gap-2">

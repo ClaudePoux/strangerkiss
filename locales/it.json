@@ -18,7 +18,7 @@
     "minutes": "min",
     "seconds": "sec",
     "waitlistTitle": "Iscriviti ora e ricevi 10 crediti gratuiti al lancio",
-    "waitlistPhone": "Il tuo numero di telefono",
+    "waitlistPhone": "+393123456789",
     "waitlistCta": "Voglio i miei 10 crediti →",
     "waitlistSuccess": "Sei dentro! 🎉 10 crediti ti aspettano al lancio.",
     "waitlistAlready": "Questo numero è già registrato.",
@@ -115,7 +115,8 @@
   "verify": {
     "title": "3 crediti extra",
     "subtitle": "Verifica il tuo numero per ottenerli",
-    "phonePlaceholder": "+39 312 345 6789",
+    "phonePlaceholder": "+393123456789",
+    "phoneHint": "Formato internazionale richiesto (es: +393123456789)",
     "sendCode": "Invia codice",
     "codePlaceholder": "Codice a 6 cifre",
     "verify": "Verifica",
@@ -124,6 +125,7 @@
     "errorInvalid": "Codice errato",
     "errorExpired": "Codice scaduto, riprova",
     "errorAlreadyVerified": "Questo numero è già in uso",
+    "errorPhoneInvalid": "Formato non valido. Usa il formato internazionale: +393123456789",
     "errorSendFailed": "Errore di invio, riprova"
   },
   "referral": {

@@ -18,7 +18,7 @@
     "minutes": "min",
     "seconds": "sec",
     "waitlistTitle": "Inscrivez-vous et recevez 10 crédits offerts au lancement",
-    "waitlistPhone": "Votre numéro de téléphone",
+    "waitlistPhone": "+33612345678",
     "waitlistCta": "Je veux mes 10 crédits →",
     "waitlistSuccess": "Vous êtes inscrit·e ! 🎉 10 crédits vous attendent au lancement.",
     "waitlistAlready": "Ce numéro est déjà inscrit.",
@@ -115,7 +115,8 @@
   "verify": {
     "title": "3 crédits supplémentaires",
     "subtitle": "Vérifiez votre numéro pour les obtenir",
-    "phonePlaceholder": "+33 6 12 34 56 78",
+    "phonePlaceholder": "+33612345678",
+    "phoneHint": "Format international requis (ex : +33612345678)",
     "sendCode": "Envoyer le code",
     "codePlaceholder": "Code à 6 chiffres",
     "verify": "Vérifier",
@@ -124,6 +125,7 @@
     "errorInvalid": "Code incorrect",
     "errorExpired": "Code expiré, réessayez",
     "errorAlreadyVerified": "Ce numéro est déjà utilisé",
+    "errorPhoneInvalid": "Format invalide. Utilisez le format international : +33612345678",
     "errorSendFailed": "Erreur d'envoi, réessayez"
   },
   "referral": {

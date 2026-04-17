@@ -269,11 +269,12 @@ export default function BetaPage() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+33 6 12 34 56 78"
+                  placeholder="+33612345678"
                   required
                   autoFocus
                   className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 outline-none focus:border-[#e91e8c]/60 focus:ring-2 focus:ring-[#e91e8c]/20 transition-all"
                 />
+                <p className="mt-1.5 text-xs text-white/30">Format international requis (ex : +33612345678)</p>
               </div>
               {error && <p className="text-sm text-red-400">{error}</p>}
               <button
