@@ -591,7 +591,7 @@ function LaunchTab({ phone }: { phone: string }) {
             {/* Variables d'environnement */}
             <div className="bg-black/30 rounded-xl p-4 space-y-1.5">
               <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Variables d'environnement</p>
-              {Object.entries((diagResult.config ?? {}) as Record<string, string | null>).map(([k, v]) => (
+              {Object.entries((diagResult.config ?? {}) as Record<string, string | null>).map(([k, v]: [string, string | null]) => (
                 <div key={k} className="flex items-center justify-between text-xs font-mono">
                   <span className="text-white/50">{k}</span>
                   <span className={v ? "text-green-400" : "text-red-400"}>{v ?? "— MANQUANT —"}</span>
