@@ -230,7 +230,7 @@ export default function BetaPage() {
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🔑</div>
+          <img src="/levres.svg" alt="" className="w-14 h-14 mb-3 mx-auto" />
           <h1 className="text-2xl font-bold text-white">
             Stranger<span className="text-[#e91e8c]">Kiss</span>
           </h1>
