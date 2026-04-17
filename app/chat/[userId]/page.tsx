@@ -238,18 +238,31 @@ export default function ChatPage() {
     }
     // Déclencher l'enquête post-expérience (une seule fois)
     try {
-      const surveyDone = localStorage.getItem("sk_survey_done");
-      console.log("[chat] handleMeetingResponse — accept:", accept, "| sk_survey_done:", surveyDone);
+      const surveyDone    = localStorage.getItem("sk_survey_done");
+      const surveyPending = localStorage.getItem("sk_survey_pending");
+      console.log(
+        "[chat] handleMeetingResponse ▶",
+        "accept:", accept,
+        "| sk_survey_done:", surveyDone,
+        "| sk_survey_pending (avant):", surveyPending,
+        "| myId:", myId?.slice(0, 8),
+        "| otherId:", otherId?.slice(0, 8),
+      );
       if (surveyDone !== "true") {
         localStorage.setItem("sk_survey_pending", "true");
-        console.log("[chat] sk_survey_pending = true → dispatch sk:survey_check");
+        console.log("[chat] ✓ sk_survey_pending posé — dispatch sk:survey_check");
         // Notifier MapClient s'il est déjà monté en mémoire (router cache Next.js).
         // Si MapClient est fresh-mounted, son useEffect de mount lira sk_survey_pending.
-        window.dispatchEvent(new Event("sk:survey_check"));
+        const dispatched = window.dispatchEvent(new Event("sk:survey_check"));
+        console.log("[chat] dispatchEvent sk:survey_check — dispatched:", dispatched,
+          "| sk_survey_pending (après):", localStorage.getItem("sk_survey_pending"),
+        );
       } else {
-        console.log("[chat] survey déjà effectué — pas de pending");
+        console.log("[chat] survey déjà effectué (sk_survey_done=true) — rien à faire");
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error("[chat] handleMeetingResponse survey block ERROR:", err);
+    }
   }
 
   // ── Report ───────────────────────────────────────────────────

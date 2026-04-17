@@ -136,7 +136,20 @@ function MapPageContent() {
   const pinsRef         = useRef<UserPin[]>([]);
 
   // Portal SSR-safe : monté uniquement après hydratation côté client
-  useEffect(() => { setPortalMounted(true); }, []);
+  useEffect(() => {
+    setPortalMounted(true);
+    console.log("[MapClient] mount — isDemo:", isDemo, "| portalMounted → true");
+  }, []);
+
+  // Trace les changements de showSurvey pour détecter si le modal est bien déclenché
+  useEffect(() => {
+    console.log(
+      "[MapClient] showSurvey changed →", showSurvey,
+      "| portalMounted:", portalMounted,
+      "| isDemo:", isDemo,
+      "| => modal visible:", portalMounted && showSurvey && !isDemo,
+    );
+  }, [showSurvey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stop/restart ping selon visibilité de l'onglet
   useEffect(() => {
@@ -205,13 +218,29 @@ function MapPageContent() {
     try {
       const pending = localStorage.getItem("sk_survey_pending");
       const done    = localStorage.getItem("sk_survey_done");
-      console.log(`[MapClient] checkSurveyPending (${source}) — pending:`, pending, "done:", done);
-      if (pending === "true" && done !== "true") {
-        console.log("[MapClient] → setShowSurvey(true)");
-        setShowSurvey(true);
-        localStorage.removeItem("sk_survey_pending");
+      console.log(
+        `[MapClient] checkSurveyPending ▶ source="${source}"`,
+        "| pending:", pending,
+        "| done:", done,
+        "| isDemo:", isDemo,
+        "| portalMounted:", portalMounted,
+      );
+      if (pending !== "true") {
+        console.log("[MapClient]   → sk_survey_pending absent ou != 'true' — rien");
+        return;
       }
-    } catch { /* ignore */ }
+      if (done === "true") {
+        console.log("[MapClient]   → sk_survey_done=true — survey déjà effectué, on nettoie");
+        localStorage.removeItem("sk_survey_pending");
+        return;
+      }
+      // Cas normal : pending + pas encore fait
+      console.log("[MapClient]   → setShowSurvey(true) !");
+      setShowSurvey(true);
+      localStorage.removeItem("sk_survey_pending");
+    } catch (err) {
+      console.error("[MapClient] checkSurveyPending ERROR:", err);
+    }
   }
 
   useEffect(() => {
@@ -253,9 +282,11 @@ function MapPageContent() {
     // Quand MapClient reste monté en mémoire, ni mount ni visibilitychange ne se
     // déclenchent. Le chat dispatche sk:survey_check juste après avoir posé le flag.
     function onSurveyCheck() {
+      console.log("[MapClient] ← event sk:survey_check reçu");
       checkSurveyPending("[MapClient] sk:survey_check");
     }
     window.addEventListener("sk:survey_check", onSurveyCheck);
+    console.log("[MapClient] listener sk:survey_check enregistré");
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -575,8 +606,17 @@ function MapPageContent() {
       )}
 
       {/* Enquête post-expérience — portal dans document.body pour passer au-dessus de Leaflet */}
+      {/* DEBUG: log à chaque render quand showSurvey est true */}
+      {showSurvey && console.log(
+        "[MapClient] render — showSurvey=true | portalMounted:", portalMounted,
+        "| isDemo:", isDemo,
+        "| => portal visible:", portalMounted && !isDemo,
+      ) as unknown as null}
       {portalMounted && showSurvey && !isDemo && createPortal(
-        <SurveyModal t={t} onClose={() => setShowSurvey(false)} />,
+        <SurveyModal t={t} onClose={() => {
+          console.log("[MapClient] SurveyModal onClose → setShowSurvey(false)");
+          setShowSurvey(false);
+        }} />,
         document.body
       )}
 
