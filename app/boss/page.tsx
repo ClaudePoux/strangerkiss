@@ -553,7 +553,7 @@ interface DiagResult {
   connectivity: {
     status: number;
     ok: boolean;
-    body: unknown;
+    body: Record<string, unknown> | unknown[] | null;
     error?: string;
   } | null;
   sms_queue_count: number | null;
@@ -645,7 +645,7 @@ function LaunchTab({ phone }: { phone: string }) {
                 )}
                 {diagResult.connectivity.body && (
                   <pre className="text-xs text-white/40 overflow-auto max-h-32 mt-2">
-                    {JSON.stringify(diagResult.connectivity.body, null, 2)}
+                    {JSON.stringify(diagResult.connectivity.body, null, 2) ?? ""}
                   </pre>
                 )}
               </div>
