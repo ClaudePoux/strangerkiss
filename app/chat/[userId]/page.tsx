@@ -6,6 +6,8 @@ import type { Message } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { translateText, AlreadyInTargetLanguageError } from "@/lib/translate";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import NotificationBar from "@/components/NotificationBar";
+import { useNotificationContext } from "@/lib/notificationContext";
 
 // Special message markers
 const SK_MEETING_REQUEST  = "§MEETING_REQUEST§";
@@ -47,6 +49,7 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { t, bcp47, locale } = useI18n();
+  const { notifs, dismiss, setActiveChatId } = useNotificationContext();
 
   const otherId = params.userId as string;
   const otherName = searchParams.get("name") ?? "Inconnu·e";
@@ -71,12 +74,15 @@ export default function ChatPage() {
   const tRef = useRef(t);
   tRef.current = t;
 
+  // Curseur de polling — timestamp du dernier message reçu
+  const pollSinceRef = useRef<string>(new Date(0).toISOString());
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const loadChat = useCallback(async (id: string) => {
-    // Chargement de l'historique via MySQL
+    // Chargement de l'historique
     const res = await fetch(`/api/db/messages?from=${id}&to=${otherId}`);
     if (!res.ok) {
       // Fallback démo si l'API n'est pas disponible
@@ -87,37 +93,44 @@ export default function ChatPage() {
         { id: "d2", from_id: id, to_id: otherId, content: tr("chat.demo2"), created_at: new Date(Date.now() - 90000).toISOString() },
         { id: "d3", from_id: otherId, to_id: id, content: SK_MEETING_REQUEST, created_at: new Date(Date.now() - 30000).toISOString() },
       ]);
-      return;
+      return undefined;
     }
     const { messages: history } = await res.json();
-    setMessages(history ?? []);
+    const msgs: Message[] = history ?? [];
+    setMessages(msgs);
+    // Initialiser le curseur au dernier message connu
+    if (msgs.length > 0) {
+      pollSinceRef.current = msgs[msgs.length - 1].created_at;
+    }
 
-    // Polling toutes les 3 secondes pour les nouveaux messages (remplace Supabase realtime)
+    // Polling toutes les 3 secondes pour les nouveaux messages
+    // Note : fetch est en dehors de setState pour éviter l'anti-pattern React
     const interval = setInterval(async () => {
-      setMessages((prev) => {
-        const since = prev.length > 0 ? prev[prev.length - 1].created_at : new Date(0).toISOString();
-        fetch(`/api/db/messages?from=${id}&to=${otherId}&since=${encodeURIComponent(since)}`)
-          .then((r) => r.json())
-          .then(({ messages: newMsgs }) => {
-            if (newMsgs?.length > 0) {
-              // Dédupliquer par ID — évite le double affichage du selfie quand le poll
-              // capture son `since` avant que pushMessage ait mis à jour l'état.
-              setMessages((p) => {
-                const existingIds = new Set(p.map((m) => m.id));
-                const truly_new = (newMsgs as typeof p).filter((m) => !existingIds.has(m.id));
-                return truly_new.length > 0 ? [...p, ...truly_new] : p;
-              });
-            }
-          })
-          .catch(() => {});
-        return prev;
-      });
+      try {
+        const since = pollSinceRef.current;
+        const r = await fetch(
+          `/api/db/messages?from=${id}&to=${otherId}&since=${encodeURIComponent(since)}`
+        );
+        const { messages: newMsgs } = await r.json();
+        if (newMsgs?.length > 0) {
+          // Avancer le curseur au timestamp du dernier message reçu
+          pollSinceRef.current = newMsgs[newMsgs.length - 1].created_at;
+          setMessages((p) => {
+            const existingIds = new Set(p.map((m) => m.id));
+            const trulyNew = (newMsgs as Message[]).filter((m) => !existingIds.has(m.id));
+            return trulyNew.length > 0 ? [...p, ...trulyNew] : p;
+          });
+        }
+      } catch { /* ignore */ }
     }, 3000);
 
     return () => clearInterval(interval);
   }, [otherId]);
 
   useEffect(() => {
+    // Enregistrer le chat actif dans le context → inbox polling ignore cet expéditeur
+    setActiveChatId(otherId);
+
     let unsub: (() => void) | undefined;
     try {
       const stored = localStorage.getItem("sk_my_id");
@@ -126,7 +139,6 @@ export default function ChatPage() {
       loadChat(id).then((fn) => { unsub = fn; });
 
       // Vérification bêta-testeur
-      // Stratégie double : par sk_phone (direct) + sk_user_id (fallback si phone absent/formaté différemment)
       const phone  = localStorage.getItem("sk_phone");
       const userId = localStorage.getItem("sk_user_id");
       if (phone || userId) {
@@ -146,8 +158,12 @@ export default function ChatPage() {
       loadChat(id).then((fn) => { unsub = fn; });
       setIsBeta(false);
     }
-    return () => unsub?.();
-  }, [loadChat]);
+    return () => {
+      unsub?.();
+      // Libérer le verrou de chat actif au départ
+      setActiveChatId(null);
+    };
+  }, [loadChat, setActiveChatId, otherId]);
 
   // ── Send helpers ──────────────────────────────────────────────
   async function pushMessage(content: string, id = myId) {
@@ -169,7 +185,11 @@ export default function ChatPage() {
       body: JSON.stringify({ from_id: id, to_id: otherId, content }),
     });
     const { message: sent } = await res.json();
-    if (sent) setMessages((prev) => [...prev, sent]);
+    if (sent) {
+      // Avancer le curseur pour ne pas redétecter le message envoyé
+      pollSinceRef.current = sent.created_at;
+      setMessages((prev) => [...prev, sent]);
+    }
     return sent;
   }
 
@@ -222,14 +242,12 @@ export default function ChatPage() {
     const content = accept ? SK_MEETING_ACCEPTED : SK_MEETING_REFUSED;
     await pushMessage(content);
     if (accept) {
-      // otherId est le demandeur, myId est le destinataire
       fetch("/api/matches/accept", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requester_id: otherId, target_id: myId }),
       }).catch(() => {});
     } else {
-      // Refus : blocage symétrique en base (les deux profils disparaissent mutuellement)
       fetch("/api/matches/refuse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -251,8 +269,6 @@ export default function ChatPage() {
       if (surveyDone !== "true") {
         localStorage.setItem("sk_survey_pending", "true");
         console.log("[chat] ✓ sk_survey_pending posé — dispatch sk:survey_check");
-        // Notifier MapClient s'il est déjà monté en mémoire (router cache Next.js).
-        // Si MapClient est fresh-mounted, son useEffect de mount lira sk_survey_pending.
         const dispatched = window.dispatchEvent(new Event("sk:survey_check"));
         console.log("[chat] dispatchEvent sk:survey_check — dispatched:", dispatched,
           "| sk_survey_pending (après):", localStorage.getItem("sk_survey_pending"),
@@ -499,6 +515,9 @@ export default function ChatPage() {
           <LanguageSwitcher />
         </div>
       </header>
+
+      {/* Barre de notifications (messages d'autres personnes, crédits, etc.) */}
+      <NotificationBar notifs={notifs} onDismiss={dismiss} />
 
       {/* Demo banner */}
       {demoMode && (

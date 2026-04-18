@@ -182,5 +182,18 @@
     "p7": "私たちはマッチングアプリを作りたかったわけではない。リスボンのあの男のような人たちのためのスペースを作りたかった——旅をする人、今この瞬間にいる人、ただ別の人間と本物の瞬間を求めている人たち。",
     "p8": "これを読んでいるあなたは、もしかしたらそのひとりかもしれない。",
     "signature": "— StrangerKissチーム"
+  },
+  "notif": {
+    "newMessage": "{name}からメッセージが届きました",
+    "meetingRequest": "{name}があなたに会いたがっています！",
+    "meetingAccepted": "{name}があなたのリクエストを承認しました 🎉",
+    "noCredits": "クレジットがありません — チャージしてください",
+    "lowCredits": "クレジットが{count}残っています",
+    "creditsReceived": "+{count}クレジットを受け取りました！",
+    "moderationWarning": "あなたのプロフィールが報告されました",
+    "newProfile": "近くに新しいプロフィール",
+    "newProfiles": "近くに{count}件の新しいプロフィール",
+    "profileExpiring": "プロフィールが期限切れかもしれません",
+    "someone": "誰か"
   }
 }

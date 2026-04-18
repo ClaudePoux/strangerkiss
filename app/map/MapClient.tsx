@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
-import { createPortal } from "react-dom";
+import { createPortal } from "react-dom"; // conservé pour SurveyModal
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import { useNotificationContext } from "@/lib/notificationContext";
 import PhoneVerification from "@/components/PhoneVerification";
 import ReferralCard from "@/components/ReferralCard";
 import SurveyModal from "@/components/SurveyModal";
+import NotificationBar from "@/components/NotificationBar";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -86,6 +88,8 @@ function MapPageContent() {
   const searchParams = useSearchParams();
   const isDemo = searchParams.get("demo") === "true";
 
+  const { notifs, push, dismiss, credits, updateCredits } = useNotificationContext();
+
   const LABEL: Record<string, string> = {
     hug: t("map.hug"),
     french_kiss: t("map.frenchKiss"),
@@ -112,28 +116,27 @@ function MapPageContent() {
   const [blocked, setBlocked] = useState<string[]>([]);
   const [myId, setMyId] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
-  const [credits, setCredits] = useState<number | null>(null);
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [geoErrorKey, setGeoErrorKey] = useState("");
   const [pins, setPins] = useState<UserPin[]>([]);
   const [loading, setLoading] = useState(true);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
-  const [unreadSender, setUnreadSender] = useState<{ id: string; name: string; appearance: string } | null>(null);
   const [showSurvey, setShowSurvey] = useState(false);
   // Portal monté côté client uniquement (SSR-safe)
   const [portalMounted, setPortalMounted] = useState(false);
 
+  // Suivi pins pour détecter les nouveaux profils proches
+  const prevPinsCountRef   = useRef<number>(-1);
+  const lastNewProfilesRef = useRef<number>(0);
+  // Suivi visibilité pour détecter l'expiration du profil
+  const lastVisibleRef     = useRef<number>(Date.now());
+
   // Ping : ref conservée entre les renders
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pingPinIdRef    = useRef<string>("");
-  // Timestamp du dernier contrôle inbox (initialisé au chargement)
-  const inboxSinceRef   = useRef<string>(new Date().toISOString());
   // Ref vers startPing pour que le handler visibilitychange puisse l'appeler
-  // sans dépendance d'ordre (startPing est déclaré via useCallback plus bas)
   const startPingRef    = useRef<(pinId: string) => void>(() => {});
-  // Ref vers pins pour l'effet inbox — évite de re-créer l'intervalle à chaque refresh pins
-  const pinsRef         = useRef<UserPin[]>([]);
 
   // Portal SSR-safe : monté uniquement après hydratation côté client
   useEffect(() => {
@@ -161,23 +164,22 @@ function MapPageContent() {
     }
     function handleVisibility() {
       if (document.visibilityState === "hidden") {
+        lastVisibleRef.current = Date.now();
         stopPing();
       } else if (document.visibilityState === "visible") {
-        // Onglet redevenu visible (retour du chat, switch d'app…)
-        // 1. Relancer le ping pour éviter l'expiration du pin
         if (pingPinIdRef.current) startPingRef.current(pingPinIdRef.current);
-        // 2. Avancer le curseur inbox au moment du retour — les messages vus
-        //    dans le chat ne déclencheront pas une nouvelle notification,
-        //    et le prochain poll ne captera que les VRAIS nouveaux messages.
-        inboxSinceRef.current = new Date().toISOString();
+        // Notifier si le profil a pu expirer (absent > 8 min)
+        const awayMs = Date.now() - lastVisibleRef.current;
+        if (awayMs > 8 * 60 * 1000 && pingPinIdRef.current) {
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+          push({ type: "profile_expiring", text: t("notif.profileExpiring"), persistent: false });
+        }
       }
     }
-    // bfcache iOS Safari : pageshow avec persisted=true signifie que la page
-    // est restaurée depuis le cache sans remontage React → même traitement.
+    // bfcache iOS Safari
     function handlePageShow(e: PageTransitionEvent) {
       if (e.persisted && pingPinIdRef.current) {
         startPingRef.current(pingPinIdRef.current);
-        inboxSinceRef.current = new Date().toISOString();
       }
     }
     window.addEventListener("beforeunload", stopPing);
@@ -209,11 +211,7 @@ function MapPageContent() {
   // Synchronise la ref dès que startPing est (re)créé
   useEffect(() => { startPingRef.current = startPing; }, [startPing]);
 
-  // Synchronise pinsRef à chaque update de pins (sans recréer l'effet inbox)
-  useEffect(() => { pinsRef.current = pins; }, [pins]);
-
   // Déclenche la SurveyModal si sk_survey_pending est actif.
-  // Appelée au montage ET à chaque retour de visibilité (router cache Next.js).
   function checkSurveyPending(source: string) {
     try {
       const pending = localStorage.getItem("sk_survey_pending");
@@ -234,7 +232,6 @@ function MapPageContent() {
         localStorage.removeItem("sk_survey_pending");
         return;
       }
-      // Cas normal : pending + pas encore fait
       console.log("[MapClient]   → setShowSurvey(true) !");
       setShowSurvey(true);
       localStorage.removeItem("sk_survey_pending");
@@ -253,24 +250,31 @@ function MapPageContent() {
       const storedUserId = localStorage.getItem("sk_user_id");
       if (storedUserId) {
         setUserId(storedUserId);
+        // Crédits initiaux lus depuis le cache — le context gère le polling
         const cached = localStorage.getItem("sk_user_credits");
-        if (cached !== null) setCredits(parseInt(cached, 10));
+        if (cached !== null) updateCredits(parseInt(cached, 10));
         fetch(`/api/credits/balance?user_id=${storedUserId}`)
           .then((r) => r.json())
           .then(({ credits: c }) => {
             if (c != null) {
-              setCredits(c);
-              localStorage.setItem("sk_user_credits", String(c));
+              updateCredits(c);
+              // Notifier le context des IDs
+              window.dispatchEvent(
+                new CustomEvent("sk:ids_update", {
+                  detail: { myId: id, userId: storedUserId, credits: c },
+                })
+              );
             }
           })
           .catch(() => {});
+      } else {
+        // Pas encore de userId — notifier quand même le myId
+        window.dispatchEvent(new CustomEvent("sk:ids_update", { detail: { myId: id } }));
       }
       if (localStorage.getItem("sk_phone")) setPhoneVerified(true);
-      // Enquête post-expérience : check initial au montage
       checkSurveyPending("[MapClient] mount");
     } catch { /* ignore */ }
 
-    // Fallback 1 : retour de visibilité (changement d'onglet ou d'app)
     function onVisibilityChange() {
       if (document.visibilityState === "visible") {
         checkSurveyPending("[MapClient] visibilitychange");
@@ -278,9 +282,6 @@ function MapPageContent() {
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
 
-    // Fallback 2 : navigation client-side Next.js depuis /chat (router cache).
-    // Quand MapClient reste monté en mémoire, ni mount ni visibilitychange ne se
-    // déclenchent. Le chat dispatche sk:survey_check juste après avoir posé le flag.
     function onSurveyCheck() {
       console.log("[MapClient] ← event sk:survey_check reçu");
       checkSurveyPending("[MapClient] sk:survey_check");
@@ -294,14 +295,42 @@ function MapPageContent() {
     };
   }, []);
 
+  // Notifier le context quand myId/userId changent (ex : après création du pin)
+  useEffect(() => {
+    if (!myId) return;
+    window.dispatchEvent(
+      new CustomEvent("sk:ids_update", {
+        detail: { myId, userId: userId || undefined },
+      })
+    );
+  }, [myId, userId]);
+
   const refreshPins = useCallback(async (lat: number, lng: number, currentMyId: string) => {
     try {
       const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
       if (!nearbyRes.ok) return;
       const { pins: nearby } = await nearbyRes.json();
-      setPins((nearby as UserPin[]).filter((p) => p.id !== currentMyId));
+      const filtered = (nearby as UserPin[]).filter((p) => p.id !== currentMyId);
+      setPins(filtered);
+
+      // Détecter les nouveaux profils (max 1 notif toutes les 2 min)
+      const prev = prevPinsCountRef.current;
+      const now  = Date.now();
+      if (prev !== -1 && filtered.length > prev && now - lastNewProfilesRef.current > 2 * 60 * 1000) {
+        const diff = filtered.length - prev;
+        push({
+          type: "new_profiles",
+          text: diff === 1
+            ? t("notif.newProfile")
+            : t("notif.newProfiles", { count: String(diff) }),
+          persistent: false,
+        });
+        lastNewProfilesRef.current = now;
+      }
+      prevPinsCountRef.current = filtered.length;
     } catch { /* ignore */ }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [push, t]);
 
   const loadMap = useCallback(
     async (lat: number, lng: number) => {
@@ -310,8 +339,6 @@ function MapPageContent() {
       if (profile) {
         try {
           if (isDemo) {
-            // Sélectionner 3-5 profils fictifs depuis Supabase selon la langue du navigateur.
-            // Rotation toutes les 6h basée sur une seed déterministe.
             const country = localeToCountry(locale);
             const cacheKey = `sk_demo_pins_${country}`;
             let pool: UserPin[] | null = null;
@@ -330,16 +357,15 @@ function MapPageContent() {
             }
 
             if (pool && pool.length > 0) {
-              // Seed basée sur l'heure arrondie à la tranche de 6h
               const slot = Math.floor(Date.now() / (6 * 3600 * 1000));
               const rng = seededRng(slot);
-              const count = 3 + Math.floor(rng() * 3); // 3–5 profils
+              const count = 3 + Math.floor(rng() * 3);
               const shuffled = [...pool].sort(() => rng() - 0.5);
               const selected = shuffled.slice(0, Math.min(count, shuffled.length));
               const now = new Date().toISOString();
               setPins(
                 selected.map((d, i) => {
-                  const dist = 200 + Math.floor(rng() * 800); // 200–1000 m
+                  const dist = 200 + Math.floor(rng() * 800);
                   const angle = rng() * 360;
                   const [pLat, pLng] = offsetLatLng(lat, lng, dist, angle);
                   return {
@@ -384,8 +410,13 @@ function MapPageContent() {
             if (returnedUserId && !storedUserId) {
               localStorage.setItem("sk_user_id", returnedUserId);
               setUserId(returnedUserId);
-              setCredits(3);
-              localStorage.setItem("sk_user_credits", "3");
+              updateCredits(3);
+              // Notifier le context du nouvel userId + crédits initiaux
+              window.dispatchEvent(
+                new CustomEvent("sk:ids_update", {
+                  detail: { myId: pin?.id, userId: returnedUserId, credits: 3 },
+                })
+              );
               setTimeout(() => setShowVerify(true), 3000);
             }
             const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
@@ -399,7 +430,7 @@ function MapPageContent() {
       }
       setLoading(false);
     },
-    [profile, isDemo, startPing]
+    [profile, isDemo, startPing, updateCredits]
   );
 
   // Rafraîchissement toutes les 10s (mode réel uniquement)
@@ -410,44 +441,6 @@ function MapPageContent() {
     const interval = setInterval(() => refreshPins(lat, lng, currentMyId), 10000);
     return () => clearInterval(interval);
   }, [coords, myId, loading, isDemo, refreshPins]);
-
-  // Polling inbox toutes les 10s — notification si nouveau message reçu.
-  // N'inclut PAS `pins` dans les deps : pins change toutes les 10s (refreshPins)
-  // et provoquerait un clear+restart de l'intervalle en permanence, empêchant
-  // le poll de tirer. pinsRef donne accès à la valeur courante sans dépendance.
-  useEffect(() => {
-    if (!myId || isDemo || loading) return;
-    const interval = setInterval(async () => {
-      try {
-        const since = inboxSinceRef.current;
-        inboxSinceRef.current = new Date().toISOString();
-        const res = await fetch(`/api/db/messages?inbox=${encodeURIComponent(myId)}&since=${encodeURIComponent(since)}`);
-        if (!res.ok) return;
-        const { messages } = await res.json();
-        if (messages?.length > 0) {
-          const senderId = messages[0].from_id as string;
-          // Chercher dans les pins courants (via ref, sans dépendance de l'effet)
-          let senderPin = pinsRef.current.find((p) => p.id === senderId);
-          if (!senderPin) {
-            try {
-              const pr = await fetch(`/api/db/pins?pin_id=${encodeURIComponent(senderId)}`);
-              if (pr.ok) {
-                const { pin } = await pr.json();
-                senderPin = pin ?? undefined;
-              }
-            } catch { /* ignore */ }
-          }
-          setUnreadSender({
-            id: senderId,
-            name: senderPin?.name ?? "Quelqu'un",
-            appearance: senderPin?.appearance ?? "",
-          });
-        }
-      } catch { /* ignore */ }
-    }, 10000);
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myId, isDemo, loading]); // pins intentionnellement exclu — voir pinsRef ci-dessus
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -518,6 +511,9 @@ function MapPageContent() {
         </div>
       </header>
 
+      {/* Barre de notifications persistante */}
+      <NotificationBar notifs={notifs} onDismiss={dismiss} />
+
       {/* Bannière mode démo */}
       {isDemo && (
         <div className="flex items-center justify-between px-4 py-2 bg-[#7c3aed]/10 border-b border-[#7c3aed]/20 text-xs text-[#a78bfa]">
@@ -558,31 +554,6 @@ function MapPageContent() {
           />
         )}
 
-        {/* Toast rendu via portal dans document.body — échappe à tout stacking context */}
-        {portalMounted && unreadSender && createPortal(
-          <div
-            className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 border-2 border-[#e91e8c]"
-            style={{ position: "fixed", bottom: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 9999, maxWidth: "90vw", width: "max-content", boxShadow: "0 4px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(233,30,140,0.15)" }}
-          >
-            <span className="text-xl flex-shrink-0">💬</span>
-            <Link
-              href={`/chat/${unreadSender.id}?name=${encodeURIComponent(unreadSender.name)}&appearance=${encodeURIComponent(unreadSender.appearance)}`}
-              className="flex-1 min-w-0"
-              onClick={() => setUnreadSender(null)}
-            >
-              <p className="text-[#1a1a2e] text-sm font-bold truncate">{unreadSender.name}</p>
-              <p className="text-[#e91e8c] text-xs font-medium">Nouveau message →</p>
-            </Link>
-            <button
-              onClick={() => setUnreadSender(null)}
-              className="flex-shrink-0 text-[#1a1a2e]/30 hover:text-[#1a1a2e]/70 transition-colors text-lg leading-none"
-              aria-label="Fermer"
-            >
-              ×
-            </button>
-          </div>,
-          document.body
-        )}
       </div>
 
       {/* Vérification téléphone */}
@@ -593,8 +564,7 @@ function MapPageContent() {
           onSuccess={(_bonus, _waitlisted, _refCode, newCredits) => {
             setPhoneVerified(true);
             setShowVerify(false);
-            setCredits(newCredits);
-            try { localStorage.setItem("sk_user_credits", String(newCredits)); } catch { /* ignore */ }
+            updateCredits(newCredits);
           }}
           onDismiss={() => setShowVerify(false)}
         />
@@ -606,7 +576,6 @@ function MapPageContent() {
       )}
 
       {/* Enquête post-expérience — portal dans document.body pour passer au-dessus de Leaflet */}
-      {/* DEBUG: log à chaque render quand showSurvey est true */}
       {showSurvey && console.log(
         "[MapClient] render — showSurvey=true | portalMounted:", portalMounted,
         "| isDemo:", isDemo,
