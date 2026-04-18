@@ -90,6 +90,11 @@ function MapPageContent() {
 
   const { notifs, push, dismiss, credits, updateCredits } = useNotificationContext();
 
+  // Refs stables pour les valeurs qui changent après le montage — évite de recréer
+  // loadMap/refreshPins (et donc de relancer getCurrentPosition ou le polling).
+  const tRef      = useRef(t);      tRef.current      = t;
+  const localeRef = useRef(locale); localeRef.current = locale;
+
   const LABEL: Record<string, string> = {
     hug: t("map.hug"),
     french_kiss: t("map.frenchKiss"),
@@ -113,6 +118,9 @@ function MapPageContent() {
     appearance: string;
     looking_for: LookingFor;
   } | null>(null);
+  // Ref sur profile : loadMap peut lire la valeur fraîche sans l'avoir en dep
+  // (évite que getCurrentPosition soit appelé deux fois au montage).
+  const profileRef = useRef(profile); profileRef.current = profile;
   const [blocked, setBlocked] = useState<string[]>([]);
   const [myId, setMyId] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
@@ -172,7 +180,7 @@ function MapPageContent() {
         const awayMs = Date.now() - lastVisibleRef.current;
         if (awayMs > 8 * 60 * 1000 && pingPinIdRef.current) {
           // eslint-disable-next-line react-hooks/exhaustive-deps
-          push({ type: "profile_expiring", text: t("notif.profileExpiring"), persistent: false });
+          push({ type: "profile_expiring", text: tRef.current("notif.profileExpiring"), persistent: false });
         }
       }
     }
@@ -321,25 +329,28 @@ function MapPageContent() {
         push({
           type: "new_profiles",
           text: diff === 1
-            ? t("notif.newProfile")
-            : t("notif.newProfiles", { count: String(diff) }),
+            ? tRef.current("notif.newProfile")
+            : tRef.current("notif.newProfiles", { count: String(diff) }),
           persistent: false,
         });
         lastNewProfilesRef.current = now;
       }
       prevPinsCountRef.current = filtered.length;
     } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [push, t]);
+  }, [push]); // tRef est une ref stable — pas besoin de t en dep
 
   const loadMap = useCallback(
     async (lat: number, lng: number) => {
       setCoords([lat, lng]);
+      // Lire profile depuis la ref — valeur fraîche sans être en dep de useCallback.
+      // Garantit qu'un seul getCurrentPosition est lancé (pas de double-appel quand
+      // profile passe de null à rempli au montage).
+      const currentProfile = profileRef.current;
 
-      if (profile) {
+      if (currentProfile) {
         try {
           if (isDemo) {
-            const country = localeToCountry(locale);
+            const country = localeToCountry(localeRef.current);
             const cacheKey = `sk_demo_pins_${country}`;
             let pool: UserPin[] | null = null;
             try {
@@ -388,13 +399,13 @@ function MapPageContent() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 pin_id: existingPinId,
-                name: profile.name,
-                age: profile.age,
-                gender: profile.gender,
-                nationality: profile.nationality ?? "",
-                bio: profile.bio,
-                appearance: profile.appearance,
-                looking_for: profile.looking_for,
+                name: currentProfile.name,
+                age: currentProfile.age,
+                gender: currentProfile.gender,
+                nationality: currentProfile.nationality ?? "",
+                bio: currentProfile.bio,
+                appearance: currentProfile.appearance,
+                looking_for: currentProfile.looking_for,
                 lat,
                 lng,
                 user_id: storedUserId ?? null,
@@ -430,7 +441,9 @@ function MapPageContent() {
       }
       setLoading(false);
     },
-    [profile, isDemo, startPing, updateCredits]
+    // profile et locale sont lus via refs — retirés des deps pour que loadMap
+    // reste stable et que getCurrentPosition ne soit appelé qu'une seule fois.
+    [isDemo, startPing, updateCredits]
   );
 
   // Rafraîchissement toutes les 10s (mode réel uniquement)
