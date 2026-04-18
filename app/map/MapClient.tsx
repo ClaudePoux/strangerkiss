@@ -446,6 +446,17 @@ function MapPageContent() {
     [isDemo, startPing, updateCredits]
   );
 
+  // Diagnostic : trace combien de pins sont en state vs passés à MapView
+  useEffect(() => {
+    const toMapView = pins.filter(p => !blocked.includes(p.id));
+    console.log(
+      "[MapClient] ← pins state:", pins.length,
+      "| après filtre blocked:", toMapView.length,
+      "| loading:", loading,
+      "| MapView visible:", !loading && !!coords,
+    );
+  }, [pins, blocked, loading, coords]);
+
   // Rafraîchissement toutes les 10s (mode réel uniquement)
   useEffect(() => {
     if (!coords || loading || isDemo) return;

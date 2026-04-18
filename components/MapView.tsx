@@ -43,6 +43,10 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   const markersLayerRef  = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const leafletRef       = useRef<any>(null);
+  // Ref vers les derniers pins reçus — permet à Effect 1 de les rendre
+  // immédiatement après la création de la carte (si ils sont déjà là).
+  const pinsRef          = useRef<UserPin[]>(pins);
+  pinsRef.current        = pins;   // mis à jour à chaque rendu
 
   // mapReady passe à true quand Leaflet est chargé et la carte prête.
   // C'est le signal qui permet à Effect 2 de rendre les marqueurs,
@@ -143,10 +147,27 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
 
+  // ── Effet 3 : ResizeObserver — appelle invalidateSize() quand le conteneur
+  //             change de taille (ex : NotificationBar qui apparaît/disparaît) ──
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const el = mapRef.current;
+    const obs = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        console.log("[MapView] ResizeObserver — invalidateSize()",
+          el.offsetWidth, "x", el.offsetHeight);
+        mapInstanceRef.current.invalidateSize();
+      }
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   // ── Effet 2 : mise à jour des marqueurs (pins OU mapReady changent) ─────────
   useEffect(() => {
     console.log("[MapView] Effet 2 — mapReady:", mapReady, "| pins:", pins.length,
-      "| leaflet:", !!leafletRef.current, "| layer:", !!markersLayerRef.current);
+      "| leaflet:", !!leafletRef.current, "| layer:", !!markersLayerRef.current,
+      "| container:", mapRef.current ? `${mapRef.current.offsetWidth}x${mapRef.current.offsetHeight}` : "null");
 
     if (!mapReady || !leafletRef.current || !markersLayerRef.current) {
       console.log("[MapView] Effet 2 — skip (conditions non remplies)");
