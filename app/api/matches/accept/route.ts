@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notifyAdmin } from "@/lib/resend";
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,6 +61,17 @@ export async function POST(req: NextRequest) {
     .update({ credit_spent: true })
     .eq("requester_id", requester_id)
     .eq("target_id", target_id);
+
+  notifyAdmin({
+    subject: "💞 Nouvelle rencontre acceptée StrangerKiss",
+    title: "💞 Rencontre acceptée",
+    rows: [
+      ["Demandeur (pin)", requester_id.slice(0, 8) + "…"],
+      ["Destinataire (pin)", target_id.slice(0, 8) + "…"],
+      ["Crédit déduit", "1"],
+      ["Crédits restants", String(remaining ?? "—")],
+    ],
+  });
 
   return NextResponse.json({ ok: true, credited: true, credits_remaining: remaining });
 }

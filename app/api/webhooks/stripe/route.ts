@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { adminSb } from "@/lib/admin-auth";
+import { notifyAdmin } from "@/lib/resend";
 
 export async function POST(req: NextRequest) {
   if (!stripe) {
@@ -41,6 +42,18 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[stripe/webhook] +${credits} crédits → user ${userId.slice(0, 8)}…`);
+
+    const amount = session.amount_total ? `${(session.amount_total / 100).toFixed(2)} ${(session.currency ?? "eur").toUpperCase()}` : "—";
+    notifyAdmin({
+      subject: "💳 Achat de crédits StrangerKiss",
+      title: "💳 Achat de crédits",
+      rows: [
+        ["User ID", userId.slice(0, 8) + "…"],
+        ["Crédits achetés", String(credits)],
+        ["Montant", amount],
+        ["Session Stripe", session.id.slice(0, 16) + "…"],
+      ],
+    });
   }
 
   return NextResponse.json({ received: true });

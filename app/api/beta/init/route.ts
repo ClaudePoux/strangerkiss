@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notifyAdmin } from "@/lib/resend";
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,5 +17,15 @@ export async function POST() {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  notifyAdmin({
+    subject: "🎉 Nouvel inscrit StrangerKiss",
+    title: "🎉 Nouvel inscrit",
+    rows: [
+      ["User ID", data.id.slice(0, 8) + "…"],
+      ["Crédits initiaux", "3"],
+    ],
+  });
+
   return NextResponse.json({ user_id: data.id });
 }

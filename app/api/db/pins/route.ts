@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { UserPin } from "@/lib/supabase";
+import { notifyAdmin, maskPhone } from "@/lib/resend";
 
 // Route serveur : utilise service_role pour bypasser RLS (nécessaire pour UPDATE)
 const sb = createClient(
@@ -12,10 +13,18 @@ async function checkVip(userId: string) {
   const { data: user } = await sb.from("users").select("phone").eq("id", userId).maybeSingle();
   if (!user?.phone) return;
   const { data: watch } = await sb
-    .from("vip_watches").select("id").eq("phone", user.phone).maybeSingle();
+    .from("vip_watches").select("id, reason").eq("phone", user.phone).maybeSingle();
   if (!watch) return;
   await sb.from("vip_alerts").insert({ watch_id: watch.id, phone: user.phone });
   console.log(`[VIP] Alerte — numéro surveillé connecté : ${user.phone.slice(0, 4)}****`);
+  notifyAdmin({
+    subject: "🔍 Connexion VIP surveillée — StrangerKiss",
+    title: "🔍 Connexion d'un numéro surveillé",
+    rows: [
+      ["Téléphone", maskPhone(user.phone)],
+      ["Motif de surveillance", watch.reason ?? "—"],
+    ],
+  });
 }
 
 // GET /api/db/pins?lat=&lng=&radius=5   — liste des pins actifs à proximité

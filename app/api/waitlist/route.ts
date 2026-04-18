@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notifyAdmin, maskPhone } from "@/lib/resend";
 
 // Utiliser service_role : les tables sont protégées par RLS (anon key refusé)
 const sb = createClient(
@@ -42,6 +43,15 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  notifyAdmin({
+    subject: "📋 Nouveau pré-inscrit StrangerKiss",
+    title: "📋 Nouveau pré-inscrit (waitlist)",
+    rows: [
+      ["Téléphone", maskPhone(phone.trim())],
+      ["Crédits à l'ouverture", "10 (bonus lancement)"],
+    ],
+  });
 
   return NextResponse.json({ ok: true });
 }
