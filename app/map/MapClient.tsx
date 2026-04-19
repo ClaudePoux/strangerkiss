@@ -417,10 +417,10 @@ function MapPageContent() {
             if (pin?.id) {
               localStorage.setItem("sk_my_id", pin.id);
               setMyId(pin.id);
-              fetchBlocked(pin.id).then((b) => {
-                console.log("[MapClient] blocked post-POST — pin_id:", pin.id, "| blocked:", b);
-                setBlocked(b);
-              });
+              // NE PAS appeler fetchBlocked(pin.id) ici — ça déclencherait setBlocked APRÈS
+              // le montage de MapView et causerait un Effect 2 supplémentaire (clearLayers + re-ajout)
+              // qui casse le rendu des marqueurs sur mobile.
+              // Le fetchBlocked(uuid) appelé au mount suffit : il résout avant setLoading(false).
               startPing(pin.id);
             }
             if (returnedUserId && !storedUserId) {
