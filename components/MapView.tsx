@@ -51,11 +51,11 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
   const { t } = useI18n();
 
-  // ── Effet 1 : création de la carte (une seule fois par locale) ──────────────
+  // ── Effet 1 : création de la carte (une seule fois au montage) ───────────────
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Détruire la carte précédente si changement de locale
+    // Détruire la carte précédente si elle existe déjà
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current  = null;
@@ -66,13 +66,10 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
     let destroyed = false;
 
-    console.log("[MapView] Effet 1 — import Leaflet");
-
     import("leaflet").then((L) => {
       if (destroyed || !mapRef.current) return;
 
       leafletRef.current = L;
-      console.log("[MapView] Leaflet chargé — center:", center);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -128,14 +125,11 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       // Sur mobile, la barre d'adresse Safari/Chrome réduit le viewport au chargement.
       // setMapReady(true) est appelé DANS le timeout, après invalidateSize(),
       // pour que les marqueurs soient positionnés avec les dimensions correctes de la carte.
-      // Si setMapReady était appelé avant, les marqueurs seraient calculés hors de la zone visible.
-      console.log("[MapView] setTimeout 500ms — invalidateSize puis setMapReady");
       setTimeout(() => {
         if (!map || destroyed) return;
         map.invalidateSize();
-        console.log("[MapView] setMapReady(true) — après invalidateSize");
         setMapReady(true);
-      }, 500);
+      }, 300);
     });
 
     return () => {
@@ -153,13 +147,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
   // ── Effet 2 : mise à jour des marqueurs (pins OU mapReady changent) ─────────
   useEffect(() => {
-    console.log("[MapView] Effet 2 — mapReady:", mapReady, "| pins:", pins.length,
-      "| leaflet:", !!leafletRef.current, "| layer:", !!markersLayerRef.current);
-
-    if (!mapReady || !leafletRef.current || !markersLayerRef.current) {
-      console.log("[MapView] Effet 2 — skip (conditions non remplies)");
-      return;
-    }
+    if (!mapReady || !leafletRef.current || !markersLayerRef.current) return;
 
     const L = leafletRef.current;
     markersLayerRef.current.clearLayers();
@@ -167,11 +155,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     const hugLabel  = t("map.hug");
     const kissLabel = t("map.frenchKiss");
 
-    const mapBounds = mapInstanceRef.current?.getBounds?.();
-    console.log("[MapView] Effet 2 — rendu", pins.length, "marqueur(s) | bounds:", mapBounds?.toBBoxString?.() ?? "inconnu", "| center:", center);
     pins.forEach((pin) => {
-      const inBounds = mapBounds?.contains?.([pin.lat, pin.lng]);
-      console.log("[MapView]   pin:", pin.name, "lat:", pin.lat, "lng:", pin.lng, "| inBounds:", inBounds);
       try {
         const dist    = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
         const distStr = dist < 1
@@ -207,7 +191,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
             <br/><a href="${chatUrl}" style="display:inline-block;margin-top:6px;background:#7c3aed;color:white;font-size:11px;padding:3px 10px;border-radius:8px;text-decoration:none">${t("mapView.message")}</a>
           `));
       } catch (err) {
-        console.error("[MapView] ERREUR marqueur", pin.name, "lat:", pin.lat, "lng:", pin.lng, err);
+        console.error("[MapView] Erreur rendu marqueur", pin.name, err);
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps

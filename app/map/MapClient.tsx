@@ -140,20 +140,7 @@ function MapPageContent() {
   const pinsRef         = useRef<UserPin[]>([]);
 
   // Portal SSR-safe : monté uniquement après hydratation côté client
-  useEffect(() => {
-    setPortalMounted(true);
-    console.log("[MapClient] mount — isDemo:", isDemo, "| portalMounted → true");
-  }, []);
-
-  // Trace les changements de showSurvey pour détecter si le modal est bien déclenché
-  useEffect(() => {
-    console.log(
-      "[MapClient] showSurvey changed →", showSurvey,
-      "| portalMounted:", portalMounted,
-      "| isDemo:", isDemo,
-      "| => modal visible:", portalMounted && showSurvey && !isDemo,
-    );
-  }, [showSurvey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setPortalMounted(true); }, []);
 
   // Stop/restart ping selon visibilité de l'onglet
   useEffect(() => {
@@ -216,57 +203,26 @@ function MapPageContent() {
   // Synchronise pinsRef à chaque update de pins (sans recréer l'effet inbox)
   useEffect(() => { pinsRef.current = pins; }, [pins]);
 
-  // Log diagnostic : pins + blocked → ce qui passe réellement dans MapView
-  useEffect(() => {
-    const visibles = pins.filter(p => !blocked.includes(p.id));
-    console.log(
-      "[MapClient] pins/blocked update — pins:", pins.length,
-      "| blocked:", blocked,
-      "| visible dans MapView:", visibles.length,
-      "| IDs visibles:", visibles.map(p => `${p.id} (${p.name})`),
-      "| IDs filtrés par blocked:", pins.filter(p => blocked.includes(p.id)).map(p => `${p.id} (${p.name})`),
-    );
-  }, [pins, blocked]);
-
   // Déclenche la SurveyModal si sk_survey_pending est actif.
   // Appelée au montage ET à chaque retour de visibilité (router cache Next.js).
-  function checkSurveyPending(source: string) {
+  function checkSurveyPending(_source: string) {
     try {
       const pending = localStorage.getItem("sk_survey_pending");
       const done    = localStorage.getItem("sk_survey_done");
-      console.log(
-        `[MapClient] checkSurveyPending ▶ source="${source}"`,
-        "| pending:", pending,
-        "| done:", done,
-        "| isDemo:", isDemo,
-        "| portalMounted:", portalMounted,
-      );
-      if (pending !== "true") {
-        console.log("[MapClient]   → sk_survey_pending absent ou != 'true' — rien");
-        return;
-      }
+      if (pending !== "true") return;
       if (done === "true") {
-        console.log("[MapClient]   → sk_survey_done=true — survey déjà effectué, on nettoie");
         localStorage.removeItem("sk_survey_pending");
         return;
       }
-      // Cas normal : pending + pas encore fait
-      console.log("[MapClient]   → setShowSurvey(true) !");
       setShowSurvey(true);
       localStorage.removeItem("sk_survey_pending");
-    } catch (err) {
-      console.error("[MapClient] checkSurveyPending ERROR:", err);
-    }
+    } catch { /* ignore */ }
   }
 
   useEffect(() => {
     const id = getOrCreateMyId();
-    console.log("[MapClient] mount — sk_my_id (localStorage initial):", id);
     setMyId(id);
-    fetchBlocked(id).then((b) => {
-      console.log("[MapClient] blocked init — pin_id:", id, "| blocked:", b);
-      setBlocked(b);
-    });
+    fetchBlocked(id).then(setBlocked);
     try {
       const stored = localStorage.getItem("sk_profile");
       if (stored) setProfile(JSON.parse(stored));
@@ -302,11 +258,9 @@ function MapPageContent() {
     // Quand MapClient reste monté en mémoire, ni mount ni visibilitychange ne se
     // déclenchent. Le chat dispatche sk:survey_check juste après avoir posé le flag.
     function onSurveyCheck() {
-      console.log("[MapClient] ← event sk:survey_check reçu");
-      checkSurveyPending("[MapClient] sk:survey_check");
+      checkSurveyPending("sk:survey_check");
     }
     window.addEventListener("sk:survey_check", onSurveyCheck);
-    console.log("[MapClient] listener sk:survey_check enregistré");
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -316,25 +270,12 @@ function MapPageContent() {
 
   const refreshPins = useCallback(async (lat: number, lng: number, currentMyId: string) => {
     try {
-      const url = `/api/db/pins?lat=${lat}&lng=${lng}`;
-      console.log("[MapClient] refreshPins — url:", url, "| rayon: 5km (défaut) | myId:", currentMyId);
-      const nearbyRes = await fetch(url);
-      if (!nearbyRes.ok) {
-        console.warn("[MapClient] refreshPins — réponse NOK:", nearbyRes.status);
-        return;
-      }
+      const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
+      if (!nearbyRes.ok) return;
       const { pins: nearby } = await nearbyRes.json();
-      console.log("[MapClient] refreshPins — IDs reçus:", (nearby as UserPin[]).map((p: UserPin) => `${p.id} (${p.name})`));
-      const filtered = (nearby as UserPin[]).filter((p) => {
-        const keep = p.id !== currentMyId;
-        if (!keep) console.log("[MapClient] refreshPins — filtré (= myId):", p.id, p.name);
-        return keep;
-      });
-      console.log("[MapClient] refreshPins — total:", (nearby as UserPin[]).length, "| après filtre myId:", filtered.length);
+      const filtered = (nearby as UserPin[]).filter((p) => p.id !== currentMyId);
       setPins(filtered);
-    } catch (err) {
-      console.error("[MapClient] refreshPins — ERREUR:", err);
-    }
+    } catch { /* ignore — le prochain refresh réessaiera */ }
   }, []);
 
   const loadMap = useCallback(
@@ -343,7 +284,6 @@ function MapPageContent() {
       // Lire profile via ref — valeur fraîche sans recréer loadMap à chaque rendu.
       // Garantit un seul getCurrentPosition au montage (pas de double-appel).
       const currentProfile = profileRef.current;
-      console.log("[MapClient] loadMap — profile:", currentProfile?.name ?? "null", "lat:", lat, "lng:", lng);
 
       if (currentProfile) {
         try {
@@ -410,10 +350,7 @@ function MapPageContent() {
                 user_id: storedUserId ?? null,
               }),
             });
-            const pinBody = await pinRes.json();
-            console.log("[MapClient] loadMap — réponse POST pins:", JSON.stringify(pinBody));
-            const { pin, user_id: returnedUserId } = pinBody;
-            console.log("[MapClient] loadMap — existingPinId (envoyé):", existingPinId, "| pin.id (reçu):", pin?.id, "| match:", existingPinId === pin?.id);
+            const { pin, user_id: returnedUserId } = await pinRes.json();
             if (pin?.id) {
               localStorage.setItem("sk_my_id", pin.id);
               setMyId(pin.id);
@@ -430,27 +367,15 @@ function MapPageContent() {
               localStorage.setItem("sk_user_credits", "3");
               setTimeout(() => setShowVerify(true), 3000);
             }
-            const nearbyUrl = `/api/db/pins?lat=${lat}&lng=${lng}`;
-            console.log("[MapClient] loadMap — fetch nearby:", nearbyUrl, "| rayon: 5km (défaut)");
-            const nearbyRes = await fetch(nearbyUrl);
+            const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
             const { pins: nearby } = await nearbyRes.json();
             const ownId = localStorage.getItem("sk_my_id");
-            console.log("[MapClient] loadMap — ownId pour filtre:", ownId);
-            console.log("[MapClient] loadMap — IDs reçus:", (nearby as UserPin[]).map((p: UserPin) => `${p.id} (${p.name})`));
-            const filtered = (nearby as UserPin[]).filter((p) => {
-              const keep = p.id !== ownId;
-              if (!keep) console.log("[MapClient] loadMap — filtré (= ownId):", p.id, p.name);
-              return keep;
-            });
-            console.log("[MapClient] loadMap — nearby:", (nearby as UserPin[]).length, "| après filtre:", filtered.length);
-            setPins(filtered);
+            setPins((nearby as UserPin[]).filter((p) => p.id !== ownId));
           }
         } catch (err) {
           console.error("[MapClient] loadMap — ERREUR:", err);
           if (!isDemo) setPins([]);
         }
-      } else {
-        console.log("[MapClient] loadMap — pas de profil, pins non chargés");
       }
       setLoading(false);
     },
@@ -663,17 +588,8 @@ function MapPageContent() {
       )}
 
       {/* Enquête post-expérience — portal dans document.body pour passer au-dessus de Leaflet */}
-      {/* DEBUG: log à chaque render quand showSurvey est true */}
-      {showSurvey && console.log(
-        "[MapClient] render — showSurvey=true | portalMounted:", portalMounted,
-        "| isDemo:", isDemo,
-        "| => portal visible:", portalMounted && !isDemo,
-      ) as unknown as null}
       {portalMounted && showSurvey && !isDemo && createPortal(
-        <SurveyModal t={t} onClose={() => {
-          console.log("[MapClient] SurveyModal onClose → setShowSurvey(false)");
-          setShowSurvey(false);
-        }} />,
+        <SurveyModal t={t} onClose={() => setShowSurvey(false)} />,
         document.body
       )}
 
