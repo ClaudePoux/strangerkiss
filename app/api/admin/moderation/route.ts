@@ -53,5 +53,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  if (action === "clear_blocks") {
+    const { data, error } = await adminSb
+      .from("blocks")
+      .delete()
+      .not("blocker_id", "is", null)
+      .select("id");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, deleted: data?.length ?? 0 });
+  }
+
   return NextResponse.json({ error: "unknown_action" }, { status: 400 });
 }

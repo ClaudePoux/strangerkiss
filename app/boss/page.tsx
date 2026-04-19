@@ -357,6 +357,9 @@ function ModerationTab({ phone }: { phone: string }) {
   const [reports, setReports] = useState<{reporter_pin_id:string;reported_pin_id:string;reason:string|null;created_at:string}[]>([]);
   const [bans, setBans] = useState<{id:string;phone:string;ban_type:string;banned_until:string|null;reason:string|null;created_at:string}[]>([]);
   const [msg, setMsg] = useState("");
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [clearLoading, setClearLoading] = useState(false);
+  const [clearResult, setClearResult] = useState<number | null>(null);
 
   const load = useCallback(() => {
     adminFetch(phone, "/api/admin/moderation").then(r => r.json()).then(d => {
@@ -374,9 +377,58 @@ function ModerationTab({ phone }: { phone: string }) {
     load();
   }
 
+  async function clearBlocks() {
+    setClearLoading(true); setClearResult(null);
+    const r = await adminFetch(phone, "/api/admin/moderation", { method: "POST", body: JSON.stringify({ action: "clear_blocks" }) });
+    const d = await r.json();
+    setClearLoading(false);
+    setClearConfirm(false);
+    if (d.ok) setClearResult(d.deleted);
+    else setMsg(`Erreur : ${d.error}`);
+  }
+
   return (
     <div className="space-y-6">
       {msg && <p className="text-green-400 text-sm">{msg}</p>}
+
+      {/* Zone tests — vider la table blocks */}
+      <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-3">
+        <div>
+          <h3 className="text-amber-300 text-sm font-semibold">🧪 Outils de test</h3>
+          <p className="text-white/40 text-xs mt-0.5">Réinitialisation des données pour les sessions de test</p>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          {!clearConfirm ? (
+            <button
+              onClick={() => { setClearConfirm(true); setClearResult(null); }}
+              className="bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/30 text-amber-200 text-sm px-4 py-2 rounded-lg transition-colors"
+            >
+              Vider la table blocks
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-amber-300 text-sm">Confirmer la suppression de tous les bloquages ?</span>
+              <button
+                onClick={clearBlocks}
+                disabled={clearLoading}
+                className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+              >
+                {clearLoading ? "Suppression…" : "Confirmer"}
+              </button>
+              <button
+                onClick={() => setClearConfirm(false)}
+                disabled={clearLoading}
+                className="bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+          {clearResult !== null && (
+            <span className="text-green-400 text-sm">✓ {clearResult} ligne{clearResult !== 1 ? "s" : ""} supprimée{clearResult !== 1 ? "s" : ""}</span>
+          )}
+        </div>
+      </div>
 
       <div>
         <h3 className="text-white/50 text-xs uppercase tracking-wider mb-2">Bannis ({bans.length})</h3>
