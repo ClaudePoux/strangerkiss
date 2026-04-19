@@ -55,6 +55,8 @@ export async function GET(req: NextRequest) {
   const activeCutoff  = new Date(Date.now() - 10 * 60 * 1000).toISOString();       // 10 min
   const legacyCutoff  = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();  // 24h (fallback)
 
+  console.log(`[GET /api/db/pins] lat:${lat} lng:${lng} radius:${radiusKm}km | bbox lat:[${lat-deltaLat},${lat+deltaLat}] lng:[${lng-deltaLng},${lng+deltaLng}] | cutoff:${activeCutoff}`);
+
   // Tentative 1 : filtre last_seen (colonne ajoutée en migration)
   const { data, error } = await sb
     .from("user_pins")
@@ -87,6 +89,8 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ pins: fallbackData as UserPin[] });
   }
+
+  console.log(`[GET /api/db/pins] résultat: ${data?.length ?? 0} pin(s) | IDs:`, data?.map(p => `${p.id} (${p.name}, last_seen:${p.last_seen})`));
 
   // Nettoyage silencieux des pins expirés (fire-and-forget, ne bloque pas la réponse)
   sb.from("user_pins")
@@ -174,7 +178,12 @@ export async function POST(req: NextRequest) {
       .single());
   }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[POST /api/db/pins] ERREUR:", error.message, "| pin_id envoyé:", pin_id);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  console.log(`[POST /api/db/pins] pin sauvegardé: id=${(data as UserPin)?.id} | pin_id_envoyé:${pin_id ?? "aucun"} | match:${(data as UserPin)?.id === pin_id}`);
 
   // Vérification VIP en arrière-plan (ne bloque pas la réponse)
   if (resolvedUserId) {

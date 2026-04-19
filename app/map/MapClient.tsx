@@ -216,6 +216,18 @@ function MapPageContent() {
   // Synchronise pinsRef à chaque update de pins (sans recréer l'effet inbox)
   useEffect(() => { pinsRef.current = pins; }, [pins]);
 
+  // Log diagnostic : pins + blocked → ce qui passe réellement dans MapView
+  useEffect(() => {
+    const visibles = pins.filter(p => !blocked.includes(p.id));
+    console.log(
+      "[MapClient] pins/blocked update — pins:", pins.length,
+      "| blocked:", blocked,
+      "| visible dans MapView:", visibles.length,
+      "| IDs visibles:", visibles.map(p => `${p.id} (${p.name})`),
+      "| IDs filtrés par blocked:", pins.filter(p => blocked.includes(p.id)).map(p => `${p.id} (${p.name})`),
+    );
+  }, [pins, blocked]);
+
   // Déclenche la SurveyModal si sk_survey_pending est actif.
   // Appelée au montage ET à chaque retour de visibilité (router cache Next.js).
   function checkSurveyPending(source: string) {
@@ -249,8 +261,12 @@ function MapPageContent() {
 
   useEffect(() => {
     const id = getOrCreateMyId();
+    console.log("[MapClient] mount — sk_my_id (localStorage initial):", id);
     setMyId(id);
-    fetchBlocked(id).then(setBlocked);
+    fetchBlocked(id).then((b) => {
+      console.log("[MapClient] blocked init — pin_id:", id, "| blocked:", b);
+      setBlocked(b);
+    });
     try {
       const stored = localStorage.getItem("sk_profile");
       if (stored) setProfile(JSON.parse(stored));
@@ -300,13 +316,25 @@ function MapPageContent() {
 
   const refreshPins = useCallback(async (lat: number, lng: number, currentMyId: string) => {
     try {
-      const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
-      if (!nearbyRes.ok) return;
+      const url = `/api/db/pins?lat=${lat}&lng=${lng}`;
+      console.log("[MapClient] refreshPins — url:", url, "| rayon: 5km (défaut) | myId:", currentMyId);
+      const nearbyRes = await fetch(url);
+      if (!nearbyRes.ok) {
+        console.warn("[MapClient] refreshPins — réponse NOK:", nearbyRes.status);
+        return;
+      }
       const { pins: nearby } = await nearbyRes.json();
-      const filtered = (nearby as UserPin[]).filter((p) => p.id !== currentMyId);
-      console.log("[MapClient] refreshPins — total:", (nearby as UserPin[]).length, "| après filtre:", filtered.length);
+      console.log("[MapClient] refreshPins — IDs reçus:", (nearby as UserPin[]).map((p: UserPin) => `${p.id} (${p.name})`));
+      const filtered = (nearby as UserPin[]).filter((p) => {
+        const keep = p.id !== currentMyId;
+        if (!keep) console.log("[MapClient] refreshPins — filtré (= myId):", p.id, p.name);
+        return keep;
+      });
+      console.log("[MapClient] refreshPins — total:", (nearby as UserPin[]).length, "| après filtre myId:", filtered.length);
       setPins(filtered);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error("[MapClient] refreshPins — ERREUR:", err);
+    }
   }, []);
 
   const loadMap = useCallback(
@@ -382,11 +410,17 @@ function MapPageContent() {
                 user_id: storedUserId ?? null,
               }),
             });
-            const { pin, user_id: returnedUserId } = await pinRes.json();
+            const pinBody = await pinRes.json();
+            console.log("[MapClient] loadMap — réponse POST pins:", JSON.stringify(pinBody));
+            const { pin, user_id: returnedUserId } = pinBody;
+            console.log("[MapClient] loadMap — existingPinId (envoyé):", existingPinId, "| pin.id (reçu):", pin?.id, "| match:", existingPinId === pin?.id);
             if (pin?.id) {
               localStorage.setItem("sk_my_id", pin.id);
               setMyId(pin.id);
-              fetchBlocked(pin.id).then(setBlocked);
+              fetchBlocked(pin.id).then((b) => {
+                console.log("[MapClient] blocked post-POST — pin_id:", pin.id, "| blocked:", b);
+                setBlocked(b);
+              });
               startPing(pin.id);
             }
             if (returnedUserId && !storedUserId) {
@@ -396,10 +430,18 @@ function MapPageContent() {
               localStorage.setItem("sk_user_credits", "3");
               setTimeout(() => setShowVerify(true), 3000);
             }
-            const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
+            const nearbyUrl = `/api/db/pins?lat=${lat}&lng=${lng}`;
+            console.log("[MapClient] loadMap — fetch nearby:", nearbyUrl, "| rayon: 5km (défaut)");
+            const nearbyRes = await fetch(nearbyUrl);
             const { pins: nearby } = await nearbyRes.json();
             const ownId = localStorage.getItem("sk_my_id");
-            const filtered = (nearby as UserPin[]).filter((p) => p.id !== ownId);
+            console.log("[MapClient] loadMap — ownId pour filtre:", ownId);
+            console.log("[MapClient] loadMap — IDs reçus:", (nearby as UserPin[]).map((p: UserPin) => `${p.id} (${p.name})`));
+            const filtered = (nearby as UserPin[]).filter((p) => {
+              const keep = p.id !== ownId;
+              if (!keep) console.log("[MapClient] loadMap — filtré (= ownId):", p.id, p.name);
+              return keep;
+            });
             console.log("[MapClient] loadMap — nearby:", (nearby as UserPin[]).length, "| après filtre:", filtered.length);
             setPins(filtered);
           }
