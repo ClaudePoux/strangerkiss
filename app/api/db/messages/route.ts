@@ -19,23 +19,13 @@ export async function GET(req: NextRequest) {
     const sinceTs = since ?? new Date(0).toISOString();
     const { data, error } = await sb
       .from("messages")
-      .select("id, from_id, created_at, content")
+      .select("id, from_id, created_at")
       .eq("to_id", inbox)
       .gt("created_at", sinceTs)
       .order("created_at", { ascending: false })
       .limit(10);
     if (error) return NextResponse.json({ messages: [] });
-    // Classifier les messages sans exposer le contenu brut (évite d'envoyer les selfies base64)
-    const messages = (data ?? []).map(r => ({
-      id: r.id,
-      from_id: r.from_id,
-      created_at: r.created_at,
-      message_type: r.content === "§MEETING_REQUEST§"  ? "meeting_request"
-                  : r.content === "§MEETING_ACCEPTED§" ? "meeting_accepted"
-                  : r.content?.startsWith("§MODERATION_WARNING§") ? "moderation_warning"
-                  : "message",
-    }));
-    return NextResponse.json({ messages });
+    return NextResponse.json({ messages: data });
   }
 
   const fromId = searchParams.get("from");

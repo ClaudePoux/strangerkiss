@@ -182,18 +182,5 @@
     "p7": "我们不想打造一款约会应用。我们想为像里斯本那个人一样的人打造一个空间——那些旅行的人、活在当下的人、只是想与另一个人类共享真实瞬间的人。",
     "p8": "如果你正在读这篇文字，你可能就是其中之一。",
     "signature": "— StrangerKiss 团队"
-  },
-  "notif": {
-    "newMessage": "{name} 给你发了一条消息",
-    "meetingRequest": "{name} 想见你！",
-    "meetingAccepted": "{name} 接受了你的请求 🎉",
-    "noCredits": "积分不足 — 充值以发送请求",
-    "lowCredits": "还剩 {count} 个积分",
-    "creditsReceived": "已收到 +{count} 积分！",
-    "moderationWarning": "你的资料收到了举报",
-    "newProfile": "附近出现了新资料",
-    "newProfiles": "附近有 {count} 个新资料",
-    "profileExpiring": "你的资料可能已过期",
-    "someone": "某人"
   }
 }

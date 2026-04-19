@@ -7,11 +7,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
-import { useNotificationContext } from "@/lib/notificationContext";
 import PhoneVerification from "@/components/PhoneVerification";
 import ReferralCard from "@/components/ReferralCard";
 import SurveyModal from "@/components/SurveyModal";
-import NotificationBar from "@/components/NotificationBar";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -87,8 +85,6 @@ function MapPageContent() {
   const { t, locale } = useI18n();
   const searchParams = useSearchParams();
   const isDemo = searchParams.get("demo") === "true";
-
-  const { notifs, dismiss } = useNotificationContext();
 
   const LABEL: Record<string, string> = {
     hug: t("map.hug"),
@@ -522,9 +518,6 @@ function MapPageContent() {
         </div>
       </header>
 
-      {/* Barre de notifications — hauteur fixe 40px, toujours présente */}
-      <NotificationBar notifs={notifs} onDismiss={dismiss} />
-
       {/* Bannière mode démo */}
       {isDemo && (
         <div className="flex items-center justify-between px-4 py-2 bg-[#7c3aed]/10 border-b border-[#7c3aed]/20 text-xs text-[#a78bfa]">
@@ -613,6 +606,7 @@ function MapPageContent() {
       )}
 
       {/* Enquête post-expérience — portal dans document.body pour passer au-dessus de Leaflet */}
+      {/* DEBUG: log à chaque render quand showSurvey est true */}
       {showSurvey && console.log(
         "[MapClient] render — showSurvey=true | portalMounted:", portalMounted,
         "| isDemo:", isDemo,

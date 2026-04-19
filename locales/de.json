@@ -182,18 +182,5 @@
     "p7": "Wir wollten keine Dating-App bauen. Wir wollten einen Raum für Menschen wie diesen Typen in Lissabon schaffen — die Reisenden, die präsent sind, die einfach einen echten Moment mit einem anderen Menschen suchen.",
     "p8": "Wenn du das liest, bist du vielleicht einer von ihnen.",
     "signature": "— Das StrangerKiss-Team"
-  },
-  "notif": {
-    "newMessage": "{name} hat dir eine Nachricht geschickt",
-    "meetingRequest": "{name} möchte dich treffen!",
-    "meetingAccepted": "{name} hat deine Anfrage akzeptiert 🎉",
-    "noCredits": "Keine Credits mehr — lade auf, um Anfragen zu senden",
-    "lowCredits": "Noch {count} Credit(s) — denke ans Aufladen",
-    "creditsReceived": "+{count} Credit(s) erhalten!",
-    "moderationWarning": "Dein Profil hat eine Meldung erhalten",
-    "newProfile": "Ein neues Profil in deiner Nähe",
-    "newProfiles": "{count} neue Profile in deiner Nähe",
-    "profileExpiring": "Du warst eine Weile weg — dein Profil ist möglicherweise abgelaufen",
-    "someone": "Jemand"
   }
 }
