@@ -125,6 +125,10 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
 
+      // Forcer le recalcul des dimensions après que le layout mobile se soit stabilisé
+      // (barre d'adresse Safari/Chrome qui modifie la hauteur du viewport au chargement).
+      setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+
       // Signal : la carte est prête. Effect 2 va se déclencher avec les pins courants.
       console.log("[MapView] setMapReady(true)");
       setMapReady(true);
@@ -207,7 +211,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     <div
       ref={mapRef}
       className="rounded-2xl"
-      style={{ position: 'absolute', inset: 0, minHeight: '300px' }}
+      style={{ position: 'absolute', inset: 0, height: '100%', width: '100%', minHeight: '300px' }}
     />
   );
 }
