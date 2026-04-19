@@ -30,3 +30,13 @@ body {
 .leaflet-control-attribution a {
   color: #aaa !important;
 }
+
+/* Garantit que les panes de marqueurs Leaflet restent visibles sur mobile */
+.leaflet-marker-pane,
+.leaflet-shadow-pane,
+.leaflet-overlay-pane {
+  z-index: auto;
+}
+.leaflet-pane {
+  position: absolute;
+}

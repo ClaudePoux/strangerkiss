@@ -125,13 +125,17 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
 
-      // Forcer le recalcul des dimensions après que le layout mobile se soit stabilisé
-      // (barre d'adresse Safari/Chrome qui modifie la hauteur du viewport au chargement).
-      setTimeout(() => { if (map) map.invalidateSize(); }, 300);
-
-      // Signal : la carte est prête. Effect 2 va se déclencher avec les pins courants.
-      console.log("[MapView] setMapReady(true)");
-      setMapReady(true);
+      // Sur mobile, la barre d'adresse Safari/Chrome réduit le viewport au chargement.
+      // setMapReady(true) est appelé DANS le timeout, après invalidateSize(),
+      // pour que les marqueurs soient positionnés avec les dimensions correctes de la carte.
+      // Si setMapReady était appelé avant, les marqueurs seraient calculés hors de la zone visible.
+      console.log("[MapView] setTimeout 500ms — invalidateSize puis setMapReady");
+      setTimeout(() => {
+        if (!map || destroyed) return;
+        map.invalidateSize();
+        console.log("[MapView] setMapReady(true) — après invalidateSize");
+        setMapReady(true);
+      }, 500);
     });
 
     return () => {
@@ -163,9 +167,11 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     const hugLabel  = t("map.hug");
     const kissLabel = t("map.frenchKiss");
 
-    console.log("[MapView] Effet 2 — rendu", pins.length, "marqueur(s)");
+    const mapBounds = mapInstanceRef.current?.getBounds?.();
+    console.log("[MapView] Effet 2 — rendu", pins.length, "marqueur(s) | bounds:", mapBounds?.toBBoxString?.() ?? "inconnu", "| center:", center);
     pins.forEach((pin) => {
-      console.log("[MapView]   pin:", pin.name, "lat:", pin.lat, "lng:", pin.lng);
+      const inBounds = mapBounds?.contains?.([pin.lat, pin.lng]);
+      console.log("[MapView]   pin:", pin.name, "lat:", pin.lat, "lng:", pin.lng, "| inBounds:", inBounds);
       try {
         const dist    = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
         const distStr = dist < 1
