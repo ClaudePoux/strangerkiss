@@ -66,7 +66,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
     let destroyed = false;
 
-    console.log("[MapView] Effet 1 — import Leaflet (locale:", locale, ")");
+    console.log("[MapView] Effet 1 — import Leaflet");
 
     import("leaflet").then((L) => {
       if (destroyed || !mapRef.current) return;
@@ -140,8 +140,8 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         leafletRef.current      = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locale]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Effet 2 : mise à jour des marqueurs (pins OU mapReady changent) ─────────
   useEffect(() => {
