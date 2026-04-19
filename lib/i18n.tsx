@@ -69,11 +69,7 @@ interface I18nCtx {
 const Ctx = createContext<I18nCtx | null>(null);
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("fr");
-
-  useEffect(() => {
-    setLocaleState(detectLocale());
-  }, []);
+  const [locale, setLocaleState] = useState<Locale>(() => detectLocale());
 
   useEffect(() => {
     document.documentElement.lang = LOCALE_BCP47[locale].split("-")[0];
