@@ -162,39 +162,43 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     console.log("[MapView] Effet 2 — rendu", pins.length, "marqueur(s)");
     pins.forEach((pin) => {
       console.log("[MapView]   pin:", pin.name, "lat:", pin.lat, "lng:", pin.lng);
-      const dist    = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
-      const distStr = dist < 1
-        ? t("mapView.distanceM", { dist: String(Math.round(dist * 1000)) })
-        : t("mapView.distanceKm", { dist: dist.toFixed(1) });
-      const isHug = pin.looking_for === "hug";
+      try {
+        const dist    = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
+        const distStr = dist < 1
+          ? t("mapView.distanceM", { dist: String(Math.round(dist * 1000)) })
+          : t("mapView.distanceKm", { dist: dist.toFixed(1) });
+        const isHug = pin.looking_for === "hug";
 
-      const pinIcon = L.divIcon({
-        html: `<div style="
-          width:38px;height:38px;border-radius:50%;
-          background:${isHug
-            ? "linear-gradient(135deg,#f59e0b,#ef4444)"
-            : "linear-gradient(135deg,#ec4899,#8b5cf6)"};
-          display:flex;align-items:center;justify-content:center;
-          font-size:18px;border:2px solid rgba(255,255,255,0.5);
-          box-shadow:0 0 12px rgba(0,0,0,0.5);
-        ">${isHug ? "🤗" : '<img src="/levres.svg" style="width:18px;height:18px;object-fit:contain" />'}</div>`,
-        className: "",
-        iconSize: [38, 38],
-        iconAnchor: [19, 19],
-      });
+        const pinIcon = L.divIcon({
+          html: `<div style="
+            width:38px;height:38px;border-radius:50%;
+            background:${isHug
+              ? "linear-gradient(135deg,#f59e0b,#ef4444)"
+              : "linear-gradient(135deg,#ec4899,#8b5cf6)"};
+            display:flex;align-items:center;justify-content:center;
+            font-size:18px;border:2px solid rgba(255,255,255,0.5);
+            box-shadow:0 0 12px rgba(0,0,0,0.5);
+          ">${isHug ? "🤗" : '<img src="/levres.svg" style="width:18px;height:18px;object-fit:contain" />'}</div>`,
+          className: "",
+          iconSize: [38, 38],
+          iconAnchor: [19, 19],
+        });
 
-      const chatUrl = `/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`;
-      L.marker([pin.lat, pin.lng], { icon: pinIcon })
-        .addTo(markersLayerRef.current)
-        .bindPopup(popupStyle(`
-          <strong>${flagEmoji(pin.nationality ?? "")} ${pin.name}</strong>
-          <br/><span style="font-size:12px">${t("mapView.age", { age: String(pin.age) })} · ${pin.gender ?? ""}</span>
-          <br/><span style="font-size:12px">${isHug ? hugLabel : kissLabel}</span>
-          ${pin.bio ? `<br/><span style="font-size:11px;color:#555;font-style:italic">${pin.bio}</span>` : ""}
-          ${pin.appearance ? `<br/><span style="font-size:11px;color:#c2186f">👀 ${pin.appearance}</span>` : ""}
-          <br/><span style="font-size:11px;color:#888">${distStr}</span>
-          <br/><a href="${chatUrl}" style="display:inline-block;margin-top:6px;background:#7c3aed;color:white;font-size:11px;padding:3px 10px;border-radius:8px;text-decoration:none">${t("mapView.message")}</a>
-        `));
+        const chatUrl = `/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`;
+        L.marker([pin.lat, pin.lng], { icon: pinIcon })
+          .addTo(markersLayerRef.current)
+          .bindPopup(popupStyle(`
+            <strong>${flagEmoji(pin.nationality ?? "")} ${pin.name}</strong>
+            <br/><span style="font-size:12px">${t("mapView.age", { age: String(pin.age) })} · ${pin.gender ?? ""}</span>
+            <br/><span style="font-size:12px">${isHug ? hugLabel : kissLabel}</span>
+            ${pin.bio ? `<br/><span style="font-size:11px;color:#555;font-style:italic">${pin.bio}</span>` : ""}
+            ${pin.appearance ? `<br/><span style="font-size:11px;color:#c2186f">👀 ${pin.appearance}</span>` : ""}
+            <br/><span style="font-size:11px;color:#888">${distStr}</span>
+            <br/><a href="${chatUrl}" style="display:inline-block;margin-top:6px;background:#7c3aed;color:white;font-size:11px;padding:3px 10px;border-radius:8px;text-decoration:none">${t("mapView.message")}</a>
+          `));
+      } catch (err) {
+        console.error("[MapView] ERREUR marqueur", pin.name, "lat:", pin.lat, "lng:", pin.lng, err);
+      }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins, mapReady]);

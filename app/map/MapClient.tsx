@@ -109,6 +109,10 @@ function MapPageContent() {
     appearance: string;
     looking_for: LookingFor;
   } | null>(null);
+  // Ref sur profile : loadMap lit la valeur fraîche sans l'avoir en dep,
+  // ce qui évite de recréer loadMap (et donc de relancer getCurrentPosition)
+  // à chaque fois que profile charge depuis localStorage.
+  const profileRef = useRef(profile); profileRef.current = profile;
   const [blocked, setBlocked] = useState<string[]>([]);
   const [myId, setMyId] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
@@ -299,19 +303,23 @@ function MapPageContent() {
       const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
       if (!nearbyRes.ok) return;
       const { pins: nearby } = await nearbyRes.json();
-      setPins((nearby as UserPin[]).filter((p) => p.id !== currentMyId));
+      const filtered = (nearby as UserPin[]).filter((p) => p.id !== currentMyId);
+      console.log("[MapClient] refreshPins — total:", (nearby as UserPin[]).length, "| après filtre:", filtered.length);
+      setPins(filtered);
     } catch { /* ignore */ }
   }, []);
 
   const loadMap = useCallback(
     async (lat: number, lng: number) => {
       setCoords([lat, lng]);
+      // Lire profile via ref — valeur fraîche sans recréer loadMap à chaque rendu.
+      // Garantit un seul getCurrentPosition au montage (pas de double-appel).
+      const currentProfile = profileRef.current;
+      console.log("[MapClient] loadMap — profile:", currentProfile?.name ?? "null", "lat:", lat, "lng:", lng);
 
-      if (profile) {
+      if (currentProfile) {
         try {
           if (isDemo) {
-            // Sélectionner 3-5 profils fictifs depuis Supabase selon la langue du navigateur.
-            // Rotation toutes les 6h basée sur une seed déterministe.
             const country = localeToCountry(locale);
             const cacheKey = `sk_demo_pins_${country}`;
             let pool: UserPin[] | null = null;
@@ -362,13 +370,13 @@ function MapPageContent() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 pin_id: existingPinId,
-                name: profile.name,
-                age: profile.age,
-                gender: profile.gender,
-                nationality: profile.nationality ?? "",
-                bio: profile.bio,
-                appearance: profile.appearance,
-                looking_for: profile.looking_for,
+                name: currentProfile.name,
+                age: currentProfile.age,
+                gender: currentProfile.gender,
+                nationality: currentProfile.nationality ?? "",
+                bio: currentProfile.bio,
+                appearance: currentProfile.appearance,
+                looking_for: currentProfile.looking_for,
                 lat,
                 lng,
                 user_id: storedUserId ?? null,
@@ -391,15 +399,22 @@ function MapPageContent() {
             const nearbyRes = await fetch(`/api/db/pins?lat=${lat}&lng=${lng}`);
             const { pins: nearby } = await nearbyRes.json();
             const ownId = localStorage.getItem("sk_my_id");
-            setPins((nearby as UserPin[]).filter((p) => p.id !== ownId));
+            const filtered = (nearby as UserPin[]).filter((p) => p.id !== ownId);
+            console.log("[MapClient] loadMap — nearby:", (nearby as UserPin[]).length, "| après filtre:", filtered.length);
+            setPins(filtered);
           }
-        } catch {
+        } catch (err) {
+          console.error("[MapClient] loadMap — ERREUR:", err);
           if (!isDemo) setPins([]);
         }
+      } else {
+        console.log("[MapClient] loadMap — pas de profil, pins non chargés");
       }
       setLoading(false);
     },
-    [profile, isDemo, startPing]
+    // profile lu via profileRef — retiré des deps pour éviter double getCurrentPosition
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isDemo, startPing]
   );
 
   // Rafraîchissement toutes les 10s (mode réel uniquement)
