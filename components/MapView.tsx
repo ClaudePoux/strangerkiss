@@ -125,6 +125,20 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
 
+      // ── TEST DIAGNOSTIC : marqueur hardcodé ────────────────────────────────
+      // Si ce marqueur apparaît → Leaflet fonctionne, le bug est dans les pins.
+      // S'il n'apparaît pas → le bug est dans l'init Leaflet ou le conteneur CSS.
+      console.log("[MapView] TEST — ajout marqueur hardcodé 46.78, 4.85");
+      try {
+        L.marker([46.78, 4.85])
+          .addTo(markersLayer)
+          .bindPopup("<b>TEST HARDCODÉ</b><br/>Si tu vois ça → Leaflet OK");
+        console.log("[MapView] TEST — marqueur hardcodé ajouté sans erreur");
+      } catch (err) {
+        console.error("[MapView] TEST — ERREUR marqueur hardcodé:", err);
+      }
+      // ────────────────────────────────────────────────────────────────────────
+
       // Signal : la carte est prête. Effect 2 va se déclencher avec les pins courants.
       console.log("[MapView] setMapReady(true)");
       setMapReady(true);
