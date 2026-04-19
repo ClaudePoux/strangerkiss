@@ -55,12 +55,11 @@ interface Props {
 }
 
 export default function NotificationBar({ notifs, onDismiss }: Props) {
-  if (notifs.length === 0) return null;
   return (
-    <div className="flex-shrink-0 border-b border-white/5">
-      {notifs.map(n => (
-        <NotifItem key={n.id} notif={n} onDismiss={() => onDismiss(n.id)} />
-      ))}
+    <div className="flex-shrink-0 h-10 overflow-hidden border-b border-white/5">
+      {notifs.length > 0 && (
+        <NotifItem key={notifs[0].id} notif={notifs[0]} onDismiss={() => onDismiss(notifs[0].id)} />
+      )}
     </div>
   );
 }

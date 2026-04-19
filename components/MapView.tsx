@@ -129,16 +129,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
 
-      // Force le recalcul des dimensions après que le layout flexbox se soit stabilisé.
-      // Nécessaire quand le conteneur change de taille (NotificationBar, panneau profils).
-      setTimeout(() => {
-        if (mapInstanceRef.current) {
-          console.log("[MapView] invalidateSize() initial — container:",
-            mapRef.current ? `${mapRef.current.offsetWidth}x${mapRef.current.offsetHeight}` : "null");
-          mapInstanceRef.current.invalidateSize();
-        }
-      }, 200);
-
       // Signal : la carte est prête. Effect 2 va se déclencher avec les pins courants.
       console.log("[MapView] setMapReady(true)");
       setMapReady(true);
@@ -156,22 +146,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
-
-  // ── Effet 3 : ResizeObserver — appelle invalidateSize() quand le conteneur
-  //             change de taille (ex : NotificationBar qui apparaît/disparaît) ──
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const el = mapRef.current;
-    const obs = new ResizeObserver(() => {
-      if (mapInstanceRef.current) {
-        console.log("[MapView] ResizeObserver — invalidateSize()",
-          el.offsetWidth, "x", el.offsetHeight);
-        mapInstanceRef.current.invalidateSize();
-      }
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
 
   // ── Effet 2 : mise à jour des marqueurs (pins OU mapReady changent) ─────────
   useEffect(() => {
