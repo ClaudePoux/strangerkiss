@@ -6,6 +6,7 @@ import type { Message } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { translateText, AlreadyInTargetLanguageError } from "@/lib/translate";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useNotifications } from "@/lib/notificationContext";
 
 // Special message markers
 const SK_MEETING_REQUEST  = "§MEETING_REQUEST§";
@@ -51,6 +52,8 @@ export default function ChatPage() {
   const otherId = params.userId as string;
   const otherName = searchParams.get("name") ?? "Inconnu·e";
   const otherAppearance = searchParams.get("appearance") ?? "";
+
+  const { setActiveChatId } = useNotifications();
 
   const [myId, setMyId] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -118,6 +121,7 @@ export default function ChatPage() {
   }, [otherId]);
 
   useEffect(() => {
+    setActiveChatId(otherId);
     let unsub: (() => void) | undefined;
     try {
       const stored = localStorage.getItem("sk_my_id");
@@ -146,8 +150,11 @@ export default function ChatPage() {
       loadChat(id).then((fn) => { unsub = fn; });
       setIsBeta(false);
     }
-    return () => unsub?.();
-  }, [loadChat]);
+    return () => {
+      unsub?.();
+      setActiveChatId(null);
+    };
+  }, [loadChat, otherId, setActiveChatId]);
 
   // ── Send helpers ──────────────────────────────────────────────
   async function pushMessage(content: string, id = myId) {
