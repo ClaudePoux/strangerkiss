@@ -543,8 +543,8 @@ function MapPageContent() {
         </div>
       )}
 
-      {/* Zone carte */}
-      <div className="flex-1 relative min-h-0">
+      {/* Zone carte — minHeight explicite pour garantir une hauteur non nulle à Leaflet */}
+      <div className="flex-1 relative" style={{ minHeight: '300px' }}>
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-20">
             <div className="text-4xl animate-pulse">📍</div>

@@ -218,6 +218,10 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   }, [pins, mapReady]);
 
   return (
-    <div ref={mapRef} className="absolute inset-0 rounded-2xl" />
+    <div
+      ref={mapRef}
+      className="rounded-2xl"
+      style={{ position: 'absolute', inset: 0, minHeight: '300px' }}
+    />
   );
 }
