@@ -402,52 +402,56 @@ function MapPageContent() {
   return (
     <main className="flex flex-col h-screen overflow-hidden">
       {/* Top bar */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-        <Link href="/">
-          <img src="/logo-StrangerKiss-blanc.svg" alt="StrangerKiss" className="h-7" />
-        </Link>
-        <div className="flex items-center gap-3">
-          {profile && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-white">
-                {profile.name}, {t("map.age", { age: String(profile.age) })}
-                <span>{profile.looking_for === "hug" ? "🤗" : "💋"}</span>
-              </div>
+      <header className="flex flex-col px-5 pt-3 pb-2 border-b border-white/5 gap-1">
+        {/* Ligne 1 : logo + crédits */}
+        <div className="flex items-center justify-between">
+          <Link href="/">
+            <img src="/logo-StrangerKiss-blanc.svg" alt="StrangerKiss" className="h-7" />
+          </Link>
+          <div className="flex items-center gap-2">
+            {profile && (
               <Link
                 href="/profile"
                 className="text-xs text-white/40 hover:text-white/70 border border-white/10 rounded-full px-3 py-1.5 transition-colors"
               >
                 {t("map.modify")}
               </Link>
-            </div>
-          )}
-          {credits !== null && (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/credits"
-                className="flex items-center gap-1 text-xs font-medium bg-white/5 border border-white/10 rounded-full px-3 py-1.5 hover:bg-white/10 transition-colors"
-                title="Mes crédits"
-              >
-                <span className="text-[#e91e8c]">💞</span>
-                <span className="text-white/70">{credits}</span>
-              </Link>
-              {!phoneVerified && !showVerify && userId && !isDemo && (
-                <button
-                  onClick={() => setShowVerify(true)}
-                  className="text-xs text-[#e91e8c]/70 hover:text-[#e91e8c] border border-[#e91e8c]/20 rounded-full px-2.5 py-1.5 transition-colors"
-                  title={t("verify.title")}
+            )}
+            {credits !== null && (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/credits"
+                  className="flex items-center gap-1 text-xs font-medium bg-white/5 border border-white/10 rounded-full px-3 py-1.5 hover:bg-white/10 transition-colors"
+                  title="Mes crédits"
                 >
-                  +3
-                </button>
-              )}
-            </div>
-          )}
-          {!profile && (
-            <Link href="/profile" className="text-sm text-[#e91e8c] hover:underline">
-              {t("map.createProfile")}
-            </Link>
-          )}
+                  <span className="text-[#e91e8c]">💞</span>
+                  <span className="text-white/70">{credits}</span>
+                </Link>
+                {!phoneVerified && !showVerify && userId && !isDemo && (
+                  <button
+                    onClick={() => setShowVerify(true)}
+                    className="text-xs text-[#e91e8c]/70 hover:text-[#e91e8c] border border-[#e91e8c]/20 rounded-full px-2.5 py-1.5 transition-colors"
+                    title={t("verify.title")}
+                  >
+                    +3
+                  </button>
+                )}
+              </div>
+            )}
+            {!profile && (
+              <Link href="/profile" className="text-sm text-[#e91e8c] hover:underline">
+                {t("map.createProfile")}
+              </Link>
+            )}
+          </div>
         </div>
+        {/* Ligne 2 : pseudo + âge + picto */}
+        {profile && (
+          <div className="flex items-center gap-1.5 text-sm text-white/80">
+            <span className="font-medium">{profile.name}, {t("map.age", { age: String(profile.age) })}</span>
+            <span>{profile.looking_for === "hug" ? "🤗" : "💋"}</span>
+          </div>
+        )}
       </header>
 
       {/* Barre de notifications — hauteur fixe 40px toujours visible */}
@@ -541,26 +545,28 @@ function MapPageContent() {
             {pins.filter(p => !blocked.includes(p.id)).map((pin) => (
               <div
                 key={pin.id}
-                className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl p-3 min-w-[170px] max-w-[200px] flex flex-col gap-1"
+                className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl p-3 w-[175px] h-44 flex flex-col justify-between"
               >
-                <div className="text-xl">{pin.looking_for === "hug" ? "🤗" : <img src="/levres.svg" alt="kiss" className="w-6 h-6" />}</div>
-                <div className="font-semibold text-white text-sm">
-                  {flagEmoji(pin.nationality)}{pin.nationality ? " " : ""}{pin.name}, {t("map.age", { age: String(pin.age) })}
+                <div className="flex flex-col gap-1 overflow-hidden">
+                  <div className="text-xl">{pin.looking_for === "hug" ? "🤗" : <img src="/levres.svg" alt="kiss" className="w-6 h-6" />}</div>
+                  <div className="font-semibold text-white text-sm leading-tight">
+                    {flagEmoji(pin.nationality)}{pin.nationality ? " " : ""}{pin.name}, {t("map.age", { age: String(pin.age) })}
+                  </div>
+                  <div className="text-xs text-white/40">
+                    {translateGender(pin.gender)}
+                  </div>
+                  {pin.bio && (
+                    <p className="text-xs text-white/30">{pin.bio.length > 35 ? pin.bio.slice(0, 35) + "…" : pin.bio}</p>
+                  )}
+                  {pin.appearance && (
+                    <p className="text-xs text-[#e91e8c]/60">
+                      👀 {pin.appearance.length > 35 ? pin.appearance.slice(0, 35) + "…" : pin.appearance}
+                    </p>
+                  )}
                 </div>
-                <div className="text-xs text-white/40">
-                  {translateGender(pin.gender)}
-                </div>
-                {pin.bio && (
-                  <p className="text-xs text-white/30 leading-relaxed">{pin.bio.length > 40 ? pin.bio.slice(0, 40) + "…" : pin.bio}</p>
-                )}
-                {pin.appearance && (
-                  <p className="text-xs text-[#e91e8c]/60 leading-relaxed">
-                    👀 {pin.appearance.length > 40 ? pin.appearance.slice(0, 40) + "…" : pin.appearance}
-                  </p>
-                )}
                 <Link
                   href={`/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`}
-                  className="mt-auto flex items-center justify-center gap-1.5 bg-[#7c3aed]/20 hover:bg-[#7c3aed]/35 border border-[#7c3aed]/30 text-[#a78bfa] text-xs font-medium rounded-xl py-2 transition-colors"
+                  className="flex items-center justify-center gap-1.5 bg-[#7c3aed]/20 hover:bg-[#7c3aed]/35 border border-[#7c3aed]/30 text-[#a78bfa] text-xs font-medium rounded-xl py-2 transition-colors"
                 >
                   {t("map.message")}
                   {(unreadCounts[pin.id] ?? 0) > 0 && (
