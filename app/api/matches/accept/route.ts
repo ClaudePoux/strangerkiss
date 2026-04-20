@@ -62,6 +62,42 @@ export async function POST(req: NextRequest) {
     .eq("requester_id", requester_id)
     .eq("target_id", target_id);
 
+  // 5. Enregistrer la rencontre dans la table encounters
+  try {
+    const [p1Res, p2Res] = await Promise.all([
+      sb.from("user_pins").select("name, age, nationality, user_id, lat, lng").eq("id", requester_id).single(),
+      sb.from("user_pins").select("name, age, nationality, user_id").eq("id", target_id).single(),
+    ]);
+    const p1 = p1Res.data;
+    const p2 = p2Res.data;
+
+    let phone1: string | null = null;
+    let phone2: string | null = null;
+    if (p1?.user_id) {
+      const { data: u } = await sb.from("users").select("phone").eq("id", p1.user_id).single();
+      phone1 = u?.phone ?? null;
+    }
+    if (p2?.user_id) {
+      const { data: u } = await sb.from("users").select("phone").eq("id", p2.user_id).single();
+      phone2 = u?.phone ?? null;
+    }
+
+    await sb.from("encounters").insert({
+      user1_id: requester_id,
+      user1_pseudo: p1?.name ?? null,
+      user1_age: p1?.age ?? null,
+      user1_nationality: p1?.nationality ?? null,
+      user1_phone: phone1,
+      user2_id: target_id,
+      user2_pseudo: p2?.name ?? null,
+      user2_age: p2?.age ?? null,
+      user2_nationality: p2?.nationality ?? null,
+      user2_phone: phone2,
+      lat: p1?.lat ?? null,
+      lng: p1?.lng ?? null,
+    });
+  } catch { /* ignore — table peut ne pas exister encore */ }
+
   notifyAdmin({
     subject: "💞 Nouvelle rencontre acceptée StrangerKiss",
     title: "💞 Rencontre acceptée",

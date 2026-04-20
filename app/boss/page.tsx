@@ -73,7 +73,7 @@ function AuthPanel({ onAuth }: { onAuth: (token: string, expiresAt: string) => v
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
-type Tab = "stats" | "users" | "beta" | "vip" | "moderation" | "waitlist" | "credits" | "legal" | "launch";
+type Tab = "stats" | "users" | "beta" | "vip" | "moderation" | "waitlist" | "credits" | "encounters" | "legal" | "launch";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "stats", label: "Statistiques", icon: "📊" },
@@ -83,6 +83,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "moderation", label: "Modération", icon: "🚩" },
   { id: "waitlist", label: "Waitlist", icon: "📋" },
   { id: "credits", label: "Crédits", icon: "💰" },
+  { id: "encounters", label: "Rencontres", icon: "💞" },
   { id: "legal", label: "Pages légales", icon: "📄" },
   { id: "launch", label: "Lancement 🚀", icon: "🚀" },
 ];
@@ -144,23 +145,26 @@ function StatsTab({ phone }: { phone: string }) {
 // ── Users tab ────────────────────────────────────────────────────────────────
 
 function UsersTab({ phone }: { phone: string }) {
-  const [users, setUsers] = useState<{id:string;phone:string;credits:number;created_at:string}[]>([]);
+  const [users, setUsers] = useState<{id:string;phone:string|null;credits:number;created_at:string}[]>([]);
   const [q, setQ] = useState("");
+  const [phoneOnly, setPhoneOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   const [actionPhone, setActionPhone] = useState("");
   const [credits, setCredits] = useState("5");
   const [banType, setBanType] = useState("permanent");
   const [msg, setMsg] = useState("");
 
-  const load = useCallback(async (search = "") => {
+  const load = useCallback(async (search = "", po = false) => {
     setLoading(true);
-    const r = await adminFetch(phone, `/api/admin/users?q=${encodeURIComponent(search)}`);
+    const params = new URLSearchParams({ q: search });
+    if (po) params.set("phone_only", "true");
+    const r = await adminFetch(phone, `/api/admin/users?${params}`);
     const d = await r.json();
     setUsers(d.users ?? []);
     setLoading(false);
   }, [phone]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(q, phoneOnly); }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function action(act: string, target: string) {
     setMsg("");
@@ -170,7 +174,7 @@ function UsersTab({ phone }: { phone: string }) {
     const r = await adminFetch(phone, "/api/admin/users", { method: "POST", body: JSON.stringify(body) });
     const d = await r.json();
     setMsg(d.ok ? "✓ Fait" : `Erreur : ${d.error}`);
-    load(q);
+    load(q, phoneOnly);
   }
 
   return (
@@ -179,7 +183,11 @@ function UsersTab({ phone }: { phone: string }) {
         <input value={q} onChange={e => setQ(e.target.value)}
           placeholder="Rechercher par numéro…"
           className="bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-white text-sm placeholder-white/30 outline-none w-64" />
-        <button onClick={() => load(q)} className="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-xl">Rechercher</button>
+        <button onClick={() => load(q, phoneOnly)} className="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-xl">Rechercher</button>
+        <label className="flex items-center gap-2 text-sm text-white/50 cursor-pointer select-none">
+          <input type="checkbox" checked={phoneOnly} onChange={e => { setPhoneOnly(e.target.checked); load(q, e.target.checked); }} className="accent-[#e91e8c]" />
+          Avec numéro uniquement
+        </label>
         {msg && <span className={`text-sm ${msg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{msg}</span>}
       </div>
       <div className="flex gap-3 flex-wrap items-center bg-white/5 border border-white/10 rounded-xl p-3">
@@ -195,6 +203,7 @@ function UsersTab({ phone }: { phone: string }) {
         </select>
         <button onClick={() => action("ban", actionPhone)} className="bg-red-600/80 hover:bg-red-600 text-white text-sm px-3 py-1.5 rounded-lg">Bannir</button>
         <button onClick={() => action("unban", actionPhone)} className="bg-green-700/80 hover:bg-green-700 text-white text-sm px-3 py-1.5 rounded-lg">Débannir</button>
+        <button onClick={() => { if (confirm(`Supprimer ${actionPhone} ?`)) action("delete_user", actionPhone); }} className="bg-red-900/60 hover:bg-red-900 text-red-300 text-sm px-3 py-1.5 rounded-lg">Supprimer</button>
       </div>
       {loading ? <p className="text-white/30 text-sm">Chargement…</p> : (
         <table className="w-full text-sm">
@@ -206,11 +215,12 @@ function UsersTab({ phone }: { phone: string }) {
           </tr></thead>
           <tbody>{users.map(u => (
             <tr key={u.id} className="border-b border-white/5 hover:bg-white/5">
-              <td className="py-2 text-white/80 font-mono">{u.phone}</td>
+              <td className="py-2 text-white/80 font-mono">{u.phone ?? <span className="text-white/20 italic">anonyme</span>}</td>
               <td className="py-2 text-white/60">{u.credits}</td>
               <td className="py-2 text-white/40">{fmt(u.created_at)}</td>
-              <td className="py-2">
-                <button onClick={() => { setActionPhone(u.phone); }} className="text-xs text-white/30 hover:text-white/60 underline">Sélectionner</button>
+              <td className="py-2 flex gap-3">
+                <a href={`/boss/users/${u.id}`} target="_blank" rel="noreferrer" className="text-xs text-[#a78bfa] hover:underline">Détail</a>
+                {u.phone && <button onClick={() => setActionPhone(u.phone!)} className="text-xs text-white/30 hover:text-white/60 underline">Sélectionner</button>}
               </td>
             </tr>
           ))}</tbody>
@@ -353,18 +363,26 @@ function VipTab({ phone }: { phone: string }) {
 
 // ── Moderation tab ───────────────────────────────────────────────────────────
 
+type BlockRow = {
+  id: string;
+  blocker_id: string;
+  blocked_id: string;
+  created_at: string;
+  blocker: { name: string; age: number | null; nationality: string | null; phone: string } | null;
+  blocked: { name: string; age: number | null; nationality: string | null; phone: string } | null;
+};
+
 function ModerationTab({ phone }: { phone: string }) {
   const [reports, setReports] = useState<{reporter_pin_id:string;reported_pin_id:string;reason:string|null;created_at:string}[]>([]);
   const [bans, setBans] = useState<{id:string;phone:string;ban_type:string;banned_until:string|null;reason:string|null;created_at:string}[]>([]);
+  const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [msg, setMsg] = useState("");
-  const [clearConfirm, setClearConfirm] = useState(false);
-  const [clearLoading, setClearLoading] = useState(false);
-  const [clearResult, setClearResult] = useState<number | null>(null);
 
   const load = useCallback(() => {
     adminFetch(phone, "/api/admin/moderation").then(r => r.json()).then(d => {
       setReports(d.reports ?? []);
       setBans(d.bans ?? []);
+      setBlocks(d.blocks ?? []);
     });
   }, [phone]);
 
@@ -377,56 +395,49 @@ function ModerationTab({ phone }: { phone: string }) {
     load();
   }
 
-  async function clearBlocks() {
-    setClearLoading(true); setClearResult(null);
-    const r = await adminFetch(phone, "/api/admin/moderation", { method: "POST", body: JSON.stringify({ action: "clear_blocks" }) });
-    const d = await r.json();
-    setClearLoading(false);
-    setClearConfirm(false);
-    if (d.ok) setClearResult(d.deleted);
-    else setMsg(`Erreur : ${d.error}`);
+  async function unblock(blockerId: string, blockedId: string) {
+    setMsg("");
+    await adminFetch(phone, "/api/admin/moderation", { method: "POST", body: JSON.stringify({ action: "unblock", blocker_id: blockerId, blocked_id: blockedId }) });
+    setMsg("✓ Déblocage effectué");
+    load();
   }
 
   return (
     <div className="space-y-6">
       {msg && <p className="text-green-400 text-sm">{msg}</p>}
 
-      {/* Zone tests — vider la table blocks */}
-      <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-3">
-        <div>
-          <h3 className="text-amber-300 text-sm font-semibold">🧪 Outils de test</h3>
-          <p className="text-white/40 text-xs mt-0.5">Réinitialisation des données pour les sessions de test</p>
-        </div>
-        <div className="flex items-center gap-4 flex-wrap">
-          {!clearConfirm ? (
-            <button
-              onClick={() => { setClearConfirm(true); setClearResult(null); }}
-              className="bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/30 text-amber-200 text-sm px-4 py-2 rounded-lg transition-colors"
-            >
-              Vider la table blocks
-            </button>
-          ) : (
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-amber-300 text-sm">Confirmer la suppression de tous les bloquages ?</span>
-              <button
-                onClick={clearBlocks}
-                disabled={clearLoading}
-                className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-              >
-                {clearLoading ? "Suppression…" : "Confirmer"}
-              </button>
-              <button
-                onClick={() => setClearConfirm(false)}
-                disabled={clearLoading}
-                className="bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          )}
-          {clearResult !== null && (
-            <span className="text-green-400 text-sm">✓ {clearResult} ligne{clearResult !== 1 ? "s" : ""} supprimée{clearResult !== 1 ? "s" : ""}</span>
-          )}
+      {/* Blocks */}
+      <div>
+        <h3 className="text-white/50 text-xs uppercase tracking-wider mb-2">Blocages ({blocks.length})</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead><tr className="text-white/30 text-left border-b border-white/10">
+              <th className="pb-2 font-normal">Bloqueur — pseudo / âge / pays / n°</th>
+              <th className="pb-2 font-normal">Bloqué — pseudo / âge / pays / n°</th>
+              <th className="pb-2 font-normal">Date</th>
+              <th></th>
+            </tr></thead>
+            <tbody>{blocks.length === 0
+              ? <tr><td colSpan={4} className="py-3 text-white/20 text-sm">Aucun blocage</td></tr>
+              : blocks.map((b) => (
+              <tr key={b.id} className="border-b border-white/5 hover:bg-white/5">
+                <td className="py-2 text-white/70 text-xs">
+                  <span className="text-white/80">{b.blocker?.name ?? "—"}</span>
+                  {b.blocker?.age ? `, ${b.blocker.age} ans` : ""}{" "}
+                  {b.blocker?.nationality ? `🏳️ ${b.blocker.nationality}` : ""}
+                  <span className="ml-1 font-mono text-white/30">{b.blocker?.phone}</span>
+                </td>
+                <td className="py-2 text-white/70 text-xs">
+                  <span className="text-white/80">{b.blocked?.name ?? "—"}</span>
+                  {b.blocked?.age ? `, ${b.blocked.age} ans` : ""}{" "}
+                  {b.blocked?.nationality ? `🏳️ ${b.blocked.nationality}` : ""}
+                  <span className="ml-1 font-mono text-white/30">{b.blocked?.phone}</span>
+                </td>
+                <td className="py-2 text-white/40">{fmt(b.created_at)}</td>
+                <td className="py-2"><button onClick={() => unblock(b.blocker_id, b.blocked_id)} className="text-xs text-amber-400 hover:text-amber-300">Débloquer</button></td>
+              </tr>
+            ))}</tbody>
+          </table>
         </div>
       </div>
 
@@ -470,21 +481,50 @@ function ModerationTab({ phone }: { phone: string }) {
 // ── Waitlist tab ─────────────────────────────────────────────────────────────
 
 function WaitlistTab({ phone }: { phone: string }) {
-  const [list, setList] = useState<{phone:string;status:string;created_at:string}[]>([]);
+  const [list, setList] = useState<{id:string;phone:string;status:string;created_at:string}[]>([]);
   const [total, setTotal] = useState(0);
+  const [newPhone, setNewPhone] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editPhone, setEditPhone] = useState("");
+  const [msg, setMsg] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(() => {
     adminFetch(phone, "/api/admin/waitlist")
       .then(r => r.json())
       .then(d => { setList(d.waitlist ?? []); setTotal(d.total ?? 0); });
   }, [phone]);
 
+  useEffect(() => { load(); }, [load]);
+
+  async function addEntry(e: React.FormEvent) {
+    e.preventDefault(); setMsg("");
+    const r = await adminFetch(phone, "/api/admin/waitlist", { method: "POST", body: JSON.stringify({ phone: newPhone }) });
+    const d = await r.json();
+    setMsg(d.ok ? "✓ Ajouté" : `Erreur : ${d.error}`);
+    if (d.ok) { setNewPhone(""); load(); }
+  }
+
+  async function saveEdit(id: string) {
+    setMsg("");
+    const r = await adminFetch(phone, "/api/admin/waitlist", { method: "PUT", body: JSON.stringify({ id, phone: editPhone }) });
+    const d = await r.json();
+    setMsg(d.ok ? "✓ Modifié" : `Erreur : ${d.error}`);
+    if (d.ok) { setEditId(null); setEditPhone(""); load(); }
+  }
+
+  async function removeEntry(id: string) {
+    if (!confirm("Supprimer ce numéro de la waitlist ?")) return;
+    setMsg("");
+    const r = await adminFetch(phone, "/api/admin/waitlist", { method: "DELETE", body: JSON.stringify({ id }) });
+    const d = await r.json();
+    setMsg(d.ok ? "✓ Supprimé" : `Erreur : ${d.error}`);
+    if (d.ok) load();
+  }
+
   function exportCsv() {
     const url = `/api/admin/waitlist?format=csv`;
-    const a = document.createElement("a");
-    a.href = url;
-    const headers = new Headers({ "X-Admin-Phone": phone });
-    fetch(url, { headers }).then(r => r.blob()).then(blob => {
+    fetch(url, { headers: { "X-Admin-Token": phone } }).then(r => r.blob()).then(blob => {
+      const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `waitlist-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
@@ -495,6 +535,14 @@ function WaitlistTab({ phone }: { phone: string }) {
 
   return (
     <div className="space-y-4">
+      {/* Ajouter */}
+      <form onSubmit={addEntry} className="flex gap-3 items-center flex-wrap bg-white/5 border border-white/10 rounded-xl p-3">
+        <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+336… (format E.164)" required pattern="^\+[1-9]\d{6,14}$"
+          className="bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm placeholder-white/30 outline-none w-52" />
+        <button type="submit" className="bg-[#e91e8c] hover:bg-[#c2186f] text-white text-sm px-4 py-1.5 rounded-lg">Ajouter</button>
+        {msg && <span className={`text-sm ${msg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{msg}</span>}
+      </form>
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-4 text-sm">
           <span className="text-white/60">Total : <strong className="text-white">{total}</strong></span>
@@ -503,15 +551,32 @@ function WaitlistTab({ phone }: { phone: string }) {
         </div>
         <button onClick={exportCsv} className="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-1.5 rounded-lg">⬇ Export CSV</button>
       </div>
+
       <table className="w-full text-sm">
         <thead><tr className="text-white/30 text-left border-b border-white/10">
-          <th className="pb-2 font-normal">Numéro</th><th className="pb-2 font-normal">Statut</th><th className="pb-2 font-normal">Inscrit le</th>
+          <th className="pb-2 font-normal">Numéro</th><th className="pb-2 font-normal">Statut</th><th className="pb-2 font-normal">Inscrit le</th><th></th>
         </tr></thead>
-        <tbody>{list.map((r, i) => (
-          <tr key={i} className="border-b border-white/5 hover:bg-white/5">
-            <td className="py-2 text-white/80 font-mono">{r.phone}</td>
+        <tbody>{list.map((r) => (
+          <tr key={r.id} className="border-b border-white/5 hover:bg-white/5">
+            <td className="py-2 text-white/80 font-mono">
+              {editId === r.id
+                ? <input value={editPhone} onChange={e => setEditPhone(e.target.value)}
+                    className="bg-white/10 border border-white/10 rounded px-2 py-1 text-white text-sm outline-none w-44" />
+                : r.phone}
+            </td>
             <td className="py-2"><span className={`px-2 py-0.5 rounded-full text-xs ${r.status === "converti" ? "bg-green-500/20 text-green-300" : "bg-amber-500/20 text-amber-300"}`}>{r.status}</span></td>
             <td className="py-2 text-white/40">{fmt(r.created_at)}</td>
+            <td className="py-2 flex gap-3">
+              {editId === r.id
+                ? <>
+                    <button onClick={() => saveEdit(r.id)} className="text-xs text-green-400 hover:text-green-300">Sauver</button>
+                    <button onClick={() => setEditId(null)} className="text-xs text-white/30 hover:text-white/60">Annuler</button>
+                  </>
+                : <>
+                    <button onClick={() => { setEditId(r.id); setEditPhone(r.phone); }} className="text-xs text-[#a78bfa] hover:underline">Modifier</button>
+                    <button onClick={() => removeEntry(r.id)} className="text-xs text-red-400 hover:text-red-300">Supprimer</button>
+                  </>}
+            </td>
           </tr>
         ))}</tbody>
       </table>
@@ -524,11 +589,23 @@ function WaitlistTab({ phone }: { phone: string }) {
 function CreditsTab({ phone }: { phone: string }) {
   const [mode, setMode] = useState<"single" | "bulk">("single");
   const [target, setTarget] = useState("");
+  const [lookedUp, setLookedUp] = useState<{ credits: number } | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
   const [amount, setAmount] = useState("5");
   const [bulkPhones, setBulkPhones] = useState("");
   const [allVerified, setAllVerified] = useState(false);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  async function lookup() {
+    if (!target) return;
+    setLookupLoading(true); setLookedUp(null); setMsg("");
+    const r = await adminFetch(phone, `/api/admin/credits?phone=${encodeURIComponent(target)}`);
+    const d = await r.json();
+    setLookupLoading(false);
+    if (d.credits !== undefined) setLookedUp({ credits: d.credits });
+    else setMsg(d.error === "user_not_found" ? "Utilisateur introuvable" : `Erreur : ${d.error}`);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setMsg(""); setLoading(true);
@@ -541,13 +618,16 @@ function CreditsTab({ phone }: { phone: string }) {
     const d = await r.json();
     setLoading(false);
     setMsg(d.ok ? `✓ ${d.updated} utilisateur(s) mis à jour` : `Erreur : ${d.error}`);
+    if (d.ok && mode === "single" && lookedUp) {
+      setLookedUp({ credits: lookedUp.credits + parseInt(amount) });
+    }
   }
 
   return (
     <div className="max-w-md space-y-4">
       <div className="flex gap-2">
         {(["single", "bulk"] as const).map(m => (
-          <button key={m} onClick={() => setMode(m)}
+          <button key={m} onClick={() => { setMode(m); setLookedUp(null); setMsg(""); }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${mode === m ? "bg-[#e91e8c] text-white" : "bg-white/5 text-white/50 hover:bg-white/10"}`}>
             {m === "single" ? "Individuel" : "En masse"}
           </button>
@@ -556,10 +636,24 @@ function CreditsTab({ phone }: { phone: string }) {
 
       <form onSubmit={submit} className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-4">
         {mode === "single" ? (
-          <div>
-            <label className="block text-xs text-white/40 mb-1">Numéro de téléphone</label>
-            <input value={target} onChange={e => setTarget(e.target.value)} placeholder="+336…" required
-              className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none" />
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-white/40 mb-1">Numéro de téléphone</label>
+              <div className="flex gap-2">
+                <input value={target} onChange={e => { setTarget(e.target.value); setLookedUp(null); }} placeholder="+336…" required
+                  className="flex-1 bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none" />
+                <button type="button" onClick={lookup} disabled={lookupLoading}
+                  className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-sm px-3 py-2 rounded-lg shrink-0">
+                  {lookupLoading ? "…" : "Vérifier"}
+                </button>
+              </div>
+            </div>
+            {lookedUp !== null && (
+              <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 text-sm">
+                <span className="text-white/50">Crédits actuels :</span>
+                <span className="text-[#e91e8c] font-bold text-base">{lookedUp.credits}</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -587,11 +681,97 @@ function CreditsTab({ phone }: { phone: string }) {
 
         {msg && <p className={`text-sm ${msg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{msg}</p>}
 
-        <button type="submit" disabled={loading}
+        <button type="submit" disabled={loading || (mode === "single" && !lookedUp)}
           className="w-full bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold py-3 rounded-xl">
           {loading ? "…" : "Attribuer les crédits"}
         </button>
+        {mode === "single" && !lookedUp && <p className="text-xs text-white/30 text-center">Cliquez sur "Vérifier" pour consulter le solde avant d'ajouter</p>}
       </form>
+    </div>
+  );
+}
+
+// ── Encounters tab ───────────────────────────────────────────────────────────
+
+type Encounter = {
+  id: string; created_at: string; lat: number | null; lng: number | null;
+  user1_id: string; user1_pseudo: string | null; user1_age: number | null; user1_nationality: string | null; user1_phone: string | null;
+  user2_id: string; user2_pseudo: string | null; user2_age: number | null; user2_nationality: string | null; user2_phone: string | null;
+};
+
+function EncountersTab({ phone }: { phone: string }) {
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [total, setTotal] = useState(0);
+  const [q, setQ] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async (search = "", f = "", t = "") => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (search) params.set("q", search);
+    if (f) params.set("from", f);
+    if (t) params.set("to", t);
+    const r = await adminFetch(phone, `/api/admin/encounters?${params}`);
+    const d = await r.json();
+    setEncounters(d.encounters ?? []);
+    setTotal(d.total ?? 0);
+    setLoading(false);
+  }, [phone]);
+
+  useEffect(() => { load(); }, [load]);
+
+  function maskPhone(p: string | null) {
+    if (!p) return "—";
+    return p.slice(0, 4) + "***" + p.slice(-3);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-3 items-center flex-wrap">
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher par numéro ou pseudo…"
+          className="bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-white text-sm placeholder-white/30 outline-none w-64" />
+        <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+          className="bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-white text-sm outline-none" />
+        <input type="date" value={to} onChange={e => setTo(e.target.value)}
+          className="bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-white text-sm outline-none" />
+        <button onClick={() => load(q, from, to ? to + "T23:59:59Z" : "")} className="bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-xl">
+          Filtrer
+        </button>
+        <span className="text-white/40 text-sm">{total} rencontre{total !== 1 ? "s" : ""}</span>
+      </div>
+
+      {loading ? <p className="text-white/30 text-sm">Chargement…</p> : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead><tr className="text-white/30 text-left border-b border-white/10">
+              <th className="pb-2 font-normal">Date</th>
+              <th className="pb-2 font-normal">Participant 1</th>
+              <th className="pb-2 font-normal">Participant 2</th>
+            </tr></thead>
+            <tbody>{encounters.length === 0
+              ? <tr><td colSpan={3} className="py-3 text-white/20">Aucune rencontre enregistrée</td></tr>
+              : encounters.map((e) => (
+              <tr key={e.id} className="border-b border-white/5 hover:bg-white/5">
+                <td className="py-2 text-white/40 whitespace-nowrap">{fmt(e.created_at)}</td>
+                <td className="py-2 text-xs">
+                  <span className="text-white/80 font-medium">{e.user1_pseudo ?? "—"}</span>
+                  {e.user1_age ? `, ${e.user1_age} ans` : ""}
+                  {e.user1_nationality ? ` · ${e.user1_nationality}` : ""}
+                  <span className="ml-1 font-mono text-white/30">{maskPhone(e.user1_phone)}</span>
+                </td>
+                <td className="py-2 text-xs">
+                  <span className="text-white/80 font-medium">{e.user2_pseudo ?? "—"}</span>
+                  {e.user2_age ? `, ${e.user2_age} ans` : ""}
+                  {e.user2_nationality ? ` · ${e.user2_nationality}` : ""}
+                  <span className="ml-1 font-mono text-white/30">{maskPhone(e.user2_phone)}</span>
+                </td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -976,6 +1156,7 @@ function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () 
         {tab === "moderation" && <ModerationTab phone={adminPhone} />}
         {tab === "waitlist"   && <WaitlistTab phone={adminPhone} />}
         {tab === "credits"    && <CreditsTab phone={adminPhone} />}
+        {tab === "encounters" && <EncountersTab phone={adminPhone} />}
         {tab === "legal"      && <LegalTab phone={adminPhone} />}
         {tab === "launch"     && <LaunchTab phone={adminPhone} />}
       </main>

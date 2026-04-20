@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin, adminSb } from "@/lib/admin-auth";
 
+// GET /api/admin/credits?phone=+336…  — solde d'un utilisateur
+export async function GET(req: NextRequest) {
+  const { ok } = await verifyAdmin(req);
+  if (!ok) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const phone = new URL(req.url).searchParams.get("phone")?.trim();
+  if (!phone) return NextResponse.json({ error: "phone_required" }, { status: 400 });
+
+  const { data } = await adminSb.from("users").select("id, credits").eq("phone", phone).maybeSingle();
+  if (!data) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+  return NextResponse.json({ id: data.id, credits: data.credits });
+}
+
 // POST /api/admin/credits  action: "single" | "bulk"
 // single: { phone, amount }
 // bulk:   { phones: string[], amount }  ou  { all_verified: true, amount }

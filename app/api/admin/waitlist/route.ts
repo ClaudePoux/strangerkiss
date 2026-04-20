@@ -43,3 +43,45 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ waitlist: rows, total: rows.length });
 }
+
+const E164 = /^\+[1-9]\d{6,14}$/;
+
+// POST /api/admin/waitlist — ajouter un numéro
+export async function POST(req: NextRequest) {
+  const { ok } = await verifyAdmin(req);
+  if (!ok) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const { phone } = await req.json();
+  if (!phone || !E164.test(phone)) return NextResponse.json({ error: "invalid_phone" }, { status: 400 });
+
+  const { error } = await adminSb.from("waitlist").insert({ phone });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
+// PUT /api/admin/waitlist — modifier un numéro existant
+export async function PUT(req: NextRequest) {
+  const { ok } = await verifyAdmin(req);
+  if (!ok) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const { id, phone } = await req.json();
+  if (!id) return NextResponse.json({ error: "id_required" }, { status: 400 });
+  if (!phone || !E164.test(phone)) return NextResponse.json({ error: "invalid_phone" }, { status: 400 });
+
+  const { error } = await adminSb.from("waitlist").update({ phone }).eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
+// DELETE /api/admin/waitlist — supprimer un numéro
+export async function DELETE(req: NextRequest) {
+  const { ok } = await verifyAdmin(req);
+  if (!ok) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: "id_required" }, { status: 400 });
+
+  const { error } = await adminSb.from("waitlist").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
