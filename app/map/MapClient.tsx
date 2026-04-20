@@ -409,11 +409,9 @@ function MapPageContent() {
         <div className="flex items-center gap-3">
           {profile && (
             <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-sm font-medium text-white">
-                  {profile.name}, {t("map.age", { age: String(profile.age) })}
-                </div>
-                <div className="text-xs text-white/40">{LABEL[profile.looking_for]}</div>
+              <div className="flex items-center gap-2 text-sm font-medium text-white">
+                {profile.name}, {t("map.age", { age: String(profile.age) })}
+                <span>{profile.looking_for === "hug" ? "🤗" : "💋"}</span>
               </div>
               <Link
                 href="/profile"
@@ -543,26 +541,26 @@ function MapPageContent() {
             {pins.filter(p => !blocked.includes(p.id)).map((pin) => (
               <div
                 key={pin.id}
-                className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl p-4 min-w-[180px] max-w-[210px] flex flex-col gap-1.5"
+                className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl p-3 min-w-[170px] max-w-[200px] flex flex-col gap-1"
               >
-                <div className="text-2xl">{pin.looking_for === "hug" ? "🤗" : <img src="/levres.svg" alt="kiss" className="w-8 h-8" />}</div>
+                <div className="text-xl">{pin.looking_for === "hug" ? "🤗" : <img src="/levres.svg" alt="kiss" className="w-6 h-6" />}</div>
                 <div className="font-semibold text-white text-sm">
                   {flagEmoji(pin.nationality)}{pin.nationality ? " " : ""}{pin.name}, {t("map.age", { age: String(pin.age) })}
                 </div>
                 <div className="text-xs text-white/40">
-                  {translateGender(pin.gender)} · {LABEL[pin.looking_for]}
+                  {translateGender(pin.gender)}
                 </div>
                 {pin.bio && (
-                  <p className="text-xs text-white/30 leading-relaxed line-clamp-2">{pin.bio}</p>
+                  <p className="text-xs text-white/30 leading-relaxed">{pin.bio.length > 40 ? pin.bio.slice(0, 40) + "…" : pin.bio}</p>
                 )}
                 {pin.appearance && (
-                  <p className="text-xs text-[#e91e8c]/60 leading-relaxed line-clamp-1">
-                    👀 {pin.appearance}
+                  <p className="text-xs text-[#e91e8c]/60 leading-relaxed">
+                    👀 {pin.appearance.length > 40 ? pin.appearance.slice(0, 40) + "…" : pin.appearance}
                   </p>
                 )}
                 <Link
                   href={`/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`}
-                  className="mt-1 flex items-center justify-center gap-1.5 bg-[#7c3aed]/20 hover:bg-[#7c3aed]/35 border border-[#7c3aed]/30 text-[#a78bfa] text-xs font-medium rounded-xl py-2 transition-colors"
+                  className="mt-auto flex items-center justify-center gap-1.5 bg-[#7c3aed]/20 hover:bg-[#7c3aed]/35 border border-[#7c3aed]/30 text-[#a78bfa] text-xs font-medium rounded-xl py-2 transition-colors"
                 >
                   {t("map.message")}
                   {(unreadCounts[pin.id] ?? 0) > 0 && (
