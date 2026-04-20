@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useNotifications } from "@/lib/notificationContext";
 import type { SKNotification, NotificationType } from "@/lib/notificationContext";
+
+const DEMO_NOTIFICATIONS = [
+  "Sophie vous a envoyé un message",
+  "Lucas vous envoie une demande de rencontre",
+  "Votre rencontre avec Emma a été acceptée !",
+  "3 nouveaux utilisateurs près de vous",
+  "Vous avez reçu 5 crédits !",
+  "Votre profil expire dans 2 minutes",
+];
 
 const ICONS: Record<NotificationType, string> = {
   new_message:      "💬",
@@ -41,12 +50,24 @@ function getChatUrl(n: SKNotification): string | null {
 // Auto-dismiss delay in ms (non-persistent notifications)
 const AUTO_DISMISS_MS = 10000;
 
-export default function NotificationBar() {
+export default function NotificationBar({ demoMode }: { demoMode?: boolean }) {
   const { notifications, dismiss } = useNotifications();
+  const [demoIndex, setDemoIndex] = useState(0);
   const current = notifications[0] ?? null;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cycle démo — actif uniquement si demoMode=true
   useEffect(() => {
+    if (!demoMode) return;
+    const interval = setInterval(() => {
+      setDemoIndex((i) => (i + 1) % DEMO_NOTIFICATIONS.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [demoMode]);
+
+  // Auto-dismiss des notifications réelles
+  useEffect(() => {
+    if (demoMode) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     if (!current || current.persistent) return;
     timerRef.current = setTimeout(() => dismiss(current.id), AUTO_DISMISS_MS);
@@ -54,9 +75,22 @@ export default function NotificationBar() {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, current?.persistent]);
+  }, [demoMode, current?.id, current?.persistent]);
 
   const chatUrl = current ? getChatUrl(current) : null;
+
+  if (demoMode) {
+    return (
+      <div
+        style={{ height: "40px", flexShrink: 0, overflow: "hidden" }}
+        className="flex items-center px-4 border-b border-white/5 bg-[#12122a]"
+      >
+        <span className="flex-1 min-w-0 text-xs text-white/80 truncate">
+          {DEMO_NOTIFICATIONS[demoIndex]}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div

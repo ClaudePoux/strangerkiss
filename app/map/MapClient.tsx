@@ -123,6 +123,7 @@ function MapPageContent() {
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [geoErrorKey, setGeoErrorKey] = useState("");
   const [pins, setPins] = useState<UserPin[]>([]);
+  const [demoUnreadCounts, setDemoUnreadCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
@@ -303,22 +304,31 @@ function MapPageContent() {
               const shuffled = [...pool].sort(() => rng() - 0.5);
               const selected = shuffled.slice(0, Math.min(count, shuffled.length));
               const now = new Date().toISOString();
-              setPins(
-                selected.map((d, i) => {
-                  const dist = 200 + Math.floor(rng() * 800); // 200–1000 m
-                  const angle = rng() * 360;
-                  const [pLat, pLng] = offsetLatLng(lat, lng, dist, angle);
-                  return {
-                    ...d,
-                    id: `demo-${i + 1}`,
-                    user_id: undefined,
-                    lat: pLat,
-                    lng: pLng,
-                    created_at: now,
-                    last_seen: now,
-                  };
-                })
-              );
+              const demoMapped = selected.map((d, i) => {
+                const dist = 200 + Math.floor(rng() * 800); // 200–1000 m
+                const angle = rng() * 360;
+                const [pLat, pLng] = offsetLatLng(lat, lng, dist, angle);
+                return {
+                  ...d,
+                  id: `demo-${i + 1}`,
+                  user_id: undefined,
+                  lat: pLat,
+                  lng: pLng,
+                  created_at: now,
+                  last_seen: now,
+                };
+              });
+              setPins(demoMapped);
+
+              // Badges fictifs stables : 1 ou 2 profils avec 1–5 messages non lus
+              const numBadged = 1 + Math.floor(rng() * 2);
+              const badgedIds = new Set<string>();
+              while (badgedIds.size < Math.min(numBadged, demoMapped.length)) {
+                badgedIds.add(demoMapped[Math.floor(rng() * demoMapped.length)].id);
+              }
+              const counts: Record<string, number> = {};
+              badgedIds.forEach((id) => { counts[id] = 1 + Math.floor(rng() * 5); });
+              setDemoUnreadCounts(counts);
             }
           } else {
             const storedUserId  = localStorage.getItem("sk_user_id") ?? undefined;
@@ -455,7 +465,7 @@ function MapPageContent() {
       </header>
 
       {/* Barre de notifications — hauteur fixe 40px toujours visible */}
-      <NotificationBar />
+      <NotificationBar demoMode={isDemo} />
 
       {/* Bannière mode démo */}
       {isDemo && (
@@ -569,9 +579,9 @@ function MapPageContent() {
                   className="flex items-center justify-center gap-1.5 bg-[#7c3aed]/20 hover:bg-[#7c3aed]/35 border border-[#7c3aed]/30 text-[#a78bfa] text-xs font-medium rounded-xl py-2 transition-colors"
                 >
                   {t("map.message")}
-                  {(unreadCounts[pin.id] ?? 0) > 0 && (
+                  {((isDemo ? (demoUnreadCounts[pin.id] ?? 0) : (unreadCounts[pin.id] ?? 0)) > 0) && (
                     <span className="inline-flex items-center justify-center w-4 h-4 bg-[#e91e8c] text-white text-[10px] font-bold rounded-full leading-none">
-                      {unreadCounts[pin.id]}
+                      {isDemo ? demoUnreadCounts[pin.id] : unreadCounts[pin.id]}
                     </span>
                   )}
                 </Link>
