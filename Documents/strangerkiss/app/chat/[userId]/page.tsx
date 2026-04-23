@@ -1,4 +1,4 @@
-๏ปฟ"use client";
+"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
@@ -9,9 +9,9 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useNotifications } from "@/lib/notificationContext";
 
 // Special message markers
-const SK_MEETING_REQUEST  = "โ”ฌยบMEETING_REQUESTโ”ฌยบ";
-const SK_MEETING_ACCEPTED = "โ”ฌยบMEETING_ACCEPTEDโ”ฌยบ";
-const SK_MEETING_REFUSED  = "โ”ฌยบMEETING_REFUSEDโ”ฌยบ";
+const SK_MEETING_REQUEST  = "-บMEETING_REQUEST-บ";
+const SK_MEETING_ACCEPTED = "-บMEETING_ACCEPTED-บ";
+const SK_MEETING_REFUSED  = "-บMEETING_REFUSED-บ";
 
 
 function isImageMsg(content: string) {
@@ -50,7 +50,7 @@ export default function ChatPage() {
   const { t, bcp47, locale } = useI18n();
 
   const otherId = params.userId as string;
-  const otherName = searchParams.get("name") ?? "Inconnuโ”ฌร€e";
+  const otherName = searchParams.get("name") ?? "Inconnu-ภe";
   const otherAppearance = searchParams.get("appearance") ?? "";
 
   const { setActiveChatId } = useNotifications();
@@ -61,7 +61,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [reported, setReported] = useState(false);
-  // null = vโ”ยฎrification en cours, true/false = rโ”ยฎsultat connu
+  // null = v+ฎrification en cours, true/false = r+ฎsultat connu
   const [isBeta, setIsBeta] = useState<boolean | null>(null);
 
   // Translation state per message id
@@ -82,7 +82,7 @@ export default function ChatPage() {
     // Chargement de l'historique via MySQL
     const res = await fetch(`/api/db/messages?from=${id}&to=${otherId}`);
     if (!res.ok) {
-      // Fallback dโ”ยฎmo si l'API n'est pas disponible
+      // Fallback d+ฎmo si l'API n'est pas disponible
       const tr = tRef.current;
       setDemoMode(true);
       setMessages([
@@ -103,8 +103,8 @@ export default function ChatPage() {
           .then((r) => r.json())
           .then(({ messages: newMsgs }) => {
             if (newMsgs?.length > 0) {
-              // Dโ”ยฎdupliquer par ID ร”รรถ โ”ยฎvite le double affichage du selfie quand le poll
-              // capture son `since` avant que pushMessage ait mis โ”รก jour l'โ”ยฎtat.
+              // D+ฎdupliquer par ID ิว๖ +ฎvite le double affichage du selfie quand le poll
+              // capture son `since` avant que pushMessage ait mis +แ jour l'+ฎtat.
               setMessages((p) => {
                 const existingIds = new Set(p.map((m) => m.id));
                 const truly_new = (newMsgs as typeof p).filter((m) => !existingIds.has(m.id));
@@ -129,8 +129,8 @@ export default function ChatPage() {
       setMyId(id);
       loadChat(id).then((fn) => { unsub = fn; });
 
-      // Vโ”ยฎrification bโ”ยฌta-testeur
-      // Stratโ”ยฎgie double : par sk_phone (direct) + sk_user_id (fallback si phone absent/formatโ”ยฎ diffโ”ยฎremment)
+      // V+ฎrification b+ฌta-testeur
+      // Strat+ฎgie double : par sk_phone (direct) + sk_user_id (fallback si phone absent/format+ฎ diff+ฎremment)
       const phone  = localStorage.getItem("sk_phone");
       const userId = localStorage.getItem("sk_user_id");
       if (phone || userId) {
@@ -156,7 +156,7 @@ export default function ChatPage() {
     };
   }, [loadChat, otherId, setActiveChatId]);
 
-  // ร”รถรร”รถร Send helpers ร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถร
+  // ิ๖วิ๖ว Send helpers ิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖ว
   async function pushMessage(content: string, id = myId) {
     if (!id) return;
     if (demoMode) {
@@ -194,7 +194,7 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
-  // ร”รถรร”รถร Selfie ร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถร
+  // ิ๖วิ๖ว Selfie ิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖ว
   async function handleSelfieFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -210,7 +210,7 @@ export default function ChatPage() {
     }
   }
 
-  // ร”รถรร”รถร Meeting request ร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถร
+  // ิ๖วิ๖ว Meeting request ิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖ว
   async function handleSendMeetingRequest() {
     if (!myId || sending) return;
     setSending(true);
@@ -236,19 +236,19 @@ export default function ChatPage() {
         body: JSON.stringify({ requester_id: otherId, target_id: myId }),
       }).catch(() => {});
     } else {
-      // Refus : blocage symโ”ยฎtrique en base (les deux profils disparaissent mutuellement)
+      // Refus : blocage sym+ฎtrique en base (les deux profils disparaissent mutuellement)
       fetch("/api/matches/refuse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requester_id: otherId, target_id: myId }),
       }).catch(() => {});
     }
-    // Dโ”ยฎclencher l'enquโ”ยฌte post-expโ”ยฎrience (une seule fois)
+    // D+ฎclencher l'enqu+ฌte post-exp+ฎrience (une seule fois)
     try {
       const surveyDone    = localStorage.getItem("sk_survey_done");
       const surveyPending = localStorage.getItem("sk_survey_pending");
       console.log(
-        "[chat] handleMeetingResponse ร”รปร",
+        "[chat] handleMeetingResponse ิ๛ย",
         "accept:", accept,
         "| sk_survey_done:", surveyDone,
         "| sk_survey_pending (avant):", surveyPending,
@@ -257,22 +257,22 @@ export default function ChatPage() {
       );
       if (surveyDone !== "true") {
         localStorage.setItem("sk_survey_pending", "true");
-        console.log("[chat] ร”ยฃรด sk_survey_pending posโ”ยฎ ร”รรถ dispatch sk:survey_check");
-        // Notifier MapClient s'il est dโ”ยฎjโ”รก montโ”ยฎ en mโ”ยฎmoire (router cache Next.js).
+        console.log("[chat] ิฃ๔ sk_survey_pending pos+ฎ ิว๖ dispatch sk:survey_check");
+        // Notifier MapClient s'il est d+ฎj+แ mont+ฎ en m+ฎmoire (router cache Next.js).
         // Si MapClient est fresh-mounted, son useEffect de mount lira sk_survey_pending.
         const dispatched = window.dispatchEvent(new Event("sk:survey_check"));
-        console.log("[chat] dispatchEvent sk:survey_check ร”รรถ dispatched:", dispatched,
-          "| sk_survey_pending (aprโ”ยฟs):", localStorage.getItem("sk_survey_pending"),
+        console.log("[chat] dispatchEvent sk:survey_check ิว๖ dispatched:", dispatched,
+          "| sk_survey_pending (apr+ฟs):", localStorage.getItem("sk_survey_pending"),
         );
       } else {
-        console.log("[chat] survey dโ”ยฎjโ”รก effectuโ”ยฎ (sk_survey_done=true) ร”รรถ rien โ”รก faire");
+        console.log("[chat] survey d+ฎj+แ effectu+ฎ (sk_survey_done=true) ิว๖ rien +แ faire");
       }
     } catch (err) {
       console.error("[chat] handleMeetingResponse survey block ERROR:", err);
     }
   }
 
-  // ร”รถรร”รถร Report ร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถร
+  // ิ๖วิ๖ว Report ิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖ว
   async function handleReport() {
     if (!myId || reported) return;
     const confirmed = window.confirm(t("chat.reportConfirm", { name: otherName }));
@@ -295,7 +295,7 @@ export default function ChatPage() {
     }
   }
 
-  // ร”รถรร”รถร Translation ร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถร
+  // ิ๖วิ๖ว Translation ิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖ว
   async function handleTranslate(msgId: string, content: string) {
     if (translations[msgId]) {
       setTranslations((prev) => { const n = { ...prev }; delete n[msgId]; return n; });
@@ -307,21 +307,21 @@ export default function ChatPage() {
       setTranslations((prev) => ({ ...prev, [msgId]: result }));
     } catch (err) {
       if (err instanceof AlreadyInTargetLanguageError) {
-        setTranslations((prev) => ({ ...prev, [msgId]: `ร”รรถ ${tRef.current("chat.alreadyTranslated")} ร”รรถ` }));
+        setTranslations((prev) => ({ ...prev, [msgId]: `ิว๖ ${tRef.current("chat.alreadyTranslated")} ิว๖` }));
       }
     } finally {
       setTranslating((prev) => { const n = { ...prev }; delete n[msgId]; return n; });
     }
   }
 
-  // ร”รถรร”รถร Render one message ร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถรร”รถร
+  // ิ๖วิ๖ว Render one message ิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖วิ๖ว
   function renderMessage(msg: Message) {
     const isMe = msg.from_id === myId;
     const translated = translations[msg.id];
     const isTranslating = translating[msg.id];
 
-    // Avertissement de modโ”ยฎration (envoyโ”ยฎ par le systโ”ยฟme โ”รก l'utilisateur signalโ”ยฎ)
-    if (msg.content === "โ”ฌยบMODERATION_WARNINGโ”ฌยบ") {
+    // Avertissement de mod+ฎration (envoy+ฎ par le syst+ฟme +แ l'utilisateur signal+ฎ)
+    if (msg.content === "-บMODERATION_WARNING-บ") {
       return (
         <div key={msg.id} className="flex justify-center">
           <div className="max-w-[90%] px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 text-center">
@@ -337,17 +337,17 @@ export default function ChatPage() {
         return (
           <div key={msg.id} className="flex justify-end">
             <div className="max-w-[80%] px-4 py-3 rounded-2xl rounded-br-sm bg-[#e91e8c]/20 border border-[#e91e8c]/30 text-sm text-white/80 text-center">
-              ยญฦ’รร— {t("chat.meetingRequestSent", { name: otherName })}
+              ญฦื {t("chat.meetingRequestSent", { name: otherName })}
               <p className="text-[10px] text-white/40 mt-1">{formatTime(msg.created_at, bcp47)}</p>
             </div>
           </div>
         );
       }
-      // Received ร”รรถ show Accept/Refuse buttons
+      // Received ิว๖ show Accept/Refuse buttons
       return (
         <div key={msg.id} className="flex justify-start">
           <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-sm bg-[#7c3aed]/20 border border-[#7c3aed]/30 text-sm text-center space-y-3">
-            <p className="text-white/90">ยญฦ’รร— {t("chat.meetingRequestReceived", { name: otherName })}</p>
+            <p className="text-white/90">ญฦื {t("chat.meetingRequestReceived", { name: otherName })}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => handleMeetingResponse(true)}
@@ -420,7 +420,7 @@ export default function ChatPage() {
                 }`}
                 title={t("chat.translate")}
               >
-                {isTranslating ? <span className="animate-pulse">ร”ร…โ”</span> : <>ยญฦ’รฎร {translated ? "โ”รน" : t("chat.translate")}</>}
+                {isTranslating ? <span className="animate-pulse">ิลฆ</span> : <>ญ๎ษ {translated ? "+๙" : t("chat.translate")}</>}
               </button>
             )}
           </div>
@@ -434,15 +434,15 @@ export default function ChatPage() {
     );
   }
 
-  // Chat dโ”ยฎsactivโ”ยฎ jusqu'au lancement (26 mai 2026) ร”รรถ sauf pour les bโ”ยฌta-testeurs
+  // Chat d+ฎsactiv+ฎ jusqu'au lancement (26 mai 2026) ิว๖ sauf pour les b+ฌta-testeurs
   const LAUNCH_DATE = new Date("2026-05-26T00:00:00Z");
   const isPrelaunch = Date.now() < LAUNCH_DATE.getTime();
 
-  // Attendre la rโ”ยฎponse de la vโ”ยฎrification bโ”ยฌta avant de rendre le verrou
+  // Attendre la r+ฎponse de la v+ฎrification b+ฌta avant de rendre le verrou
   if (isPrelaunch && isBeta === null) {
     return (
       <main className="flex flex-col w-full overflow-x-hidden items-center justify-center" style={{ height: "100dvh" }}>
-        <div className="text-4xl animate-pulse">ร”ร…โ”</div>
+        <div className="text-4xl animate-pulse">ิลฆ</div>
       </main>
     );
   }
@@ -456,7 +456,7 @@ export default function ChatPage() {
             className="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
             aria-label={t("chat.back")}
           >
-            ร”รฅร
+            ิๅษ
           </button>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-white text-sm truncate">{otherName}</div>
@@ -464,7 +464,7 @@ export default function ChatPage() {
           <LanguageSwitcher />
         </header>
         <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 text-center">
-          <div className="text-5xl">ยญฦ’รถร</div>
+          <div className="text-5xl">ญ๖ฦ</div>
           <h2 className="text-xl font-bold text-white">{t("chat.comingSoon")}</h2>
           <p className="text-sm text-white/50 max-w-xs leading-relaxed">
             {t("chat.comingSoonDesc", { date: "9 mai 2026" })}
@@ -489,12 +489,12 @@ export default function ChatPage() {
           className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-white/50 hover:text-white transition-colors rounded-xl hover:bg-white/10 text-lg"
           aria-label={t("chat.back")}
         >
-          ร”รฅร
+          ิๅษ
         </button>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-white text-sm truncate">{otherName}</div>
           {otherAppearance && (
-            <div className="text-xs text-[#e91e8c]/70 truncate">ยญฦ’รฆร {otherAppearance}</div>
+            <div className="text-xs text-[#e91e8c]/70 truncate">ญๆว {otherAppearance}</div>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -514,11 +514,11 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Messages ร”รรถ min-h-0 requis pour que flex-1 ne force pas la hauteur */}
+      {/* Messages ิว๖ min-h-0 requis pour que flex-1 ne force pas la hauteur */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-3">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-            <div className="text-5xl">ยญฦ’รรฎ</div>
+            <div className="text-5xl">ญฦ๎</div>
             <p className="text-white/40 text-sm">{t("chat.greeting", { name: otherName })}</p>
           </div>
         )}
@@ -560,11 +560,11 @@ export default function ChatPage() {
             className="flex-shrink-0 text-xs text-white/25 hover:text-red-400 bg-transparent border-none rounded-full px-2 py-1.5 transition-all disabled:opacity-30"
             title={t("chat.report")}
           >
-            ยญฦ’รยฎ
+            ญÜฎ
           </button>
         </div>
 
-        {/* Text input ร”รรถ min-w-0 sur l'input pour qu'il ne dโ”ยฎpasse pas en flex */}
+        {/* Text input ิว๖ min-w-0 sur l'input pour qu'il ne d+ฎpasse pas en flex */}
         <div className="px-4 py-3 flex gap-2 items-end">
           <input
             ref={inputRef}
