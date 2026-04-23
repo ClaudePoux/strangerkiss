@@ -1,5 +1,5 @@
 "use client";
-
+// v
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import type { Message } from "@/lib/supabase";
@@ -9,9 +9,9 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useNotifications } from "@/lib/notificationContext";
 
 // Special message markers
-const SK_MEETING_REQUEST  = "-ºMEETING_REQUEST-º";
-const SK_MEETING_ACCEPTED = "-ºMEETING_ACCEPTED-º";
-const SK_MEETING_REFUSED  = "-ºMEETING_REFUSED-º";
+const SK_MEETING_REQUEST  = "-ï¿½MEETING_REQUEST-ï¿½";
+const SK_MEETING_ACCEPTED = "-ï¿½MEETING_ACCEPTED-ï¿½";
+const SK_MEETING_REFUSED  = "-ï¿½MEETING_REFUSED-ï¿½";
 
 
 function isImageMsg(content: string) {
@@ -50,7 +50,7 @@ export default function ChatPage() {
   const { t, bcp47, locale } = useI18n();
 
   const otherId = params.userId as string;
-  const otherName = searchParams.get("name") ?? "Inconnu-Àe";
+  const otherName = searchParams.get("name") ?? "Inconnu-ï¿½e";
   const otherAppearance = searchParams.get("appearance") ?? "";
 
   const { setActiveChatId } = useNotifications();
@@ -61,7 +61,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [reported, setReported] = useState(false);
-  // null = v+®rification en cours, true/false = r+®sultat connu
+  // null = v+ï¿½rification en cours, true/false = r+ï¿½sultat connu
   const [isBeta, setIsBeta] = useState<boolean | null>(null);
 
   // Translation state per message id
@@ -82,7 +82,7 @@ export default function ChatPage() {
     // Chargement de l'historique via MySQL
     const res = await fetch(`/api/db/messages?from=${id}&to=${otherId}`);
     if (!res.ok) {
-      // Fallback d+®mo si l'API n'est pas disponible
+      // Fallback d+ï¿½mo si l'API n'est pas disponible
       const tr = tRef.current;
       setDemoMode(true);
       setMessages([
@@ -103,8 +103,8 @@ export default function ChatPage() {
           .then((r) => r.json())
           .then(({ messages: newMsgs }) => {
             if (newMsgs?.length > 0) {
-              // D+®dupliquer par ID ÔÇö +®vite le double affichage du selfie quand le poll
-              // capture son `since` avant que pushMessage ait mis +á jour l'+®tat.
+              // D+ï¿½dupliquer par ID ï¿½ï¿½ï¿½ +ï¿½vite le double affichage du selfie quand le poll
+              // capture son `since` avant que pushMessage ait mis +ï¿½ jour l'+ï¿½tat.
               setMessages((p) => {
                 const existingIds = new Set(p.map((m) => m.id));
                 const truly_new = (newMsgs as typeof p).filter((m) => !existingIds.has(m.id));
@@ -129,8 +129,8 @@ export default function ChatPage() {
       setMyId(id);
       loadChat(id).then((fn) => { unsub = fn; });
 
-      // V+®rification b+¬ta-testeur
-      // Strat+®gie double : par sk_phone (direct) + sk_user_id (fallback si phone absent/format+® diff+®remment)
+      // V+ï¿½rification b+ï¿½ta-testeur
+      // Strat+ï¿½gie double : par sk_phone (direct) + sk_user_id (fallback si phone absent/format+ï¿½ diff+ï¿½remment)
       const phone  = localStorage.getItem("sk_phone");
       const userId = localStorage.getItem("sk_user_id");
       if (phone || userId) {
@@ -156,7 +156,7 @@ export default function ChatPage() {
     };
   }, [loadChat, otherId, setActiveChatId]);
 
-  // ÔöÇÔöÇ Send helpers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Send helpers ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   async function pushMessage(content: string, id = myId) {
     if (!id) return;
     if (demoMode) {
@@ -194,7 +194,7 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
-  // ÔöÇÔöÇ Selfie ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Selfie ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   async function handleSelfieFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -210,7 +210,7 @@ export default function ChatPage() {
     }
   }
 
-  // ÔöÇÔöÇ Meeting request ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Meeting request ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   async function handleSendMeetingRequest() {
     if (!myId || sending) return;
     setSending(true);
@@ -236,19 +236,19 @@ export default function ChatPage() {
         body: JSON.stringify({ requester_id: otherId, target_id: myId }),
       }).catch(() => {});
     } else {
-      // Refus : blocage sym+®trique en base (les deux profils disparaissent mutuellement)
+      // Refus : blocage sym+ï¿½trique en base (les deux profils disparaissent mutuellement)
       fetch("/api/matches/refuse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requester_id: otherId, target_id: myId }),
       }).catch(() => {});
     }
-    // D+®clencher l'enqu+¬te post-exp+®rience (une seule fois)
+    // D+ï¿½clencher l'enqu+ï¿½te post-exp+ï¿½rience (une seule fois)
     try {
       const surveyDone    = localStorage.getItem("sk_survey_done");
       const surveyPending = localStorage.getItem("sk_survey_pending");
       console.log(
-        "[chat] handleMeetingResponse ÔûÂ",
+        "[chat] handleMeetingResponse ï¿½ï¿½ï¿½",
         "accept:", accept,
         "| sk_survey_done:", surveyDone,
         "| sk_survey_pending (avant):", surveyPending,
@@ -257,22 +257,22 @@ export default function ChatPage() {
       );
       if (surveyDone !== "true") {
         localStorage.setItem("sk_survey_pending", "true");
-        console.log("[chat] Ô£ô sk_survey_pending pos+® ÔÇö dispatch sk:survey_check");
-        // Notifier MapClient s'il est d+®j+á mont+® en m+®moire (router cache Next.js).
+        console.log("[chat] Ô£ï¿½ sk_survey_pending pos+ï¿½ ï¿½ï¿½ï¿½ dispatch sk:survey_check");
+        // Notifier MapClient s'il est d+ï¿½j+ï¿½ mont+ï¿½ en m+ï¿½moire (router cache Next.js).
         // Si MapClient est fresh-mounted, son useEffect de mount lira sk_survey_pending.
         const dispatched = window.dispatchEvent(new Event("sk:survey_check"));
-        console.log("[chat] dispatchEvent sk:survey_check ÔÇö dispatched:", dispatched,
-          "| sk_survey_pending (apr+¿s):", localStorage.getItem("sk_survey_pending"),
+        console.log("[chat] dispatchEvent sk:survey_check ï¿½ï¿½ï¿½ dispatched:", dispatched,
+          "| sk_survey_pending (apr+ï¿½s):", localStorage.getItem("sk_survey_pending"),
         );
       } else {
-        console.log("[chat] survey d+®j+á effectu+® (sk_survey_done=true) ÔÇö rien +á faire");
+        console.log("[chat] survey d+ï¿½j+ï¿½ effectu+ï¿½ (sk_survey_done=true) ï¿½ï¿½ï¿½ rien +ï¿½ faire");
       }
     } catch (err) {
       console.error("[chat] handleMeetingResponse survey block ERROR:", err);
     }
   }
 
-  // ÔöÇÔöÇ Report ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Report ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   async function handleReport() {
     if (!myId || reported) return;
     const confirmed = window.confirm(t("chat.reportConfirm", { name: otherName }));
@@ -295,7 +295,7 @@ export default function ChatPage() {
     }
   }
 
-  // ÔöÇÔöÇ Translation ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Translation ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   async function handleTranslate(msgId: string, content: string) {
     if (translations[msgId]) {
       setTranslations((prev) => { const n = { ...prev }; delete n[msgId]; return n; });
@@ -307,21 +307,21 @@ export default function ChatPage() {
       setTranslations((prev) => ({ ...prev, [msgId]: result }));
     } catch (err) {
       if (err instanceof AlreadyInTargetLanguageError) {
-        setTranslations((prev) => ({ ...prev, [msgId]: `ÔÇö ${tRef.current("chat.alreadyTranslated")} ÔÇö` }));
+        setTranslations((prev) => ({ ...prev, [msgId]: `ï¿½ï¿½ï¿½ ${tRef.current("chat.alreadyTranslated")} ï¿½ï¿½ï¿½` }));
       }
     } finally {
       setTranslating((prev) => { const n = { ...prev }; delete n[msgId]; return n; });
     }
   }
 
-  // ÔöÇÔöÇ Render one message ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Render one message ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   function renderMessage(msg: Message) {
     const isMe = msg.from_id === myId;
     const translated = translations[msg.id];
     const isTranslating = translating[msg.id];
 
-    // Avertissement de mod+®ration (envoy+® par le syst+¿me +á l'utilisateur signal+®)
-    if (msg.content === "-ºMODERATION_WARNING-º") {
+    // Avertissement de mod+ï¿½ration (envoy+ï¿½ par le syst+ï¿½me +ï¿½ l'utilisateur signal+ï¿½)
+    if (msg.content === "-ï¿½MODERATION_WARNING-ï¿½") {
       return (
         <div key={msg.id} className="flex justify-center">
           <div className="max-w-[90%] px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 text-center">
@@ -337,17 +337,17 @@ export default function ChatPage() {
         return (
           <div key={msg.id} className="flex justify-end">
             <div className="max-w-[80%] px-4 py-3 rounded-2xl rounded-br-sm bg-[#e91e8c]/20 border border-[#e91e8c]/30 text-sm text-white/80 text-center">
-              ­ƒÆ× {t("chat.meetingRequestSent", { name: otherName })}
+              ï¿½ï¿½ï¿½ï¿½ {t("chat.meetingRequestSent", { name: otherName })}
               <p className="text-[10px] text-white/40 mt-1">{formatTime(msg.created_at, bcp47)}</p>
             </div>
           </div>
         );
       }
-      // Received ÔÇö show Accept/Refuse buttons
+      // Received ï¿½ï¿½ï¿½ show Accept/Refuse buttons
       return (
         <div key={msg.id} className="flex justify-start">
           <div className="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-sm bg-[#7c3aed]/20 border border-[#7c3aed]/30 text-sm text-center space-y-3">
-            <p className="text-white/90">­ƒÆ× {t("chat.meetingRequestReceived", { name: otherName })}</p>
+            <p className="text-white/90">ï¿½ï¿½ï¿½ï¿½ {t("chat.meetingRequestReceived", { name: otherName })}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => handleMeetingResponse(true)}
@@ -420,7 +420,7 @@ export default function ChatPage() {
                 }`}
                 title={t("chat.translate")}
               >
-                {isTranslating ? <span className="animate-pulse">ÔÅ¦</span> : <>­ƒîÉ {translated ? "+ù" : t("chat.translate")}</>}
+                {isTranslating ? <span className="animate-pulse">ï¿½Å¦</span> : <>ï¿½ï¿½ï¿½ï¿½ {translated ? "+ï¿½" : t("chat.translate")}</>}
               </button>
             )}
           </div>
@@ -434,15 +434,15 @@ export default function ChatPage() {
     );
   }
 
-  // Chat d+®sactiv+® jusqu'au lancement (26 mai 2026) ÔÇö sauf pour les b+¬ta-testeurs
+  // Chat d+ï¿½sactiv+ï¿½ jusqu'au lancement (26 mai 2026) ï¿½ï¿½ï¿½ sauf pour les b+ï¿½ta-testeurs
   const LAUNCH_DATE = new Date("2026-05-26T00:00:00Z");
   const isPrelaunch = Date.now() < LAUNCH_DATE.getTime();
 
-  // Attendre la r+®ponse de la v+®rification b+¬ta avant de rendre le verrou
+  // Attendre la r+ï¿½ponse de la v+ï¿½rification b+ï¿½ta avant de rendre le verrou
   if (isPrelaunch && isBeta === null) {
     return (
       <main className="flex flex-col w-full overflow-x-hidden items-center justify-center" style={{ height: "100dvh" }}>
-        <div className="text-4xl animate-pulse">ÔÅ¦</div>
+        <div className="text-4xl animate-pulse">ï¿½Å¦</div>
       </main>
     );
   }
@@ -456,7 +456,7 @@ export default function ChatPage() {
             className="text-white/50 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
             aria-label={t("chat.back")}
           >
-            ÔåÉ
+            ï¿½ï¿½ï¿½
           </button>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-white text-sm truncate">{otherName}</div>
@@ -464,7 +464,7 @@ export default function ChatPage() {
           <LanguageSwitcher />
         </header>
         <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 text-center">
-          <div className="text-5xl">­ƒöÆ</div>
+          <div className="text-5xl">ï¿½ï¿½ï¿½ï¿½</div>
           <h2 className="text-xl font-bold text-white">{t("chat.comingSoon")}</h2>
           <p className="text-sm text-white/50 max-w-xs leading-relaxed">
             {t("chat.comingSoonDesc", { date: "9 mai 2026" })}
@@ -489,12 +489,12 @@ export default function ChatPage() {
           className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-white/50 hover:text-white transition-colors rounded-xl hover:bg-white/10 text-lg"
           aria-label={t("chat.back")}
         >
-          ÔåÉ
+          ï¿½ï¿½ï¿½
         </button>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-white text-sm truncate">{otherName}</div>
           {otherAppearance && (
-            <div className="text-xs text-[#e91e8c]/70 truncate">­ƒæÇ {otherAppearance}</div>
+            <div className="text-xs text-[#e91e8c]/70 truncate">ï¿½ï¿½ï¿½ï¿½ {otherAppearance}</div>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -514,11 +514,11 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Messages ÔÇö min-h-0 requis pour que flex-1 ne force pas la hauteur */}
+      {/* Messages ï¿½ï¿½ï¿½ min-h-0 requis pour que flex-1 ne force pas la hauteur */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-3">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-            <div className="text-5xl">­ƒÆî</div>
+            <div className="text-5xl">ï¿½ï¿½ï¿½ï¿½</div>
             <p className="text-white/40 text-sm">{t("chat.greeting", { name: otherName })}</p>
           </div>
         )}
@@ -560,11 +560,11 @@ export default function ChatPage() {
             className="flex-shrink-0 text-xs text-white/25 hover:text-red-400 bg-transparent border-none rounded-full px-2 py-1.5 transition-all disabled:opacity-30"
             title={t("chat.report")}
           >
-            ­ƒÜ®
+            ï¿½ï¿½Ü®
           </button>
         </div>
 
-        {/* Text input ÔÇö min-w-0 sur l'input pour qu'il ne d+®passe pas en flex */}
+        {/* Text input ï¿½ï¿½ï¿½ min-w-0 sur l'input pour qu'il ne d+ï¿½passe pas en flex */}
         <div className="px-4 py-3 flex gap-2 items-end">
           <input
             ref={inputRef}
