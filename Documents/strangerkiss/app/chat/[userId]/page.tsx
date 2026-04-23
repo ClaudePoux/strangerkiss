@@ -467,7 +467,7 @@ export default function ChatPage() {
           <div className="text-5xl">����</div>
           <h2 className="text-xl font-bold text-white">{t("chat.comingSoon")}</h2>
           <p className="text-sm text-white/50 max-w-xs leading-relaxed">
-            {t("chat.comingSoonDesc", { date: "9 mai 2026" })}
+            {t("chat.comingSoonDesc", { date: "26 mai 2026" })}
           </p>
           <a
             href="/"
