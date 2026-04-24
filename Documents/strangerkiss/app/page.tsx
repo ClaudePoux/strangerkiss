@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import LaunchSection from "@/components/LaunchSection";
 
-// Source unique de vérité pour la date de lancement
-const LAUNCH_DATE = new Date("2026-05-26T00:00:00Z");
+const FALLBACK_LAUNCH_DATE = new Date("2026-05-26T00:00:00Z");
 
 function Tagline({ text }: { text: string }) {
   const parts = text.split(/(\{hug\}|\{frenchKiss\})/);
@@ -31,9 +31,16 @@ function Tagline({ text }: { text: string }) {
 
 export default function HomePage() {
   const { t, bcp47 } = useI18n();
+  const [launchDate, setLaunchDate] = useState(FALLBACK_LAUNCH_DATE);
 
-  // Date calculée dynamiquement — pas depuis les JSON bundlés au build time
-  const launchDateStr = LAUNCH_DATE.toLocaleDateString(bcp47, {
+  useEffect(() => {
+    fetch("/api/settings/launch-date")
+      .then((r) => r.json())
+      .then((d) => { if (d.date) setLaunchDate(new Date(d.date)); })
+      .catch(() => {});
+  }, []);
+
+  const launchDateStr = launchDate.toLocaleDateString(bcp47, {
     day: "numeric",
     month: "long",
     year: "numeric",
