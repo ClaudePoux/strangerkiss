@@ -415,12 +415,12 @@ export default function ChatPage() {
               <button
                 onClick={() => handleTranslate(msg.id, msg.content)}
                 disabled={isTranslating}
-                className={`text-[10px] flex items-center gap-0.5 transition-colors rounded px-1 py-0.5 ${
-                  translated ? "text-[#a78bfa] bg-[#7c3aed]/20" : "text-white/25 hover:text-white/50"
+                className={`text-xs flex items-center gap-1 transition-colors rounded-lg px-2 py-1 ${
+                  translated ? "text-[#a78bfa] bg-[#7c3aed]/20 border border-[#7c3aed]/20" : "text-white/40 hover:text-white/80 bg-white/5 hover:bg-white/10"
                 }`}
                 title={t("chat.translate")}
               >
-                {isTranslating ? <span className="animate-pulse">⏳</span> : <>🌐 {translated ? "×" : t("chat.translate")}</>}
+                {isTranslating ? <span className="animate-pulse text-xs">⏳</span> : <>🌐 {translated ? "×" : t("chat.translate")}</>}
               </button>
             )}
           </div>
@@ -556,11 +556,11 @@ export default function ChatPage() {
           </div>
           <button
             onClick={handleReport}
-            disabled={reported}
-            className="flex-shrink-0 text-xs text-white/25 hover:text-red-400 bg-transparent border-none rounded-full px-2 py-1.5 transition-all disabled:opacity-30"
+            disabled={!myId || reported}
+            className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-500/50 rounded-full px-3 py-1.5 transition-all disabled:opacity-30"
             title={t("chat.report")}
           >
-            🚩
+            🚨 {t("chat.report")}
           </button>
         </div>
 
