@@ -100,13 +100,7 @@ export default function HomePage() {
             <Tagline text={t("home.tagline")} />
           </p>
 
-          {/* Badge "Bientôt disponible" */}
-          <div className="inline-flex items-center gap-2 bg-[#e91e8c]/10 border border-[#e91e8c]/25 rounded-full px-4 py-1.5 mb-2">
-            <span className="w-2 h-2 rounded-full bg-[#e91e8c] animate-pulse" />
-            <span className="text-xs text-[#e91e8c] font-medium">{t("home.launchingSoon")}</span>
-          </div>
-
-          {/* Countdown + waitlist */}
+          {/* Countdown + waitlist (badge date dynamique inclus) */}
           <LaunchSection />
 
           <p className="mt-6 text-sm text-white/30">{t("home.disclaimer")}</p>

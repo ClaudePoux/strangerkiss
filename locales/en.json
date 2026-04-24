@@ -26,7 +26,8 @@
     "waitlistCount": "{count} people already signed up",
     "step4Title": "4. Explore the live demo",
     "step4Desc": "Try it with real profiles. On May 24th, you'll be able to chat and meet your fleeting soulmate.",
-    "ourStory": "Our story"
+    "ourStory": "Our story",
+    "launchingOn": "Launching {date}"
   },
   "profile": {
     "header": "Tell us who you are",

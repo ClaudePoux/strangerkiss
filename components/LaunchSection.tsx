@@ -45,6 +45,9 @@ export default function LaunchSection() {
     year: "numeric",
   });
 
+  // "Lancement le {date}" / "Launching {date}" / "{date}リリース" …
+  const launchingLabel = t("home.launchingOn").replace("{date}", launchDateStr);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!phone.trim() || status === "loading" || status === "success") return;
@@ -73,10 +76,14 @@ export default function LaunchSection() {
   const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
-    <div className="w-full max-w-xl mx-auto mt-10 mb-2">
-      <p className="text-center text-white/60 text-sm mb-6" suppressHydrationWarning>
-        {launchDateStr}
-      </p>
+    <div className="w-full max-w-xl mx-auto mt-4 mb-2">
+      {/* Badge date dynamique */}
+      <div className="flex justify-center mb-6" suppressHydrationWarning>
+        <div className="inline-flex items-center gap-2 bg-[#e91e8c]/10 border border-[#e91e8c]/25 rounded-full px-4 py-1.5">
+          <span className="w-2 h-2 rounded-full bg-[#e91e8c] animate-pulse" />
+          <span className="text-xs text-[#e91e8c] font-medium">{launchingLabel}</span>
+        </div>
+      </div>
 
       {/* Countdown */}
       <div className="flex items-center justify-center gap-3 sm:gap-5 mb-8">

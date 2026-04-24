@@ -26,7 +26,8 @@
     "waitlistCount": "すでに{count}人が登録済み",
     "step4Title": "4. ライブデモを体験",
     "step4Desc": "本物のプロフィールでテスト。5月24日から、チャットして束の間の運命の人に出会えます。",
-    "ourStory": "私たちのストーリー"
+    "ourStory": "私たちのストーリー",
+    "launchingOn": "{date}リリース"
   },
   "profile": {
     "header": "自己紹介してください",

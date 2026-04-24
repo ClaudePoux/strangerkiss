@@ -26,7 +26,8 @@
     "waitlistCount": "{count} personnes déjà inscrites",
     "step4Title": "4. Explore la démo en live",
     "step4Desc": "Teste avec de vrais profils. Le 24 mai, tu pourras chatter et rencontrer ton âme sœur éphémère.",
-    "ourStory": "Notre histoire"
+    "ourStory": "Notre histoire",
+    "launchingOn": "Lancement le {date}"
   },
   "profile": {
     "header": "Dis-nous qui tu es",

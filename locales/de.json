@@ -26,7 +26,8 @@
     "waitlistCount": "{count} Personen bereits angemeldet",
     "step4Title": "4. Entdecke die Live-Demo",
     "step4Desc": "Teste mit echten Profilen. Ab 24. Mai kannst du chatten und deine flüchtige Seelenpartnerin finden.",
-    "ourStory": "Unsere Geschichte"
+    "ourStory": "Unsere Geschichte",
+    "launchingOn": "Start am {date}"
   },
   "profile": {
     "header": "Sag uns, wer du bist",

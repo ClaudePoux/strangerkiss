@@ -26,7 +26,8 @@
     "waitlistCount": "已有{count}人报名",
     "step4Title": "4. 体验实时演示",
     "step4Desc": "用真实档案测试。5月24日起，你将可以聊天并遇见你短暂的灵魂伴侣。",
-    "ourStory": "我们的故事"
+    "ourStory": "我们的故事",
+    "launchingOn": "{date}正式上线"
   },
   "profile": {
     "header": "告诉我们你是谁",
