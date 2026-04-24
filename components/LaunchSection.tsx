@@ -3,32 +3,47 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 
-// Date de lancement : 24 mai 2026
-const LAUNCH_DATE = new Date("2026-05-24T00:00:00Z");
+const FALLBACK_LAUNCH_DATE = new Date("2026-05-26T00:00:00Z");
 
-function useCountdown() {
-  const [diff, setDiff] = useState(() => Math.max(0, LAUNCH_DATE.getTime() - Date.now()));
+function useCountdown(launchDate: Date) {
+  const [diff, setDiff] = useState(() => Math.max(0, launchDate.getTime() - Date.now()));
 
   useEffect(() => {
+    setDiff(Math.max(0, launchDate.getTime() - Date.now()));
     const id = setInterval(() => {
-      setDiff(Math.max(0, LAUNCH_DATE.getTime() - Date.now()));
+      setDiff(Math.max(0, launchDate.getTime() - Date.now()));
     }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [launchDate]);
 
-  const days    = Math.floor(diff / 86400000);
-  const hours   = Math.floor((diff % 86400000) / 3600000);
-  const minutes = Math.floor((diff % 3600000) / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
+  const days     = Math.floor(diff / 86400000);
+  const hours    = Math.floor((diff % 86400000) / 3600000);
+  const minutes  = Math.floor((diff % 3600000) / 60000);
+  const seconds  = Math.floor((diff % 60000) / 1000);
   return { days, hours, minutes, seconds, launched: diff === 0 };
 }
 
 export default function LaunchSection() {
-  const { t } = useI18n();
-  const { days, hours, minutes, seconds, launched } = useCountdown();
+  const { t, bcp47 } = useI18n();
+  const [launchDate, setLaunchDate] = useState(FALLBACK_LAUNCH_DATE);
 
-  const [phone, setPhone]     = useState("");
-  const [status, setStatus]   = useState<"idle" | "loading" | "success" | "already" | "error">("idle");
+  useEffect(() => {
+    fetch("/api/settings/launch-date")
+      .then((r) => r.json())
+      .then((d) => { if (d.date) setLaunchDate(new Date(d.date)); })
+      .catch(() => {});
+  }, []);
+
+  const { days, hours, minutes, seconds, launched } = useCountdown(launchDate);
+
+  const [phone, setPhone]   = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "already" | "error">("idle");
+
+  const launchDateStr = launchDate.toLocaleDateString(bcp47, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,6 +74,10 @@ export default function LaunchSection() {
 
   return (
     <div className="w-full max-w-xl mx-auto mt-10 mb-2">
+      <p className="text-center text-white/60 text-sm mb-6" suppressHydrationWarning>
+        {launchDateStr}
+      </p>
+
       {/* Countdown */}
       <div className="flex items-center justify-center gap-3 sm:gap-5 mb-8">
         {[
@@ -106,7 +125,7 @@ export default function LaunchSection() {
                 disabled={status === "loading"}
                 className="bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white font-semibold text-sm px-6 py-3 rounded-2xl transition-all shadow-[0_0_20px_rgba(233,30,140,0.3)] hover:shadow-[0_0_35px_rgba(233,30,140,0.5)] hover:scale-[1.02] active:scale-95 whitespace-nowrap"
               >
-                {status === "loading" ? "…" : t("home.waitlistCta")}
+                {status === "loading" ? "..." : t("home.waitlistCta")}
               </button>
             </div>
             <p className="text-xs text-white/30 text-center">{t("verify.phoneHint")}</p>
@@ -119,7 +138,6 @@ export default function LaunchSection() {
         {status === "error" && (
           <p className="mt-2 text-center text-red-400/80 text-xs">{t("home.waitlistError")}</p>
         )}
-
       </div>
     </div>
   );

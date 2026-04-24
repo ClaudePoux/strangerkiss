@@ -808,6 +808,42 @@ function LaunchTab({ phone }: { phone: string }) {
   const [launchLoading, setLaunchLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
+  // Date de lancement
+  const [launchDateCurrent, setLaunchDateCurrent] = useState<string | null>(null);
+  const [launchDateInput, setLaunchDateInput] = useState("");
+  const [dateSaving, setDateSaving] = useState(false);
+  const [dateMsg, setDateMsg] = useState("");
+
+  useEffect(() => {
+    adminFetch(phone, "/api/admin/settings?key=launch_date")
+      .then(r => r.json())
+      .then(d => {
+        if (d.value) {
+          setLaunchDateCurrent(d.value);
+          setLaunchDateInput(d.value.slice(0, 10));
+        }
+      })
+      .catch(() => {});
+  }, [phone]);
+
+  async function saveLaunchDate() {
+    if (!launchDateInput) return;
+    setDateSaving(true); setDateMsg("");
+    const isoValue = `${launchDateInput}T00:00:00Z`;
+    const r = await adminFetch(phone, "/api/admin/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ key: "launch_date", value: isoValue }),
+    });
+    const d = await r.json();
+    setDateSaving(false);
+    if (d.ok) {
+      setLaunchDateCurrent(isoValue);
+      setDateMsg("✓ Date mise à jour");
+    } else {
+      setDateMsg(`Erreur : ${d.error}`);
+    }
+  }
+
   async function runDiag() {
     setDiagLoading(true); setDiagResult(null);
     const r = await adminFetch(phone, "/api/admin/sms-diagnostic");
@@ -827,6 +863,39 @@ function LaunchTab({ phone }: { phone: string }) {
 
   return (
     <div className="space-y-8 max-w-2xl">
+
+      {/* Date de lancement */}
+      <div className="bg-white/5 border border-[#7c3aed]/20 rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 className="text-white font-semibold">📅 Date de lancement</h3>
+          <p className="text-xs text-white/40 mt-1">Modifie la date affichée sur le compte à rebours public.</p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <input
+            type="date"
+            value={launchDateInput}
+            onChange={e => { setLaunchDateInput(e.target.value); setDateMsg(""); }}
+            className="bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#7c3aed]/50 focus:ring-2 focus:ring-[#7c3aed]/15"
+          />
+          <button
+            onClick={saveLaunchDate}
+            disabled={dateSaving || !launchDateInput}
+            className="bg-[#7c3aed]/80 hover:bg-[#7c3aed] disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all"
+          >
+            {dateSaving ? "Sauvegarde…" : "Enregistrer"}
+          </button>
+          {dateMsg && (
+            <span className={`text-sm ${dateMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>
+              {dateMsg}
+            </span>
+          )}
+        </div>
+        {launchDateCurrent && (
+          <p className="text-xs text-white/30">
+            Actuelle en base : {new Date(launchDateCurrent).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        )}
+      </div>
 
       {/* Diagnostic OVH */}
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
