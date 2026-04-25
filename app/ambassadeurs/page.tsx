@@ -19,8 +19,8 @@ interface Ambassador {
   website?: string;
   social_links?: SocialLinks;
   description: string;
+  why_support?: string;
   photo_url?: string;
-  referral_code?: string;
   category: string;
   display_order: number;
   partner_since?: string;
@@ -69,6 +69,14 @@ function AmbassadorCard({ amb }: { amb: Ambassador }) {
 
       {/* Description */}
       <p className="text-sm text-white/60 leading-relaxed">{amb.description}</p>
+
+      {/* Pourquoi ils soutiennent StrangerKiss */}
+      {amb.why_support && (
+        <div className="bg-white/[0.03] border border-white/8 rounded-xl px-4 py-3">
+          <p className="text-[11px] uppercase tracking-wider text-[#e91e8c]/60 font-medium mb-1">Pourquoi ils soutiennent StrangerKiss</p>
+          <p className="text-sm text-white/55 leading-relaxed">{amb.why_support}</p>
+        </div>
+      )}
 
       {/* Liens réseaux sociaux + site web empilés verticalement */}
       {(socialEntries.length > 0 || amb.website) && (
@@ -119,7 +127,7 @@ export default function AmbassadeursPage() {
     : ambassadors.filter(a => a.category === activeCategory);
 
   return (
-    <main className="min-h-screen px-6 py-16 max-w-5xl mx-auto">
+    <main className="min-h-screen px-6 py-16 max-w-3xl mx-auto">
       {/* Back */}
       <div className="mb-10">
         <Link href="/" className="text-white/40 hover:text-white/70 text-sm transition-colors">
@@ -169,7 +177,7 @@ export default function AmbassadeursPage() {
           <p className="text-white/40 text-sm">Les ambassadeurs arrivent bientôt.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="flex flex-col gap-5">
           {filtered.map(amb => (
             <AmbassadorCard key={amb.id} amb={amb} />
           ))}

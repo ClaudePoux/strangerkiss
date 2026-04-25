@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   let query = sb
     .from("ambassadors")
-    .select("id,name,brand,website,social_links,description,photo_url,referral_code,category,display_order,partner_since")
+    .select("id,name,brand,website,social_links,description,why_support,photo_url,category,display_order,partner_since")
     .eq("active", true)
     .order("display_order", { ascending: true });
 
