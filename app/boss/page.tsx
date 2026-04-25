@@ -1190,6 +1190,20 @@ function LegalTab({ phone }: { phone: string }) {
 
 // ── Ambassadors tab ───────────────────────────────────────────────────────────
 
+function isoToFr(iso: string): string {
+  if (!iso) return "";
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+function frToIso(fr: string): string {
+  if (!fr) return "";
+  const m = fr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return fr;
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
 interface Ambassador {
   id: string;
   name: string;
@@ -1222,6 +1236,7 @@ function AmbassadorsTab({ phone }: { phone: string }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [stats, setStats] = useState<Record<string, number>>({});
+  const [uploading, setUploading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1246,13 +1261,7 @@ function AmbassadorsTab({ phone }: { phone: string }) {
     setSaving(true); setMsg("");
     const url = isNew ? "/api/admin/ambassadors" : `/api/admin/ambassadors/${editing.id}`;
     const method = isNew ? "POST" : "PATCH";
-    // parse social_links si c'est une string
-    let payload = { ...editing };
-    if (typeof payload.social_links === "string") {
-      try { payload.social_links = JSON.parse(payload.social_links as unknown as string); }
-      catch { payload.social_links = {}; }
-    }
-    const r = await adminFetch(phone, url, { method, body: JSON.stringify(payload) });
+    const r = await adminFetch(phone, url, { method, body: JSON.stringify(editing) });
     const d = await r.json();
     setSaving(false);
     if (d.ok || d.ambassador) {
@@ -1302,38 +1311,123 @@ function AmbassadorsTab({ phone }: { phone: string }) {
           <button onClick={() => { setEditing(null); setMsg(""); }} className="text-white/40 hover:text-white/70 text-sm">✕ Annuler</button>
         </div>
 
-        {[
-          { key: "name", label: "Nom / Pseudo *", placeholder: "Camille Dupont" },
-          { key: "brand", label: "Marque / Raison sociale", placeholder: "Love & Travel Co." },
-          { key: "website", label: "Site web", placeholder: "https://example.com" },
-          { key: "photo_url", label: "URL photo", placeholder: "https://cdn.../photo.jpg" },
-          { key: "referral_code", label: "Code ambassadeur", placeholder: "CAMILLE20" },
-          { key: "partner_since", label: "Partenaire depuis (YYYY-MM-DD)", placeholder: "2026-05-01" },
-        ].map(({ key, label, placeholder }) => (
-          <div key={key}>
-            <label className="block text-xs text-white/40 mb-1">{label}</label>
-            <input
-              value={(editing as Record<string, string>)[key] ?? ""}
-              onChange={e => setEditing(prev => ({ ...prev, [key]: e.target.value }))}
-              placeholder={placeholder}
-              className={inputCls}
-            />
-          </div>
-        ))}
-
+        {/* Nom */}
         <div>
+          <label className="block text-xs text-white/40 mb-1">Nom / Pseudo *</label>
+          <input value={editing.name ?? ""} onChange={e => setEditing(prev => ({ ...prev, name: e.target.value }))} placeholder="Camille Dupont" className={inputCls} />
+        </div>
+
+        {/* Marque */}
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Marque / Raison sociale</label>
+          <input value={editing.brand ?? ""} onChange={e => setEditing(prev => ({ ...prev, brand: e.target.value }))} placeholder="Love & Travel Co." className={inputCls} />
+        </div>
+
+        {/* Photo upload */}
+        <div>
+          <label className="block text-xs text-white/40 mb-2">Photo</label>
+          <div className="flex items-center gap-3">
+            {editing.photo_url ? (
+              <img src={editing.photo_url} alt="" className="w-14 h-14 rounded-xl object-cover border border-white/10 flex-shrink-0" />
+            ) : (
+              <div className="w-14 h-14 rounded-xl bg-white/5 border border-dashed border-white/15 flex items-center justify-center flex-shrink-0 text-white/20 text-xs">Photo</div>
+            )}
+            <div className="flex-1 space-y-1">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploading(true);
+                  const fd = new FormData();
+                  fd.append("file", file);
+                  const r = await fetch("/api/admin/upload/ambassadors", {
+                    method: "POST",
+                    headers: { "X-Admin-Token": phone },
+                    body: fd,
+                  });
+                  const d = await r.json();
+                  setUploading(false);
+                  if (d.url) setEditing(prev => ({ ...prev, photo_url: d.url }));
+                  else setMsg(`Erreur upload : ${d.error}`);
+                }}
+                className="text-sm text-white/50 file:mr-2 file:px-3 file:py-1 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-white/10 file:text-white/60 hover:file:bg-white/15 cursor-pointer w-full"
+              />
+              {uploading && <p className="text-xs text-white/30">Upload en cours…</p>}
+              {editing.photo_url && (
+                <button onClick={() => setEditing(prev => ({ ...prev, photo_url: "" }))} className="text-xs text-red-400/60 hover:text-red-400">Supprimer la photo</button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Réseaux sociaux */}
+        <div>
+          <label className="block text-xs text-white/40 mb-2">Réseaux sociaux</label>
+          <div className="space-y-2">
+            {([
+              { key: "instagram", label: "Instagram",   placeholder: "https://instagram.com/pseudo" },
+              { key: "tiktok",    label: "TikTok",      placeholder: "https://tiktok.com/@pseudo" },
+              { key: "youtube",   label: "YouTube",     placeholder: "https://youtube.com/@chaine" },
+              { key: "facebook",  label: "Facebook",    placeholder: "https://facebook.com/page" },
+              { key: "twitter",   label: "X (Twitter)", placeholder: "https://x.com/pseudo" },
+              { key: "linkedin",  label: "LinkedIn",    placeholder: "https://linkedin.com/in/pseudo" },
+            ] as { key: string; label: string; placeholder: string }[]).map(({ key, label, placeholder }) => (
+              <div key={key} className="flex items-center gap-2">
+                <span className="text-xs text-white/30 w-24 shrink-0">{label}</span>
+                <input
+                  value={(editing.social_links ?? {})[key] ?? ""}
+                  onChange={e => setEditing(prev => ({
+                    ...prev,
+                    social_links: { ...(prev?.social_links ?? {}), [key]: e.target.value },
+                  }))}
+                  placeholder={placeholder}
+                  className={inputCls}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Site web */}
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Site web</label>
+          <input value={editing.website ?? ""} onChange={e => setEditing(prev => ({ ...prev, website: e.target.value }))} placeholder="https://example.com" className={inputCls} />
+        </div>
+
+        {/* Code ambassadeur */}
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Code ambassadeur</label>
+          <input value={editing.referral_code ?? ""} onChange={e => setEditing(prev => ({ ...prev, referral_code: e.target.value }))} placeholder="CAMILLE20" className={inputCls} />
+        </div>
+
+        {/* Partenaire depuis */}
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Partenaire depuis (jj/mm/aaaa)</label>
+          <input
+            value={isoToFr(editing.partner_since ?? "")}
+            onChange={e => setEditing(prev => ({ ...prev, partner_since: frToIso(e.target.value) }))}
+            placeholder="01/05/2026"
+            className={inputCls}
+          />
+        </div>
+
+        {/* Catégorie — overflow visible pour que la liste déroulante soit accessible */}
+        <div style={{ overflow: "visible" }}>
           <label className="block text-xs text-white/40 mb-1">Catégorie</label>
           <select
             value={editing.category ?? "Lifestyle"}
             onChange={e => setEditing(prev => ({ ...prev, category: e.target.value }))}
-            className={inputCls}
+            className="w-full bg-[#1a1a2e] border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#e91e8c]/50"
           >
             {["Voyage", "Sexualité", "Polyamour", "Lifestyle", "Bien-être", "Art", "Tech"].map(c => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c} className="bg-[#1a1a2e] text-white">{c}</option>
             ))}
           </select>
         </div>
 
+        {/* Description */}
         <div>
           <label className="block text-xs text-white/40 mb-1">Description *</label>
           <textarea
@@ -1345,6 +1439,7 @@ function AmbassadorsTab({ phone }: { phone: string }) {
           />
         </div>
 
+        {/* Pourquoi soutenir */}
         <div>
           <label className="block text-xs text-white/40 mb-1">Pourquoi soutenir StrangerKiss</label>
           <textarea
@@ -1356,18 +1451,7 @@ function AmbassadorsTab({ phone }: { phone: string }) {
           />
         </div>
 
-        <div>
-          <label className="block text-xs text-white/40 mb-1">Réseaux sociaux (JSON)</label>
-          <input
-            value={typeof editing.social_links === "object"
-              ? JSON.stringify(editing.social_links)
-              : (editing.social_links as unknown as string ?? "")}
-            onChange={e => setEditing(prev => ({ ...prev, social_links: e.target.value as unknown as Record<string, string> }))}
-            placeholder='{"instagram":"@pseudo","tiktok":"@pseudo"}'
-            className={inputCls}
-          />
-        </div>
-
+        {/* Actif */}
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer select-none">
             <input

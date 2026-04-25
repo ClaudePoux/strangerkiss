@@ -32,6 +32,8 @@ function SocialIcon({ platform, url }: { platform: string; url: string }) {
     tiktok: "🎵",
     youtube: "▶️",
     twitter: "𝕏",
+    facebook: "fb",
+    linkedin: "in",
   };
   return (
     <a
