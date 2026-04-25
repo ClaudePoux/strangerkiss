@@ -73,7 +73,7 @@ function AuthPanel({ onAuth }: { onAuth: (token: string, expiresAt: string) => v
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
-type Tab = "stats" | "users" | "beta" | "vip" | "moderation" | "waitlist" | "credits" | "encounters" | "legal" | "launch";
+type Tab = "stats" | "users" | "beta" | "vip" | "moderation" | "waitlist" | "credits" | "encounters" | "legal" | "launch" | "ambassadors";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "stats", label: "Statistiques", icon: "📊" },
@@ -85,6 +85,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "credits", label: "Crédits", icon: "💰" },
   { id: "encounters", label: "Rencontres", icon: "💞" },
   { id: "legal", label: "Pages légales", icon: "📄" },
+  { id: "ambassadors", label: "Ambassadeurs", icon: "🌟" },
   { id: "launch", label: "Lancement 🚀", icon: "🚀" },
 ];
 
@@ -1187,6 +1188,285 @@ function LegalTab({ phone }: { phone: string }) {
   );
 }
 
+// ── Ambassadors tab ───────────────────────────────────────────────────────────
+
+interface Ambassador {
+  id: string;
+  name: string;
+  brand?: string;
+  website?: string;
+  social_links?: Record<string, string>;
+  description: string;
+  why_support: string;
+  photo_url?: string;
+  referral_code?: string;
+  category: string;
+  display_order: number;
+  active: boolean;
+  partner_since?: string;
+  created_at: string;
+}
+
+const EMPTY_AMB: Omit<Ambassador, "id" | "created_at"> = {
+  name: "", brand: "", website: "", social_links: {},
+  description: "", why_support: "", photo_url: "",
+  referral_code: "", category: "Lifestyle", display_order: 0,
+  active: true, partner_since: "",
+};
+
+function AmbassadorsTab({ phone }: { phone: string }) {
+  const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Partial<Ambassador> | null>(null);
+  const [isNew, setIsNew] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [stats, setStats] = useState<Record<string, number>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await adminFetch(phone, "/api/admin/ambassadors");
+    const d = await r.json();
+    const list: Ambassador[] = d.ambassadors ?? [];
+    setAmbassadors(list);
+    setLoading(false);
+    // charger les stats de parrainage pour chaque ambassadeur avec un referral_code
+    list.filter(a => a.referral_code).forEach(a => {
+      adminFetch(phone, `/api/admin/ambassadors/${a.id}`)
+        .then(r2 => r2.json())
+        .then(s => setStats(prev => ({ ...prev, [a.id]: s.referral_count ?? 0 })))
+        .catch(() => {});
+    });
+  }, [phone]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function save() {
+    if (!editing) return;
+    setSaving(true); setMsg("");
+    const url = isNew ? "/api/admin/ambassadors" : `/api/admin/ambassadors/${editing.id}`;
+    const method = isNew ? "POST" : "PATCH";
+    // parse social_links si c'est une string
+    let payload = { ...editing };
+    if (typeof payload.social_links === "string") {
+      try { payload.social_links = JSON.parse(payload.social_links as unknown as string); }
+      catch { payload.social_links = {}; }
+    }
+    const r = await adminFetch(phone, url, { method, body: JSON.stringify(payload) });
+    const d = await r.json();
+    setSaving(false);
+    if (d.ok || d.ambassador) {
+      setMsg("✓ Sauvegardé");
+      setEditing(null);
+      load();
+    } else {
+      setMsg(`Erreur : ${d.error}`);
+    }
+  }
+
+  async function toggleActive(amb: Ambassador) {
+    await adminFetch(phone, `/api/admin/ambassadors/${amb.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ active: !amb.active }),
+    });
+    load();
+  }
+
+  async function deleteAmb(id: string) {
+    if (!window.confirm("Supprimer cet ambassadeur ?")) return;
+    await adminFetch(phone, `/api/admin/ambassadors/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  async function moveOrder(id: string, direction: -1 | 1) {
+    const idx = ambassadors.findIndex(a => a.id === id);
+    if (idx < 0) return;
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= ambassadors.length) return;
+    const a = ambassadors[idx];
+    const b = ambassadors[swapIdx];
+    await Promise.all([
+      adminFetch(phone, `/api/admin/ambassadors/${a.id}`, { method: "PATCH", body: JSON.stringify({ display_order: b.display_order }) }),
+      adminFetch(phone, `/api/admin/ambassadors/${b.id}`, { method: "PATCH", body: JSON.stringify({ display_order: a.display_order }) }),
+    ]);
+    load();
+  }
+
+  const inputCls = "w-full bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder-white/30 outline-none focus:border-[#e91e8c]/50";
+
+  if (editing !== null) {
+    return (
+      <div className="max-w-2xl space-y-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-white font-semibold">{isNew ? "Nouvel ambassadeur" : "Modifier"}</h3>
+          <button onClick={() => { setEditing(null); setMsg(""); }} className="text-white/40 hover:text-white/70 text-sm">✕ Annuler</button>
+        </div>
+
+        {[
+          { key: "name", label: "Nom / Pseudo *", placeholder: "Camille Dupont" },
+          { key: "brand", label: "Marque / Raison sociale", placeholder: "Love & Travel Co." },
+          { key: "website", label: "Site web", placeholder: "https://example.com" },
+          { key: "photo_url", label: "URL photo", placeholder: "https://cdn.../photo.jpg" },
+          { key: "referral_code", label: "Code ambassadeur", placeholder: "CAMILLE20" },
+          { key: "partner_since", label: "Partenaire depuis (YYYY-MM-DD)", placeholder: "2026-05-01" },
+        ].map(({ key, label, placeholder }) => (
+          <div key={key}>
+            <label className="block text-xs text-white/40 mb-1">{label}</label>
+            <input
+              value={(editing as Record<string, string>)[key] ?? ""}
+              onChange={e => setEditing(prev => ({ ...prev, [key]: e.target.value }))}
+              placeholder={placeholder}
+              className={inputCls}
+            />
+          </div>
+        ))}
+
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Catégorie</label>
+          <select
+            value={editing.category ?? "Lifestyle"}
+            onChange={e => setEditing(prev => ({ ...prev, category: e.target.value }))}
+            className={inputCls}
+          >
+            {["Voyage", "Sexualité", "Polyamour", "Lifestyle", "Bien-être", "Art", "Tech"].map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Description *</label>
+          <textarea
+            value={editing.description ?? ""}
+            onChange={e => setEditing(prev => ({ ...prev, description: e.target.value }))}
+            placeholder="Présentation courte (visible sur la page publique)"
+            rows={3}
+            className={`${inputCls} resize-none`}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Pourquoi soutenir StrangerKiss</label>
+          <textarea
+            value={editing.why_support ?? ""}
+            onChange={e => setEditing(prev => ({ ...prev, why_support: e.target.value }))}
+            placeholder="Ce qu'ils partagent de notre vision…"
+            rows={2}
+            className={`${inputCls} resize-none`}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Réseaux sociaux (JSON)</label>
+          <input
+            value={typeof editing.social_links === "object"
+              ? JSON.stringify(editing.social_links)
+              : (editing.social_links as unknown as string ?? "")}
+            onChange={e => setEditing(prev => ({ ...prev, social_links: e.target.value as unknown as Record<string, string> }))}
+            placeholder='{"instagram":"@pseudo","tiktok":"@pseudo"}'
+            className={inputCls}
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={editing.active ?? true}
+              onChange={e => setEditing(prev => ({ ...prev, active: e.target.checked }))}
+              className="accent-[#e91e8c]"
+            />
+            Actif (visible sur la page publique)
+          </label>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button onClick={save} disabled={saving}
+            className="bg-[#e91e8c] hover:bg-[#c2186f] disabled:opacity-50 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition-all">
+            {saving ? "Sauvegarde…" : "Enregistrer"}
+          </button>
+          {msg && <span className={`text-sm ${msg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{msg}</span>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <p className="text-white/40 text-sm">{ambassadors.length} ambassadeur{ambassadors.length > 1 ? "s" : ""}</p>
+        <div className="flex items-center gap-3">
+          {msg && <span className={`text-sm ${msg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>{msg}</span>}
+          <button
+            onClick={() => { setIsNew(true); setEditing({ ...EMPTY_AMB }); setMsg(""); }}
+            className="bg-[#e91e8c] hover:bg-[#c2186f] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all"
+          >
+            + Ajouter
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-white/30 text-sm">Chargement…</p>
+      ) : ambassadors.length === 0 ? (
+        <p className="text-white/30 text-sm">Aucun ambassadeur.</p>
+      ) : (
+        <div className="space-y-3">
+          {ambassadors.map((amb, idx) => (
+            <div key={amb.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-start gap-4">
+              {/* Photo miniature */}
+              {amb.photo_url ? (
+                <img src={amb.photo_url} alt={amb.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-white/10" />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-[#e91e8c]/15 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-bold text-[#e91e8c]">{amb.name[0]?.toUpperCase()}</span>
+                </div>
+              )}
+
+              {/* Infos */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-white text-sm">{amb.name}</span>
+                  {amb.brand && <span className="text-white/40 text-xs">· {amb.brand}</span>}
+                  <span className="text-[10px] uppercase tracking-wider text-[#e91e8c] bg-[#e91e8c]/10 rounded-full px-2 py-0.5">{amb.category}</span>
+                  {!amb.active && <span className="text-[10px] text-white/30 bg-white/5 rounded-full px-2 py-0.5">inactif</span>}
+                </div>
+                <p className="text-xs text-white/40 mt-0.5 truncate">{amb.description}</p>
+                <div className="flex items-center gap-3 mt-1 text-xs text-white/30">
+                  {amb.referral_code && <span>Code: <span className="text-white/50 font-mono">{amb.referral_code}</span></span>}
+                  {amb.referral_code && stats[amb.id] !== undefined && (
+                    <span>· <span className="text-white/60">{stats[amb.id]}</span> parrainages</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => moveOrder(amb.id, -1)} disabled={idx === 0}
+                  className="text-white/30 hover:text-white/60 disabled:opacity-20 px-1.5 py-1 text-xs" title="Monter">↑</button>
+                <button onClick={() => moveOrder(amb.id, 1)} disabled={idx === ambassadors.length - 1}
+                  className="text-white/30 hover:text-white/60 disabled:opacity-20 px-1.5 py-1 text-xs" title="Descendre">↓</button>
+                <button onClick={() => toggleActive(amb)}
+                  className={`px-2 py-1 rounded-lg text-xs transition-all ${amb.active ? "text-green-400 bg-green-500/10 hover:bg-green-500/20" : "text-white/30 bg-white/5 hover:bg-white/10"}`}>
+                  {amb.active ? "Actif" : "Inactif"}
+                </button>
+                <button onClick={() => { setIsNew(false); setEditing({ ...amb }); setMsg(""); }}
+                  className="text-white/40 hover:text-white/70 bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-xs transition-all">
+                  Modifier
+                </button>
+                <button onClick={() => deleteAmb(amb.id)}
+                  className="text-red-400/60 hover:text-red-400 bg-red-500/5 hover:bg-red-500/10 px-2 py-1 rounded-lg text-xs transition-all">
+                  Suppr.
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () => void }) {
@@ -1227,7 +1507,8 @@ function Dashboard({ adminPhone, onLogout }: { adminPhone: string; onLogout: () 
         {tab === "credits"    && <CreditsTab phone={adminPhone} />}
         {tab === "encounters" && <EncountersTab phone={adminPhone} />}
         {tab === "legal"      && <LegalTab phone={adminPhone} />}
-        {tab === "launch"     && <LaunchTab phone={adminPhone} />}
+        {tab === "launch"       && <LaunchTab phone={adminPhone} />}
+        {tab === "ambassadors"  && <AmbassadorsTab phone={adminPhone} />}
       </main>
     </div>
   );

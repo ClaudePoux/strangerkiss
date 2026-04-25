@@ -159,6 +159,10 @@ export default function HomePage() {
           <Link href="/cgv" className="hover:text-white/50 transition-colors">
             CGU
           </Link>
+          <span>·</span>
+          <Link href="/ambassadeurs" className="hover:text-white/50 transition-colors">
+            Ambassadeurs
+          </Link>
         </p>
       </footer>
     </main>
