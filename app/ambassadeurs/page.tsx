@@ -8,6 +8,8 @@ interface SocialLinks {
   tiktok?: string;
   youtube?: string;
   twitter?: string;
+  facebook?: string;
+  linkedin?: string;
 }
 
 interface Ambassador {
@@ -26,88 +28,74 @@ interface Ambassador {
 
 const CATEGORIES = ["Tous", "Voyage", "Sexualité", "Polyamour", "Lifestyle", "Bien-être", "Art", "Tech"];
 
-function SocialIcon({ platform, url }: { platform: string; url: string }) {
-  const icons: Record<string, string> = {
-    instagram: "📷",
-    tiktok: "🎵",
-    youtube: "▶️",
-    twitter: "𝕏",
-    facebook: "fb",
-    linkedin: "in",
-  };
-  return (
-    <a
-      href={url.startsWith("http") ? url : `https://${url}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-white/40 hover:text-white/80 transition-colors text-sm"
-      title={platform}
-    >
-      {icons[platform] ?? "🔗"}
-    </a>
-  );
-}
+const SOCIAL_LABELS: Record<string, string> = {
+  instagram: "📷 Instagram",
+  tiktok:    "🎵 TikTok",
+  youtube:   "▶️ YouTube",
+  twitter:   "𝕏 Twitter",
+  facebook:  "Facebook",
+  linkedin:  "LinkedIn",
+};
 
 function AmbassadorCard({ amb }: { amb: Ambassador }) {
   const initials = amb.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const socialEntries = Object.entries(amb.social_links ?? {}).filter(([, v]) => v);
 
   return (
-    <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-6 flex flex-col gap-4 hover:bg-white/[0.07] hover:border-[#e91e8c]/20 transition-all group">
+    <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-6 flex flex-col gap-5 hover:bg-white/[0.07] hover:border-[#e91e8c]/20 transition-all">
       {/* Header : photo + nom + marque */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-5">
         {amb.photo_url ? (
           <img
             src={amb.photo_url}
             alt={amb.name}
-            className="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border border-white/10"
+            className="w-24 h-24 rounded-2xl object-contain flex-shrink-0 border border-white/10 bg-white/5"
           />
         ) : (
-          <div className="w-16 h-16 rounded-2xl bg-[#e91e8c]/15 border border-[#e91e8c]/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-xl font-bold text-[#e91e8c]">{initials}</span>
+          <div className="w-24 h-24 rounded-2xl bg-[#e91e8c]/15 border border-[#e91e8c]/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl font-bold text-[#e91e8c]">{initials}</span>
           </div>
         )}
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-white text-base truncate">{amb.name}</h3>
+        <div className="flex-1">
+          <h3 className="font-semibold text-white text-lg">{amb.name}</h3>
           {amb.brand && (
-            <p className="text-sm text-white/50 truncate">{amb.brand}</p>
+            <p className="text-sm text-white/50 mt-0.5">{amb.brand}</p>
           )}
-          <span className="inline-block mt-1.5 text-[10px] uppercase tracking-wider font-medium text-[#e91e8c] bg-[#e91e8c]/10 border border-[#e91e8c]/20 rounded-full px-2 py-0.5">
+          <span className="inline-block mt-2 text-[10px] uppercase tracking-wider font-medium text-[#e91e8c] bg-[#e91e8c]/10 border border-[#e91e8c]/20 rounded-full px-2 py-0.5">
             {amb.category}
           </span>
         </div>
       </div>
 
       {/* Description */}
-      <p className="text-sm text-white/60 leading-relaxed line-clamp-3">{amb.description}</p>
+      <p className="text-sm text-white/60 leading-relaxed">{amb.description}</p>
 
-      {/* Footer : liens */}
-      <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
-        <div className="flex items-center gap-3">
+      {/* Liens réseaux sociaux + site web empilés verticalement */}
+      {(socialEntries.length > 0 || amb.website) && (
+        <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
           {socialEntries.map(([platform, url]) => (
-            <SocialIcon key={platform} platform={platform} url={url as string} />
+            <a
+              key={platform}
+              href={(url as string).startsWith("http") ? (url as string) : `https://${url}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-white/50 hover:text-white transition-colors"
+            >
+              {SOCIAL_LABELS[platform] ?? `🔗 ${platform}`}
+            </a>
           ))}
           {amb.website && (
             <a
               href={amb.website.startsWith("http") ? amb.website : `https://${amb.website}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/40 hover:text-white/80 transition-colors text-sm"
-              title="Site web"
+              className="text-sm text-white/50 hover:text-white transition-colors"
             >
-              🌐
+              🌐 Site web
             </a>
           )}
         </div>
-        {amb.referral_code && (
-          <Link
-            href={`/?ref=${amb.referral_code}`}
-            className="text-xs text-[#e91e8c]/60 hover:text-[#e91e8c] bg-[#e91e8c]/5 hover:bg-[#e91e8c]/10 border border-[#e91e8c]/15 rounded-full px-3 py-1 transition-all"
-          >
-            Code : {amb.referral_code}
-          </Link>
-        )}
-      </div>
+      )}
     </div>
   );
 }
