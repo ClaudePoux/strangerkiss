@@ -555,7 +555,7 @@ export default function ChatPage() {
             />
           </div>
           <button
-            onClick={handleReport}
+            onClick={(e) => { e.stopPropagation(); void handleReport(); }}
             disabled={!myId || reported}
             className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-500/50 rounded-full px-3 py-1.5 transition-all disabled:opacity-30"
             title={t("chat.report")}

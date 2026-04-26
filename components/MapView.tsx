@@ -43,6 +43,9 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   const markersLayerRef  = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const leafletRef       = useRef<any>(null);
+  // Tracks currently rendered markers by pin id — avoids clearLayers on each refresh
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersMapRef    = useRef<Map<string, any>>(new Map());
 
   // mapReady passe à true quand Leaflet est chargé et la carte prête.
   // C'est le signal qui permet à Effect 2 de rendre les marqueurs,
@@ -135,6 +138,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     return () => {
       destroyed = true;
       setMapReady(false);
+      markersMapRef.current.clear();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current  = null;
@@ -146,16 +150,28 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   }, []);
 
   // ── Effet 2 : mise à jour des marqueurs (pins OU mapReady changent) ─────────
+  // Diff par ID : on n'efface JAMAIS tous les marqueurs d'un coup — les marqueurs
+  // existants restent stables pendant un zoom ou un refresh périodique des pins.
   useEffect(() => {
     if (!mapReady || !leafletRef.current || !markersLayerRef.current) return;
 
     const L = leafletRef.current;
-    markersLayerRef.current.clearLayers();
-
     const hugLabel  = t("map.hug");
     const kissLabel = t("map.frenchKiss");
 
+    const newPinIds = new Set(pins.map(p => p.id));
+
+    // Supprimer les marqueurs dont le pin a disparu
+    for (const [id, marker] of markersMapRef.current) {
+      if (!newPinIds.has(id)) {
+        markersLayerRef.current.removeLayer(marker);
+        markersMapRef.current.delete(id);
+      }
+    }
+
+    // Ajouter uniquement les nouveaux pins (pas encore affichés)
     pins.forEach((pin) => {
+      if (markersMapRef.current.has(pin.id)) return;
       try {
         const dist    = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
         const distStr = dist < 1
@@ -179,7 +195,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         });
 
         const chatUrl = `/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`;
-        L.marker([pin.lat, pin.lng], { icon: pinIcon })
+        const marker = L.marker([pin.lat, pin.lng], { icon: pinIcon })
           .addTo(markersLayerRef.current)
           .bindPopup(popupStyle(`
             <strong>${flagEmoji(pin.nationality ?? "")} ${pin.name}</strong>
@@ -190,6 +206,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
             <br/><span style="font-size:11px;color:#888">${distStr}</span>
             <br/><a href="${chatUrl}" style="display:inline-block;margin-top:6px;background:#7c3aed;color:white;font-size:11px;padding:3px 10px;border-radius:8px;text-decoration:none">${t("mapView.message")}</a>
           `));
+        markersMapRef.current.set(pin.id, marker);
       } catch (err) {
         console.error("[MapView] Erreur rendu marqueur", pin.name, err);
       }

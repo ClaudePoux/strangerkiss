@@ -555,9 +555,9 @@ function MapPageContent() {
             {pins.filter(p => !blocked.includes(p.id)).map((pin) => (
               <div
                 key={pin.id}
-                className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl p-3 w-[175px] h-44 flex flex-col justify-between"
+                className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl p-3 w-[175px] h-44 flex flex-col gap-2"
               >
-                <div className="flex flex-col gap-1 overflow-hidden">
+                <div className="flex-1 min-h-0 flex flex-col gap-1 overflow-hidden">
                   <div className="text-xl">{pin.looking_for === "hug" ? "🤗" : <img src="/levres.svg" alt="kiss" className="w-6 h-6" />}</div>
                   <div className="font-semibold text-white text-sm leading-tight">
                     {flagEmoji(pin.nationality)}{pin.nationality ? " " : ""}{pin.name}, {t("map.age", { age: String(pin.age) })}
@@ -576,7 +576,7 @@ function MapPageContent() {
                 </div>
                 <Link
                   href={`/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`}
-                  className="flex items-center justify-center gap-1.5 bg-[#7c3aed]/20 hover:bg-[#7c3aed]/35 border border-[#7c3aed]/30 text-[#a78bfa] text-xs font-medium rounded-xl py-2 transition-colors"
+                  className="flex-shrink-0 flex items-center justify-center gap-1.5 bg-[#7c3aed]/20 hover:bg-[#7c3aed]/35 border border-[#7c3aed]/30 text-[#a78bfa] text-xs font-medium rounded-xl py-2 transition-colors"
                 >
                   {t("map.message")}
                   {((isDemo ? (demoUnreadCounts[pin.id] ?? 0) : (unreadCounts[pin.id] ?? 0)) > 0) && (
