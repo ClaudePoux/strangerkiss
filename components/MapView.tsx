@@ -106,7 +106,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       const hugLabel  = t("map.hug");
       const kissLabel = t("map.frenchKiss");
 
-      L.marker(center, { icon: youIcon })
+      L.marker(center, { icon: youIcon, pane: "overlayPane" })
         .addTo(map)
         .bindPopup(popupStyle(`
           <strong>${flagEmoji(currentUser?.nationality ?? "")} ${currentUser?.name ?? "—"}</strong>
@@ -122,24 +122,22 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
 
-      // Force le markerPane sur son propre layer de compositing GPU.
-      // Sur iOS Safari, sans translateZ(0), le pane est rasterisé avec le tile layer
-      // pendant le pinch-zoom et devient invisible (total=N hidden=0 dans le diag).
-      const markerPane = map.getPane("markerPane");
-      const shadowPane = map.getPane("shadowPane");
-      [markerPane, shadowPane].forEach(pane => {
-        if (!pane) return;
-        (pane as HTMLElement).style.webkitTransform = "translateZ(0)";
-        (pane as HTMLElement).style.transform       = "translateZ(0)";
-        (pane as HTMLElement).style.willChange      = "transform";
-      });
+      // Force l'overlayPane sur son propre layer de compositing GPU.
+      // Les marqueurs vivent dans overlayPane (pane:'overlayPane') qui a un stacking
+      // context différent de markerPane sous WebKit — plus stable pendant le pinch-zoom.
+      const overlayPane = map.getPane("overlayPane");
+      if (overlayPane) {
+        (overlayPane as HTMLElement).style.webkitTransform = "translateZ(0)";
+        (overlayPane as HTMLElement).style.transform       = "translateZ(0)";
+        (overlayPane as HTMLElement).style.willChange      = "transform";
+      }
 
       // ── Diagnostic zoom : inspecte les marqueurs dans le DOM avant/après chaque zoom
       function inspectMarkers(label: string) {
-        const pane = mapRef.current?.querySelector(".leaflet-marker-pane");
+        const pane = mapRef.current?.querySelector(".leaflet-overlay-pane");
         const ts = new Date().toLocaleTimeString("fr-FR", { hour12: false });
         if (!pane) {
-          setDebugLines(prev => [`${ts} [${label}] ⚠ marker-pane absent`, ...prev].slice(0, 12));
+          setDebugLines(prev => [`${ts} [${label}] ⚠ overlay-pane absent`, ...prev].slice(0, 12));
           return;
         }
         const all = pane.querySelectorAll(".leaflet-marker-icon");
@@ -163,16 +161,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       }
 
       map.on("zoomstart", () => inspectMarkers("zoomstart"));
-      map.on("zoomend",   () => {
-        inspectMarkers("zoomend");
-        // Hack repaint WebKit : force re-rasterisation du markerPane après zoom
-        const mp = map.getPane("markerPane");
-        if (mp) {
-          mp.style.display = "none";
-          void mp.offsetHeight; // force reflow
-          mp.style.display = "";
-        }
-      });
+      map.on("zoomend",   () => inspectMarkers("zoomend"));
 
       // Sur mobile, la barre d'adresse Safari/Chrome réduit le viewport au chargement.
       // setMapReady(true) est appelé DANS le timeout, après invalidateSize(),
@@ -245,7 +234,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         });
 
         const chatUrl = `/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`;
-        const marker = L.marker([pin.lat, pin.lng], { icon: pinIcon })
+        const marker = L.marker([pin.lat, pin.lng], { icon: pinIcon, pane: "overlayPane" })
           .addTo(markersLayerRef.current)
           .bindPopup(popupStyle(`
             <strong>${flagEmoji(pin.nationality ?? "")} ${pin.name}</strong>
