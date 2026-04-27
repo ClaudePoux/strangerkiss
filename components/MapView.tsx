@@ -122,6 +122,18 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
 
+      // Force le markerPane sur son propre layer de compositing GPU.
+      // Sur iOS Safari, sans translateZ(0), le pane est rasterisé avec le tile layer
+      // pendant le pinch-zoom et devient invisible (total=N hidden=0 dans le diag).
+      const markerPane = map.getPane("markerPane");
+      const shadowPane = map.getPane("shadowPane");
+      [markerPane, shadowPane].forEach(pane => {
+        if (!pane) return;
+        (pane as HTMLElement).style.webkitTransform = "translateZ(0)";
+        (pane as HTMLElement).style.transform       = "translateZ(0)";
+        (pane as HTMLElement).style.willChange      = "transform";
+      });
+
       // ── Diagnostic zoom : inspecte les marqueurs dans le DOM avant/après chaque zoom
       function inspectMarkers(label: string) {
         const pane = mapRef.current?.querySelector(".leaflet-marker-pane");
