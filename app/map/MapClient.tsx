@@ -477,8 +477,8 @@ function MapPageContent() {
         </div>
       )}
 
-      {/* Zone carte — minHeight 50vh pour mobile (barre d'adresse Safari/Chrome) */}
-      <div className="flex-1 relative" style={{ minHeight: '50vh' }}>
+      {/* Zone carte — flex-1 garantit la hauteur sans contraindre le panneau sous la carte */}
+      <div className="flex-1 relative" style={{ minHeight: 0 }}>
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-20">
             <div className="text-4xl animate-pulse">📍</div>
@@ -537,7 +537,7 @@ function MapPageContent() {
 
       {/* Panneau profils proches */}
       {!loading && coords && (
-        <div className="border-t border-white/5 px-5 py-4">
+        <div className="flex-shrink-0 border-t border-white/5 px-5 py-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-white/80">
               {t("map.nearby")}{" "}
