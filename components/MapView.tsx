@@ -35,11 +35,10 @@ function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Label HTML pour tooltip permanent.
-// withRing=true : enveloppe l'emoji dans un div DOM avec bordure blanche circulaire.
-// Le div est centré sur le circleMarker (direction:'center') — element DOM, toujours
-// visible indépendamment du rendu canvas. La bordure de 4px s'aligne sur le bord
-// du circleMarker quand outerSize = 2*(radius+4).
+// Label HTML pour tooltip permanent (emoji ou img SVG).
+// outerSize : si fourni, enveloppe l'icône dans un div DOM rond avec bordure blanche.
+// Centré sur le circleMarker via direction:'center' — élément DOM, toujours visible.
+// Relation géométrique : outerSize = 2 * (circleMarker.radius + 4)
 function markerLabel(isHug: boolean, iconSize: number, outerSize?: number): string {
   const icon = isHug
     ? `<span style="font-size:${iconSize}px;line-height:1">🤗</span>`
@@ -63,7 +62,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   const markersMapRef     = useRef<Map<string, any>>(new Map());
 
   const [mapReady, setMapReady] = useState(false);
-  const [debugLines, setDebugLines] = useState<string[]>([]);
 
   const { t } = useI18n();
 
@@ -121,26 +119,23 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         document.head.appendChild(style);
       }
 
-      // Marqueur "moi" — cercle canvas + tooltip permanent
+      // Marqueur "moi" — radius 16, outerSize 40 = 2*(16+4)
       const youIsHug = currentUser?.looking_for === "hug";
       const youColor = youIsHug ? "#f59e0b" : "#e91e8c";
 
       const hugLabel  = t("map.hug");
       const kissLabel = t("map.frenchKiss");
 
-      // Un seul cercle canvas coloré. L'anneau blanc est fourni par le tooltip DOM
-      // (outerSize=52 = 2*(22+4)) centré sur le marker via direction:'center'.
-      // DOM element → toujours visible, indépendant du cycle de rendu canvas.
       L.circleMarker(center, {
         renderer,
-        radius:      22,
+        radius:      16,
         fillColor:   youColor,
         color:       "transparent",
         weight:      0,
         fillOpacity: 1,
       })
         .addTo(map)
-        .bindTooltip(markerLabel(youIsHug, 22, 52), {
+        .bindTooltip(markerLabel(youIsHug, 18, 40), {
           permanent:  true,
           direction:  "center",
           className:  "emoji-label",
@@ -159,19 +154,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       const markersLayer = L.layerGroup().addTo(map);
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
-
-      // ── Diagnostic zoom
-      function inspectMarkers(label: string) {
-        const ts = new Date().toLocaleTimeString("fr-FR", { hour12: false });
-        const count  = markersMapRef.current.size;
-        const canvas = mapRef.current?.querySelector("canvas");
-        setDebugLines(prev =>
-          [`${ts} [${label}] pins=${count} canvas=${canvas ? "ok" : "absent"}`, ...prev].slice(0, 10)
-        );
-      }
-
-      map.on("zoomstart", () => inspectMarkers("zoomstart"));
-      map.on("zoomend",   () => inspectMarkers("zoomend"));
 
       setTimeout(() => {
         if (!map || destroyed) return;
@@ -223,8 +205,8 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         const distStr = dist < 1
           ? t("mapView.distanceM", { dist: String(Math.round(dist * 1000)) })
           : t("mapView.distanceKm", { dist: dist.toFixed(1) });
-        const isHug     = pin.looking_for === "hug";
-        const pinColor  = isHug ? "#f59e0b" : "#ec4899";
+        const isHug    = pin.looking_for === "hug";
+        const pinColor = isHug ? "#f59e0b" : "#ec4899";
 
         const chatUrl = `/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`;
         const marker = L.circleMarker([pin.lat, pin.lng], {
@@ -260,24 +242,11 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   }, [pins, mapReady]);
 
   return (
-    <>
-      <div className="absolute inset-0 rounded-2xl overflow-hidden">
-        <div
-          ref={mapRef}
-          style={{ position: 'absolute', inset: 0, height: '100%', width: '100%' }}
-        />
-      </div>
-      {debugLines.length > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 12, left: 12, zIndex: 9999,
-          background: 'rgba(0,0,0,0.82)', color: '#0f0', fontFamily: 'monospace',
-          fontSize: 11, padding: '8px 10px', borderRadius: 8, maxWidth: 'calc(100vw - 24px)',
-          whiteSpace: 'pre', overflowX: 'auto', lineHeight: 1.5,
-          pointerEvents: 'none',
-        }}>
-          {debugLines.join("\n")}
-        </div>
-      )}
-    </>
+    <div className="absolute inset-0 rounded-2xl overflow-hidden">
+      <div
+        ref={mapRef}
+        style={{ position: 'absolute', inset: 0, height: '100%', width: '100%' }}
+      />
+    </div>
   );
 }
