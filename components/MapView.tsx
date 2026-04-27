@@ -186,6 +186,10 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
     const newPinIds = new Set(pins.map(p => p.id));
 
+    // ── Diagnostic doublons
+    const before = [...markersMapRef.current.keys()];
+    console.log("[MapDiff] AVANT — tracked:", before, "| incoming pins:", pins.map(p => p.id));
+
     // Supprimer les marqueurs dont le pin a disparu
     for (const [id, marker] of markersMapRef.current) {
       if (!newPinIds.has(id)) {
@@ -196,7 +200,10 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
     // Ajouter uniquement les nouveaux pins (pas encore affichés)
     pins.forEach((pin) => {
-      if (markersMapRef.current.has(pin.id)) return;
+      if (markersMapRef.current.has(pin.id)) {
+        console.log("[MapDiff] skip (déjà tracké):", pin.id);
+        return;
+      }
       try {
         const dist    = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
         const distStr = dist < 1
@@ -231,10 +238,14 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
             <br/><a href="${chatUrl}" style="display:inline-block;margin-top:6px;background:#7c3aed;color:white;font-size:11px;padding:3px 10px;border-radius:8px;text-decoration:none">${t("mapView.message")}</a>
           `));
         markersMapRef.current.set(pin.id, marker);
+        console.log("[MapDiff] ajouté:", pin.id, pin.name);
       } catch (err) {
         console.error("[MapView] Erreur rendu marqueur", pin.name, err);
       }
     });
+
+    const after = [...markersMapRef.current.keys()];
+    console.log("[MapDiff] APRÈS — tracked:", after);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins, mapReady]);
 
