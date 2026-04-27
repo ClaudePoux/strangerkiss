@@ -58,15 +58,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Détruire la carte précédente si elle existe déjà
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current  = null;
-      markersLayerRef.current = null;
-      leafletRef.current      = null;
-      setMapReady(false);
-    }
-
     let destroyed = false;
 
     import("leaflet").then((L) => {
@@ -82,7 +73,9 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      const map = L.map(mapRef.current, { center, zoom: 15, zoomControl: true });
+      // markerZoomAnimation:false — évite que Leaflet retire/réapplique les transforms CSS
+      // des divIcon pendant des zooms rapides, ce qui causait leur disparition temporaire.
+      const map = L.map(mapRef.current, { center, zoom: 15, zoomControl: true, markerZoomAnimation: false });
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
