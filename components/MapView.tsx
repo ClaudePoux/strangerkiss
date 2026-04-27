@@ -52,8 +52,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef    = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markersLayerRef   = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const leafletRef        = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const canvasRendererRef = useRef<any>(null);
@@ -150,10 +148,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
           <br/><span style="font-size:11px;color:#e91e8c;font-weight:bold">${t("mapView.itsYou")}</span>
         `));
 
-      // Layer group dédié aux autres utilisateurs
-      const markersLayer = L.layerGroup().addTo(map);
-      markersLayerRef.current = markersLayer;
-      mapInstanceRef.current  = map;
+      mapInstanceRef.current = map;
 
       setTimeout(() => {
         if (!map || destroyed) return;
@@ -169,7 +164,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current    = null;
-        markersLayerRef.current   = null;
         leafletRef.current        = null;
         canvasRendererRef.current = null;
       }
@@ -179,10 +173,13 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
   // ── Effet 2 : mise à jour des marqueurs (pins OU mapReady changent) ─────────
   // Diff par ID : on n'efface JAMAIS tous les marqueurs d'un coup.
+  // Les markers sont ajoutés directement à la map (pas via layerGroup) pour
+  // éviter un bug de résolution de pane du canvas renderer sur desktop.
   useEffect(() => {
-    if (!mapReady || !leafletRef.current || !markersLayerRef.current || !canvasRendererRef.current) return;
+    if (!mapReady || !leafletRef.current || !mapInstanceRef.current || !canvasRendererRef.current) return;
 
     const L        = leafletRef.current;
+    const map      = mapInstanceRef.current;
     const renderer = canvasRendererRef.current;
     const hugLabel  = t("map.hug");
     const kissLabel = t("map.frenchKiss");
@@ -192,7 +189,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     // Supprimer les marqueurs dont le pin a disparu
     for (const [id, marker] of markersMapRef.current) {
       if (!newPinIds.has(id)) {
-        markersLayerRef.current.removeLayer(marker);
+        marker.remove();
         markersMapRef.current.delete(id);
       }
     }
@@ -217,7 +214,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
           weight:      2,
           fillOpacity: 1,
         })
-          .addTo(markersLayerRef.current)
+          .addTo(map)
           .bindTooltip(markerLabel(isHug, 18), {
             permanent:  true,
             direction:  "center",
