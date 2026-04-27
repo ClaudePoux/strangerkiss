@@ -73,9 +73,11 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      // markerZoomAnimation:false — évite que Leaflet retire/réapplique les transforms CSS
-      // des divIcon pendant des zooms rapides, ce qui causait leur disparition temporaire.
-      const map = L.map(mapRef.current, { center, zoom: 15, zoomControl: true, markerZoomAnimation: false });
+      // zoomAnimation:false — désactive le transform CSS sur le conteneur pendant les zooms
+      // (discrets ET pinch/touchZoom). Sur mobile, TouchZoom applique un scale() sur le
+      // conteneur entier pendant le geste ; markerZoomAnimation:false ne couvre pas ce chemin.
+      // zoomAnimation:false implique markerZoomAnimation:false et supprime les deux.
+      const map = L.map(mapRef.current, { center, zoom: 15, zoomControl: true, zoomAnimation: false });
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
