@@ -163,7 +163,16 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       }
 
       map.on("zoomstart", () => inspectMarkers("zoomstart"));
-      map.on("zoomend",   () => inspectMarkers("zoomend"));
+      map.on("zoomend",   () => {
+        inspectMarkers("zoomend");
+        // Hack repaint WebKit : force re-rasterisation du markerPane après zoom
+        const mp = map.getPane("markerPane");
+        if (mp) {
+          mp.style.display = "none";
+          void mp.offsetHeight; // force reflow
+          mp.style.display = "";
+        }
+      });
 
       // Sur mobile, la barre d'adresse Safari/Chrome réduit le viewport au chargement.
       // setMapReady(true) est appelé DANS le timeout, après invalidateSize(),
