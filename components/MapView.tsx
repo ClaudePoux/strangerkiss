@@ -122,12 +122,26 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       const hugLabel  = t("map.hug");
       const kissLabel = t("map.frenchKiss");
 
+      // Anneau blanc dessiné EN PREMIER (z-order canvas = ordre d'ajout).
+      // Un seul circleMarker avec color:'white' ne suffit pas : Leaflet canvas
+      // dessine le stroke centré sur le rayon, la moitié intérieure est recouverte
+      // par le fill du même cercle et n'est visible qu'au repaint partiel (zoom).
+      L.circleMarker(center, {
+        renderer,
+        radius:      26,
+        fillColor:   "white",
+        color:       "transparent",
+        weight:      0,
+        fillOpacity: 1,
+      }).addTo(map);
+
+      // Cercle coloré par-dessus — tooltip + popup sur cette couche
       L.circleMarker(center, {
         renderer,
         radius:      22,
         fillColor:   youColor,
-        color:       "white",
-        weight:      3,
+        color:       "transparent",
+        weight:      0,
         fillOpacity: 1,
       })
         .addTo(map)
