@@ -186,10 +186,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
 
     const newPinIds = new Set(pins.map(p => p.id));
 
-    // ── Diagnostic doublons
-    const before = [...markersMapRef.current.keys()];
-    console.log("[MapDiff] AVANT — tracked:", before, "| incoming pins:", pins.map(p => p.id));
-
     // Supprimer les marqueurs dont le pin a disparu
     for (const [id, marker] of markersMapRef.current) {
       if (!newPinIds.has(id)) {
@@ -199,11 +195,9 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
     }
 
     // Ajouter uniquement les nouveaux pins (pas encore affichés)
+    let added = 0;
     pins.forEach((pin) => {
-      if (markersMapRef.current.has(pin.id)) {
-        console.log("[MapDiff] skip (déjà tracké):", pin.id);
-        return;
-      }
+      if (markersMapRef.current.has(pin.id)) return;
       try {
         const dist    = getDistanceKm(center[0], center[1], pin.lat, pin.lng);
         const distStr = dist < 1
@@ -238,14 +232,26 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
             <br/><a href="${chatUrl}" style="display:inline-block;margin-top:6px;background:#7c3aed;color:white;font-size:11px;padding:3px 10px;border-radius:8px;text-decoration:none">${t("mapView.message")}</a>
           `));
         markersMapRef.current.set(pin.id, marker);
-        console.log("[MapDiff] ajouté:", pin.id, pin.name);
+        added++;
       } catch (err) {
         console.error("[MapView] Erreur rendu marqueur", pin.name, err);
       }
     });
 
-    const after = [...markersMapRef.current.keys()];
-    console.log("[MapDiff] APRÈS — tracked:", after);
+    // Leaflet canvas partial redraw : quand de nouveaux paths sont ajoutés,
+    // _requestRedraw étend _redrawBounds aux seules nouvelles zones, puis
+    // _redraw() redessine TOUS les chemins sans avoir effacé les zones des
+    // chemins existants → double-draw visible sur Firefox.
+    // Fix : annuler _redrawBounds pour forcer un clear+redraw complet du canvas.
+    if (added > 0) {
+      requestAnimationFrame(() => {
+        if (!canvasRendererRef.current) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = canvasRendererRef.current as any;
+        r._redrawBounds = null;
+        r._redraw?.();
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins, mapReady]);
 
