@@ -95,6 +95,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
           display:flex;align-items:center;justify-content:center;
           font-size:22px;border:3px solid white;
           box-shadow:0 0 20px rgba(233,30,140,0.7);
+          -webkit-transform:translateZ(0);transform:translateZ(0);
         ">${youIsHug ? "🤗" : '<img src="/levres.svg" style="width:22px;height:22px;object-fit:contain" />'}</div>`,
         className: "",
         iconSize: [44, 44],
@@ -183,6 +184,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
             display:flex;align-items:center;justify-content:center;
             font-size:18px;border:2px solid rgba(255,255,255,0.5);
             box-shadow:0 0 12px rgba(0,0,0,0.5);
+            -webkit-transform:translateZ(0);transform:translateZ(0);
           ">${isHug ? "🤗" : '<img src="/levres.svg" style="width:18px;height:18px;object-fit:contain" />'}</div>`,
           className: "",
           iconSize: [38, 38],
@@ -210,10 +212,11 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   }, [pins, mapReady]);
 
   return (
-    <div
-      ref={mapRef}
-      className="rounded-2xl"
-      style={{ position: 'absolute', inset: 0, height: '100%', width: '100%', minHeight: '300px' }}
-    />
+    <div className="absolute inset-0 rounded-2xl overflow-hidden">
+      <div
+        ref={mapRef}
+        style={{ position: 'absolute', inset: 0, height: '100%', width: '100%' }}
+      />
+    </div>
   );
 }
