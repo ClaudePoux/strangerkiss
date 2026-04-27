@@ -139,3 +139,8 @@ Pas d'inscription classique — vérification invisible par SMS :
 - Logique métier et clients (Supabase, etc.) dans `lib/`
 - Pages et layouts dans `app/` (App Router)
 - Variables d'environnement préfixées `NEXT_PUBLIC_` pour le client Supabase
+
+## Workflow git
+
+- À la fin de chaque session de modifications, toujours commiter et pusher sans attendre qu'on le demande
+- La racine du dépôt git est `C:/Users/Claude` — utiliser `git -C "C:/Users/Claude"` ou lancer git depuis ce répertoire
