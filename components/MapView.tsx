@@ -35,11 +35,17 @@ function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Label HTML pour tooltip permanent : emoji ou img SVG
-function markerLabel(isHug: boolean, size: number): string {
-  return isHug
-    ? "🤗"
-    : `<img src="/levres.svg" style="width:${size}px;height:${size}px;object-fit:contain;display:block">`;
+// Label HTML pour tooltip permanent.
+// withRing=true : enveloppe l'emoji dans un div DOM avec bordure blanche circulaire.
+// Le div est centré sur le circleMarker (direction:'center') — element DOM, toujours
+// visible indépendamment du rendu canvas. La bordure de 4px s'aligne sur le bord
+// du circleMarker quand outerSize = 2*(radius+4).
+function markerLabel(isHug: boolean, iconSize: number, outerSize?: number): string {
+  const icon = isHug
+    ? `<span style="font-size:${iconSize}px;line-height:1">🤗</span>`
+    : `<img src="/levres.svg" style="width:${iconSize}px;height:${iconSize}px;object-fit:contain;display:block">`;
+  if (!outerSize) return icon;
+  return `<div style="width:${outerSize}px;height:${outerSize}px;border-radius:50%;border:4px solid white;box-sizing:border-box;display:flex;align-items:center;justify-content:center">${icon}</div>`;
 }
 
 export default function MapView({ currentUser, pins, center, myId, locale }: Props) {
@@ -122,20 +128,9 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       const hugLabel  = t("map.hug");
       const kissLabel = t("map.frenchKiss");
 
-      // Anneau blanc dessiné EN PREMIER (z-order canvas = ordre d'ajout).
-      // Un seul circleMarker avec color:'white' ne suffit pas : Leaflet canvas
-      // dessine le stroke centré sur le rayon, la moitié intérieure est recouverte
-      // par le fill du même cercle et n'est visible qu'au repaint partiel (zoom).
-      L.circleMarker(center, {
-        renderer,
-        radius:      26,
-        fillColor:   "white",
-        color:       "transparent",
-        weight:      0,
-        fillOpacity: 1,
-      }).addTo(map);
-
-      // Cercle coloré par-dessus — tooltip + popup sur cette couche
+      // Un seul cercle canvas coloré. L'anneau blanc est fourni par le tooltip DOM
+      // (outerSize=52 = 2*(22+4)) centré sur le marker via direction:'center'.
+      // DOM element → toujours visible, indépendant du cycle de rendu canvas.
       L.circleMarker(center, {
         renderer,
         radius:      22,
@@ -145,7 +140,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         fillOpacity: 1,
       })
         .addTo(map)
-        .bindTooltip(markerLabel(youIsHug, 22), {
+        .bindTooltip(markerLabel(youIsHug, 22, 52), {
           permanent:  true,
           direction:  "center",
           className:  "emoji-label",
