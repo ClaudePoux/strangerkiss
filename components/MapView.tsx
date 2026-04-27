@@ -35,21 +35,27 @@ function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Label HTML pour tooltip permanent : emoji ou img SVG
+function markerLabel(isHug: boolean, size: number): string {
+  return isHug
+    ? "🤗"
+    : `<img src="/levres.svg" style="width:${size}px;height:${size}px;object-fit:contain;display:block">`;
+}
+
 export default function MapView({ currentUser, pins, center, myId, locale }: Props) {
-  const mapRef           = useRef<HTMLDivElement>(null);
+  const mapRef            = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapInstanceRef   = useRef<any>(null);
+  const mapInstanceRef    = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markersLayerRef  = useRef<any>(null);
+  const markersLayerRef   = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const leafletRef       = useRef<any>(null);
+  const leafletRef        = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const canvasRendererRef = useRef<any>(null);
   // Tracks currently rendered markers by pin id — avoids clearLayers on each refresh
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markersMapRef    = useRef<Map<string, any>>(new Map());
+  const markersMapRef     = useRef<Map<string, any>>(new Map());
 
-  // mapReady passe à true quand Leaflet est chargé et la carte prête.
-  // C'est le signal qui permet à Effect 2 de rendre les marqueurs,
-  // même si les pins sont arrivés avant la fin du chargement de Leaflet.
   const [mapReady, setMapReady] = useState(false);
   const [debugLines, setDebugLines] = useState<string[]>([]);
 
@@ -74,10 +80,6 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      // zoomAnimation:false — désactive le transform CSS sur le conteneur pendant les zooms
-      // (discrets ET pinch/touchZoom). Sur mobile, TouchZoom applique un scale() sur le
-      // conteneur entier pendant le geste ; markerZoomAnimation:false ne couvre pas ce chemin.
-      // zoomAnimation:false implique markerZoomAnimation:false et supprime les deux.
       const map = L.map(mapRef.current, { center, zoom: 15, zoomControl: true, zoomAnimation: false });
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
@@ -85,29 +87,56 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         maxZoom: 19,
       }).addTo(map);
 
-      // Marqueur "moi" — icône et gradient selon looking_for
+      // Canvas renderer : tous les cercles sont dessinés dans un seul <canvas>,
+      // complètement immunisé contre les problèmes de compositing WebKit/iOS.
+      const renderer = L.canvas();
+      canvasRendererRef.current = renderer;
+
+      // CSS pour les tooltips permanents (label emoji/svg centré, sans bulle Leaflet)
+      if (!document.getElementById("sk-emoji-label-style")) {
+        const style = document.createElement("style");
+        style.id = "sk-emoji-label-style";
+        style.textContent = `
+          .emoji-label {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            font-size: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+          }
+          .emoji-label::before { display: none !important; }
+          .emoji-label-sm { font-size: 16px; }
+        `;
+        document.head.appendChild(style);
+      }
+
+      // Marqueur "moi" — cercle canvas + tooltip permanent
       const youIsHug = currentUser?.looking_for === "hug";
-      const youIcon = L.divIcon({
-        html: `<div style="
-          width:44px;height:44px;border-radius:50%;
-          background:${youIsHug
-            ? "linear-gradient(135deg,#f59e0b,#ef4444)"
-            : "linear-gradient(135deg,#e91e8c,#7c3aed)"};
-          display:flex;align-items:center;justify-content:center;
-          font-size:22px;border:3px solid white;
-          box-shadow:0 0 20px rgba(233,30,140,0.7);
-          -webkit-transform:translateZ(0);transform:translateZ(0);
-        ">${youIsHug ? "🤗" : '<img src="/levres.svg" style="width:22px;height:22px;object-fit:contain" />'}</div>`,
-        className: "",
-        iconSize: [44, 44],
-        iconAnchor: [22, 22],
-      });
+      const youColor = youIsHug ? "#f59e0b" : "#e91e8c";
 
       const hugLabel  = t("map.hug");
       const kissLabel = t("map.frenchKiss");
 
-      L.marker(center, { icon: youIcon, pane: "overlayPane" })
+      L.circleMarker(center, {
+        renderer,
+        radius:      22,
+        fillColor:   youColor,
+        color:       "white",
+        weight:      3,
+        fillOpacity: 1,
+      })
         .addTo(map)
+        .bindTooltip(markerLabel(youIsHug, 22), {
+          permanent:  true,
+          direction:  "center",
+          className:  "emoji-label",
+          offset:     [0, 0],
+        })
         .bindPopup(popupStyle(`
           <strong>${flagEmoji(currentUser?.nationality ?? "")} ${currentUser?.name ?? "—"}</strong>
           <br/><span style="font-size:12px">${t("mapView.age", { age: String(currentUser?.age ?? "?") })} · ${currentUser?.gender ?? ""}</span>
@@ -122,50 +151,19 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
 
-      // Force l'overlayPane sur son propre layer de compositing GPU.
-      // Les marqueurs vivent dans overlayPane (pane:'overlayPane') qui a un stacking
-      // context différent de markerPane sous WebKit — plus stable pendant le pinch-zoom.
-      const overlayPane = map.getPane("overlayPane");
-      if (overlayPane) {
-        (overlayPane as HTMLElement).style.webkitTransform = "translateZ(0)";
-        (overlayPane as HTMLElement).style.transform       = "translateZ(0)";
-        (overlayPane as HTMLElement).style.willChange      = "transform";
-      }
-
-      // ── Diagnostic zoom : inspecte les marqueurs dans le DOM avant/après chaque zoom
+      // ── Diagnostic zoom
       function inspectMarkers(label: string) {
-        const pane = mapRef.current?.querySelector(".leaflet-overlay-pane");
         const ts = new Date().toLocaleTimeString("fr-FR", { hour12: false });
-        if (!pane) {
-          setDebugLines(prev => [`${ts} [${label}] ⚠ overlay-pane absent`, ...prev].slice(0, 12));
-          return;
-        }
-        const all = pane.querySelectorAll(".leaflet-marker-icon");
-        const details: string[] = [];
-        all.forEach((el, i) => {
-          const s = window.getComputedStyle(el);
-          const tf = (el as HTMLElement).style.transform || s.transform || "—";
-          const tfShort = tf.length > 30 ? tf.slice(0, 30) + "…" : tf;
-          const isHidden =
-            s.display === "none" ||
-            s.opacity === "0" ||
-            s.visibility === "hidden";
-          if (isHidden) {
-            details.push(`  #${i} display=${s.display} opacity=${s.opacity} vis=${s.visibility}`);
-            details.push(`     tf=${tfShort}`);
-          }
-        });
-        const hidden = details.length / 2;
-        const summary = `${ts} [${label}] total=${all.length} hidden=${hidden}`;
-        setDebugLines(prev => [summary, ...details, ...prev].slice(0, 20));
+        const count  = markersMapRef.current.size;
+        const canvas = mapRef.current?.querySelector("canvas");
+        setDebugLines(prev =>
+          [`${ts} [${label}] pins=${count} canvas=${canvas ? "ok" : "absent"}`, ...prev].slice(0, 10)
+        );
       }
 
       map.on("zoomstart", () => inspectMarkers("zoomstart"));
       map.on("zoomend",   () => inspectMarkers("zoomend"));
 
-      // Sur mobile, la barre d'adresse Safari/Chrome réduit le viewport au chargement.
-      // setMapReady(true) est appelé DANS le timeout, après invalidateSize(),
-      // pour que les marqueurs soient positionnés avec les dimensions correctes de la carte.
       setTimeout(() => {
         if (!map || destroyed) return;
         map.invalidateSize();
@@ -179,21 +177,22 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersMapRef.current.clear();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
-        mapInstanceRef.current  = null;
-        markersLayerRef.current = null;
-        leafletRef.current      = null;
+        mapInstanceRef.current    = null;
+        markersLayerRef.current   = null;
+        leafletRef.current        = null;
+        canvasRendererRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Effet 2 : mise à jour des marqueurs (pins OU mapReady changent) ─────────
-  // Diff par ID : on n'efface JAMAIS tous les marqueurs d'un coup — les marqueurs
-  // existants restent stables pendant un zoom ou un refresh périodique des pins.
+  // Diff par ID : on n'efface JAMAIS tous les marqueurs d'un coup.
   useEffect(() => {
-    if (!mapReady || !leafletRef.current || !markersLayerRef.current) return;
+    if (!mapReady || !leafletRef.current || !markersLayerRef.current || !canvasRendererRef.current) return;
 
-    const L = leafletRef.current;
+    const L        = leafletRef.current;
+    const renderer = canvasRendererRef.current;
     const hugLabel  = t("map.hug");
     const kissLabel = t("map.frenchKiss");
 
@@ -215,27 +214,25 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
         const distStr = dist < 1
           ? t("mapView.distanceM", { dist: String(Math.round(dist * 1000)) })
           : t("mapView.distanceKm", { dist: dist.toFixed(1) });
-        const isHug = pin.looking_for === "hug";
-
-        const pinIcon = L.divIcon({
-          html: `<div style="
-            width:38px;height:38px;border-radius:50%;
-            background:${isHug
-              ? "linear-gradient(135deg,#f59e0b,#ef4444)"
-              : "linear-gradient(135deg,#ec4899,#8b5cf6)"};
-            display:flex;align-items:center;justify-content:center;
-            font-size:18px;border:2px solid rgba(255,255,255,0.5);
-            box-shadow:0 0 12px rgba(0,0,0,0.5);
-            -webkit-transform:translateZ(0);transform:translateZ(0);
-          ">${isHug ? "🤗" : '<img src="/levres.svg" style="width:18px;height:18px;object-fit:contain" />'}</div>`,
-          className: "",
-          iconSize: [38, 38],
-          iconAnchor: [19, 19],
-        });
+        const isHug     = pin.looking_for === "hug";
+        const pinColor  = isHug ? "#f59e0b" : "#ec4899";
 
         const chatUrl = `/chat/${pin.id}?name=${encodeURIComponent(pin.name)}&appearance=${encodeURIComponent(pin.appearance ?? "")}`;
-        const marker = L.marker([pin.lat, pin.lng], { icon: pinIcon, pane: "overlayPane" })
+        const marker = L.circleMarker([pin.lat, pin.lng], {
+          renderer,
+          radius:      19,
+          fillColor:   pinColor,
+          color:       "rgba(255,255,255,0.6)",
+          weight:      2,
+          fillOpacity: 1,
+        })
           .addTo(markersLayerRef.current)
+          .bindTooltip(markerLabel(isHug, 18), {
+            permanent:  true,
+            direction:  "center",
+            className:  "emoji-label emoji-label-sm",
+            offset:     [0, 0],
+          })
           .bindPopup(popupStyle(`
             <strong>${flagEmoji(pin.nationality ?? "")} ${pin.name}</strong>
             <br/><span style="font-size:12px">${t("mapView.age", { age: String(pin.age) })} · ${pin.gender ?? ""}</span>
