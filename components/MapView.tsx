@@ -51,6 +51,7 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   // C'est le signal qui permet à Effect 2 de rendre les marqueurs,
   // même si les pins sont arrivés avant la fin du chargement de Leaflet.
   const [mapReady, setMapReady] = useState(false);
+  const [debugLines, setDebugLines] = useState<string[]>([]);
 
   const { t } = useI18n();
 
@@ -124,28 +125,29 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       // ── Diagnostic zoom : inspecte les marqueurs dans le DOM avant/après chaque zoom
       function inspectMarkers(label: string) {
         const pane = mapRef.current?.querySelector(".leaflet-marker-pane");
-        if (!pane) { console.warn(`[MapDiag][${label}] marker-pane introuvable`); return; }
+        const ts = new Date().toLocaleTimeString("fr-FR", { hour12: false });
+        if (!pane) {
+          setDebugLines(prev => [`${ts} [${label}] ⚠ marker-pane absent`, ...prev].slice(0, 12));
+          return;
+        }
         const all = pane.querySelectorAll(".leaflet-marker-icon");
-        let hidden = 0;
         const details: string[] = [];
         all.forEach((el, i) => {
           const s = window.getComputedStyle(el);
-          const transform = (el as HTMLElement).style.transform || s.transform;
-          const info = {
-            display:   s.display,
-            opacity:   s.opacity,
-            visibility:s.visibility,
-            transform,
-            inDOM: document.contains(el),
-          };
+          const tf = (el as HTMLElement).style.transform || s.transform || "—";
+          const tfShort = tf.length > 30 ? tf.slice(0, 30) + "…" : tf;
           const isHidden =
             s.display === "none" ||
             s.opacity === "0" ||
             s.visibility === "hidden";
-          if (isHidden) { hidden++; details.push(`#${i} hidden: ${JSON.stringify(info)}`); }
+          if (isHidden) {
+            details.push(`  #${i} display=${s.display} opacity=${s.opacity} vis=${s.visibility}`);
+            details.push(`     tf=${tfShort}`);
+          }
         });
-        console.log(`[MapDiag][${label}] total=${all.length} hidden=${hidden}`);
-        details.forEach(d => console.log(" ", d));
+        const hidden = details.length / 2;
+        const summary = `${ts} [${label}] total=${all.length} hidden=${hidden}`;
+        setDebugLines(prev => [summary, ...details, ...prev].slice(0, 20));
       }
 
       map.on("zoomstart", () => inspectMarkers("zoomstart"));
@@ -242,11 +244,24 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
   }, [pins, mapReady]);
 
   return (
-    <div className="absolute inset-0 rounded-2xl overflow-hidden">
-      <div
-        ref={mapRef}
-        style={{ position: 'absolute', inset: 0, height: '100%', width: '100%' }}
-      />
-    </div>
+    <>
+      <div className="absolute inset-0 rounded-2xl overflow-hidden">
+        <div
+          ref={mapRef}
+          style={{ position: 'absolute', inset: 0, height: '100%', width: '100%' }}
+        />
+      </div>
+      {debugLines.length > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 12, left: 12, zIndex: 9999,
+          background: 'rgba(0,0,0,0.82)', color: '#0f0', fontFamily: 'monospace',
+          fontSize: 11, padding: '8px 10px', borderRadius: 8, maxWidth: 'calc(100vw - 24px)',
+          whiteSpace: 'pre', overflowX: 'auto', lineHeight: 1.5,
+          pointerEvents: 'none',
+        }}>
+          {debugLines.join("\n")}
+        </div>
+      )}
+    </>
   );
 }
