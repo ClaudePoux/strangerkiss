@@ -121,6 +121,36 @@ export default function MapView({ currentUser, pins, center, myId, locale }: Pro
       markersLayerRef.current = markersLayer;
       mapInstanceRef.current  = map;
 
+      // ── Diagnostic zoom : inspecte les marqueurs dans le DOM avant/après chaque zoom
+      function inspectMarkers(label: string) {
+        const pane = mapRef.current?.querySelector(".leaflet-marker-pane");
+        if (!pane) { console.warn(`[MapDiag][${label}] marker-pane introuvable`); return; }
+        const all = pane.querySelectorAll(".leaflet-marker-icon");
+        let hidden = 0;
+        const details: string[] = [];
+        all.forEach((el, i) => {
+          const s = window.getComputedStyle(el);
+          const transform = (el as HTMLElement).style.transform || s.transform;
+          const info = {
+            display:   s.display,
+            opacity:   s.opacity,
+            visibility:s.visibility,
+            transform,
+            inDOM: document.contains(el),
+          };
+          const isHidden =
+            s.display === "none" ||
+            s.opacity === "0" ||
+            s.visibility === "hidden";
+          if (isHidden) { hidden++; details.push(`#${i} hidden: ${JSON.stringify(info)}`); }
+        });
+        console.log(`[MapDiag][${label}] total=${all.length} hidden=${hidden}`);
+        details.forEach(d => console.log(" ", d));
+      }
+
+      map.on("zoomstart", () => inspectMarkers("zoomstart"));
+      map.on("zoomend",   () => inspectMarkers("zoomend"));
+
       // Sur mobile, la barre d'adresse Safari/Chrome réduit le viewport au chargement.
       // setMapReady(true) est appelé DANS le timeout, après invalidateSize(),
       // pour que les marqueurs soient positionnés avec les dimensions correctes de la carte.
