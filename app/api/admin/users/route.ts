@@ -23,7 +23,48 @@ export async function GET(req: NextRequest) {
 
   const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ users: data, total: count });
+
+  const userIds = (data ?? []).map(u => u.id);
+  const lastSeenMap: Record<string, string | null> = {};
+  const blockCountMap: Record<string, number> = {};
+
+  if (userIds.length > 0) {
+    const { data: pinData } = await adminSb
+      .from("user_pins")
+      .select("id, user_id, last_seen")
+      .in("user_id", userIds);
+
+    const pinUserMap: Record<string, string> = {};
+    for (const p of pinData ?? []) {
+      pinUserMap[p.id] = p.user_id;
+      if (!lastSeenMap[p.user_id] || (p.last_seen && p.last_seen > (lastSeenMap[p.user_id] ?? ""))) {
+        lastSeenMap[p.user_id] = p.last_seen;
+      }
+    }
+
+    const pinIds = Object.keys(pinUserMap);
+    if (pinIds.length > 0) {
+      const { data: blockData } = await adminSb
+        .from("blocks")
+        .select("blocker_id, blocked_id")
+        .or(`blocker_id.in.(${pinIds.join(",")}),blocked_id.in.(${pinIds.join(",")})`);
+
+      for (const b of blockData ?? []) {
+        const u1 = pinUserMap[b.blocker_id];
+        const u2 = pinUserMap[b.blocked_id];
+        if (u1) blockCountMap[u1] = (blockCountMap[u1] ?? 0) + 1;
+        if (u2) blockCountMap[u2] = (blockCountMap[u2] ?? 0) + 1;
+      }
+    }
+  }
+
+  const users = (data ?? []).map(u => ({
+    ...u,
+    last_seen: lastSeenMap[u.id] ?? null,
+    block_count: blockCountMap[u.id] ?? 0,
+  }));
+
+  return NextResponse.json({ users, total: count });
 }
 
 // POST /api/admin/users  action: "add_credits" | "ban" | "unban"

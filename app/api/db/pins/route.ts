@@ -52,7 +52,8 @@ export async function GET(req: NextRequest) {
   const deltaLat = radiusKm / 111;
   const deltaLng = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
 
-  const activeCutoff  = new Date(Date.now() - 10 * 60 * 1000).toISOString();       // 10 min
+  const activeCutoff  = new Date(Date.now() - 10 * 60 * 1000).toISOString();       // 10 min — filtre affichage
+  const cleanupCutoff = new Date(Date.now() - 20 * 60 * 1000).toISOString();       // 20 min — suppression réelle
   const legacyCutoff  = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();  // 24h (fallback)
 
   // Tentative 1 : filtre last_seen (colonne ajoutée en migration)
@@ -89,9 +90,11 @@ export async function GET(req: NextRequest) {
   }
 
   // Nettoyage silencieux des pins expirés (fire-and-forget, ne bloque pas la réponse)
+  // Seuil 20 min — les pins entre 10 et 20 min sont déjà masqués par activeCutoff
+  // mais restent en base pour survivre à une brève mise en veille de l'appareil.
   sb.from("user_pins")
     .delete()
-    .lt("last_seen", activeCutoff)
+    .lt("last_seen", cleanupCutoff)
     .then(({ error: delErr }) => {
       if (delErr) console.warn("[GET /api/db/pins] Cleanup échoué:", delErr.message);
     });

@@ -145,8 +145,25 @@ function StatsTab({ phone }: { phone: string }) {
 
 // ── Users tab ────────────────────────────────────────────────────────────────
 
+function lastSeenDot(iso: string | null) {
+  if (!iso) return <span className="text-white/20">—</span>;
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = diff / 60000;
+  const dot = mins < 10
+    ? "bg-green-400"
+    : mins < 60
+    ? "bg-amber-400"
+    : "bg-white/20";
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`} />
+      <span className="text-white/40">{fmt(iso)}</span>
+    </span>
+  );
+}
+
 function UsersTab({ phone }: { phone: string }) {
-  const [users, setUsers] = useState<{id:string;phone:string|null;credits:number;created_at:string}[]>([]);
+  const [users, setUsers] = useState<{id:string;phone:string|null;credits:number;created_at:string;last_seen:string|null;block_count:number}[]>([]);
   const [q, setQ] = useState("");
   const [phoneOnly, setPhoneOnly] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -212,6 +229,8 @@ function UsersTab({ phone }: { phone: string }) {
             <th className="pb-2 font-normal">Numéro</th>
             <th className="pb-2 font-normal">Crédits</th>
             <th className="pb-2 font-normal">Inscrit le</th>
+            <th className="pb-2 font-normal">Actif</th>
+            <th className="pb-2 font-normal">Blocks</th>
             <th className="pb-2 font-normal"></th>
           </tr></thead>
           <tbody>{users.map(u => (
@@ -219,6 +238,13 @@ function UsersTab({ phone }: { phone: string }) {
               <td className="py-2 text-white/80 font-mono">{u.phone ?? <span className="text-white/20 italic">anonyme</span>}</td>
               <td className="py-2 text-white/60">{u.credits}</td>
               <td className="py-2 text-white/40">{fmt(u.created_at)}</td>
+              <td className="py-2">{lastSeenDot(u.last_seen)}</td>
+              <td className="py-2">
+                {u.block_count > 0
+                  ? <a href={`/boss/users/${u.id}`} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline font-medium">{u.block_count}</a>
+                  : <span className="text-white/20">0</span>
+                }
+              </td>
               <td className="py-2 flex gap-3">
                 <a href={`/boss/users/${u.id}`} target="_blank" rel="noreferrer" className="text-xs text-[#a78bfa] hover:underline">Détail</a>
                 {u.phone && <button onClick={() => setActionPhone(u.phone!)} className="text-xs text-white/30 hover:text-white/60 underline">Sélectionner</button>}

@@ -154,8 +154,16 @@ function MapPageContent() {
         stopPing();
       } else if (document.visibilityState === "visible") {
         // Onglet redevenu visible (retour du chat, switch d'app…)
-        // Relancer le ping pour éviter l'expiration du pin
-        if (pingPinIdRef.current) startPingRef.current(pingPinIdRef.current);
+        // Ping immédiat d'abord : met à jour last_seen avant le prochain refresh
+        // des pins — l'utilisateur se réinsère en base avant d'être filtré.
+        if (pingPinIdRef.current) {
+          fetch("/api/db/pins", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin_id: pingPinIdRef.current }),
+          }).catch(() => {});
+          startPingRef.current(pingPinIdRef.current);
+        }
       }
     }
     // bfcache iOS Safari : pageshow avec persisted=true signifie que la page
@@ -173,6 +181,38 @@ function MapPageContent() {
       window.removeEventListener("pageshow", handlePageShow);
       document.removeEventListener("visibilitychange", handleVisibility);
       stopPing();
+    };
+  }, []);
+
+  // Wake Lock : empêche la mise en veille de l'écran tant que la carte est ouverte.
+  // Réacquiert automatiquement quand l'onglet redevient visible (le lock est perdu
+  // dès que l'écran s'éteint ou que l'onglet passe en arrière-plan).
+  // Supporté : Chrome Android, Safari iOS 16.4+. Silencieusement ignoré sinon.
+  useEffect(() => {
+    if (!("wakeLock" in navigator)) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let sentinel: any = null;
+    let destroyed = false;
+
+    async function acquire() {
+      if (destroyed) return;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sentinel = await (navigator as any).wakeLock.request("screen");
+        sentinel.addEventListener("release", () => { sentinel = null; });
+      } catch { /* Refus ou non-supporté — on n'affiche rien */ }
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "visible") acquire();
+    }
+
+    acquire();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      destroyed = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      sentinel?.release().catch(() => {});
     };
   }, []);
 
