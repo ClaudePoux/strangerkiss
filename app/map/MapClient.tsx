@@ -85,7 +85,7 @@ async function fetchBlocked(pinId: string): Promise<string[]> {
 // Composant interne qui utilise useSearchParams() — doit rester dans un Suspense
 function MapPageContent() {
   const { t, locale } = useI18n();
-  const { unreadCounts } = useNotifications();
+  const { unreadCounts, startPing } = useNotifications();
   const searchParams = useSearchParams();
   const isDemo = searchParams.get("demo") === "true";
 
@@ -131,58 +131,8 @@ function MapPageContent() {
   // Portal monté côté client uniquement (SSR-safe)
   const [portalMounted, setPortalMounted] = useState(false);
 
-  // Ping : ref conservée entre les renders
-  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pingPinIdRef    = useRef<string>("");
-  // Ref vers startPing pour que le handler visibilitychange puisse l'appeler
-  // sans dépendance d'ordre (startPing est déclaré via useCallback plus bas)
-  const startPingRef    = useRef<(pinId: string) => void>(() => {});
-
   // Portal SSR-safe : monté uniquement après hydratation côté client
   useEffect(() => { setPortalMounted(true); }, []);
-
-  // Stop/restart ping selon visibilité de l'onglet
-  useEffect(() => {
-    function stopPing() {
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current);
-        pingIntervalRef.current = null;
-      }
-    }
-    function handleVisibility() {
-      if (document.visibilityState === "hidden") {
-        stopPing();
-      } else if (document.visibilityState === "visible") {
-        // Onglet redevenu visible (retour du chat, switch d'app…)
-        // Ping immédiat d'abord : met à jour last_seen avant le prochain refresh
-        // des pins — l'utilisateur se réinsère en base avant d'être filtré.
-        if (pingPinIdRef.current) {
-          fetch("/api/db/pins", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pin_id: pingPinIdRef.current }),
-          }).catch(() => {});
-          startPingRef.current(pingPinIdRef.current);
-        }
-      }
-    }
-    // bfcache iOS Safari : pageshow avec persisted=true signifie que la page
-    // est restaurée depuis le cache sans remontage React → même traitement.
-    function handlePageShow(e: PageTransitionEvent) {
-      if (e.persisted && pingPinIdRef.current) {
-        startPingRef.current(pingPinIdRef.current);
-      }
-    }
-    window.addEventListener("beforeunload", stopPing);
-    window.addEventListener("pageshow", handlePageShow);
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      window.removeEventListener("beforeunload", stopPing);
-      window.removeEventListener("pageshow", handlePageShow);
-      document.removeEventListener("visibilitychange", handleVisibility);
-      stopPing();
-    };
-  }, []);
 
   // Wake Lock : empêche la mise en veille de l'écran tant que la carte est ouverte.
   // Réacquiert automatiquement quand l'onglet redevient visible (le lock est perdu
@@ -215,24 +165,6 @@ function MapPageContent() {
       sentinel?.release().catch(() => {});
     };
   }, []);
-
-  // Ping toutes les 4 min pour rester visible sur la carte
-  const startPing = useCallback((pinId: string) => {
-    if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-    pingPinIdRef.current = pinId;
-    pingIntervalRef.current = setInterval(async () => {
-      try {
-        await fetch("/api/db/pins", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pin_id: pingPinIdRef.current }),
-        });
-      } catch { /* ignore — le prochain ping réessaiera */ }
-    }, 4 * 60 * 1000);
-  }, []);
-
-  // Synchronise la ref dès que startPing est (re)créé
-  useEffect(() => { startPingRef.current = startPing; }, [startPing]);
 
   // Déclenche la SurveyModal si sk_survey_pending est actif.
   // Appelée au montage ET à chaque retour de visibilité (router cache Next.js).

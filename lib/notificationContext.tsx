@@ -31,6 +31,7 @@ interface NotificationContextValue {
   setActiveChatId: (id: string | null) => void;
   dismiss: (id: string) => void;
   push: (n: Omit<SKNotification, "id" | "createdAt">) => void;
+  startPing: (pinId: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue>({
@@ -40,6 +41,7 @@ const NotificationContext = createContext<NotificationContextValue>({
   setActiveChatId: () => {},
   dismiss: () => {},
   push: () => {},
+  startPing: () => {},
 });
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
@@ -50,6 +52,62 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const activeChatIdRef = useRef<string | null>(null);
   // Cursor: only fetch messages newer than this timestamp
   const inboxSinceRef = useRef<string>(new Date().toISOString());
+
+  // ── Ping de présence ──────────────────────────────────────────────────────
+  // Tourne ici (contexte global) pour maintenir last_seen à jour quelle que
+  // soit la page ouverte (/map, /chat, /profile…).
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pingPinIdRef    = useRef<string>("");
+
+  const stopPing = useCallback(() => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+  }, []);
+
+  const startPing = useCallback((pinId: string) => {
+    if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+    pingPinIdRef.current = pinId;
+    pingIntervalRef.current = setInterval(async () => {
+      try {
+        await fetch("/api/db/pins", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin_id: pingPinIdRef.current }),
+        });
+      } catch { /* ignore — le prochain ping réessaiera */ }
+    }, 4 * 60 * 1000);
+  }, []);
+
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "hidden") {
+        stopPing();
+      } else if (document.visibilityState === "visible" && pingPinIdRef.current) {
+        // Ping immédiat : met à jour last_seen avant le prochain refresh des pins
+        fetch("/api/db/pins", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin_id: pingPinIdRef.current }),
+        }).catch(() => {});
+        startPing(pingPinIdRef.current);
+      }
+    }
+    // bfcache iOS Safari : page restaurée sans remontage React
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted && pingPinIdRef.current) startPing(pingPinIdRef.current);
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("beforeunload", stopPing);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("beforeunload", stopPing);
+      stopPing();
+    };
+  }, [startPing, stopPing]);
 
   const setActiveChatId = useCallback((id: string | null) => {
     activeChatIdRef.current = id;
@@ -142,7 +200,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [push]);
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCounts, activeChatId, setActiveChatId, dismiss, push }}>
+    <NotificationContext.Provider value={{ notifications, unreadCounts, activeChatId, setActiveChatId, dismiss, push, startPing }}>
       {children}
     </NotificationContext.Provider>
   );
