@@ -56,6 +56,14 @@ export async function GET(req: NextRequest) {
   const cleanupCutoff = new Date(Date.now() - 20 * 60 * 1000).toISOString();       // 20 min — suppression réelle
   const legacyCutoff  = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();  // 24h (fallback)
 
+  // [DEBUG] — à supprimer après investigation
+  console.log("[DEBUG GET /api/db/pins] params:", { lat, lng, radiusKm });
+  console.log("[DEBUG GET /api/db/pins] bounding box:", {
+    latMin: lat - deltaLat, latMax: lat + deltaLat,
+    lngMin: lng - deltaLng, lngMax: lng + deltaLng,
+  });
+  console.log("[DEBUG GET /api/db/pins] activeCutoff:", activeCutoff);
+
   // Tentative 1 : filtre last_seen (colonne ajoutée en migration)
   const { data, error } = await sb
     .from("user_pins")
@@ -67,6 +75,13 @@ export async function GET(req: NextRequest) {
     .gte("last_seen", activeCutoff)
     .order("last_seen", { ascending: false })
     .limit(50);
+
+  // [DEBUG] — à supprimer après investigation
+  console.log("[DEBUG GET /api/db/pins] résultat Supabase:", {
+    count: data?.length ?? 0,
+    error: error?.message ?? null,
+    pins: data?.map(p => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng, last_seen: p.last_seen })) ?? [],
+  });
 
   if (error) {
     // Colonne last_seen absente ou autre erreur Supabase — fallback created_at
