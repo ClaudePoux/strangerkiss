@@ -123,10 +123,21 @@ export async function GET(req: NextRequest) {
 // Si user_id absent, crée un utilisateur anonyme (3 crédits) et retourne son id.
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { pin_id, name, age, gender, nationality, bio, appearance, looking_for, lat, lng, user_id } = body;
+  const { pin_id, name, age, gender, nationality, bio, appearance, looking_for, lat, lng, user_id, birth_year } = body;
 
   if (!name || !age || !gender || !looking_for || lat == null || lng == null) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
+  }
+
+  // Validation birth_year pour les nouveaux comptes uniquement (user_id absent = première visite)
+  if (!user_id) {
+    const minBirthYear = new Date().getFullYear() - 18;
+    if (!birth_year) {
+      return NextResponse.json({ error: "birth_year_required" }, { status: 400 });
+    }
+    if (birth_year > minBirthYear) {
+      return NextResponse.json({ error: "age_minimum_18" }, { status: 400 });
+    }
   }
 
   // Créer un utilisateur anonyme si aucun user_id fourni
@@ -134,7 +145,7 @@ export async function POST(req: NextRequest) {
   if (!resolvedUserId) {
     const { data: newUser } = await sb
       .from("users")
-      .insert({ credits: 3 })
+      .insert({ credits: 3, birth_year: birth_year ?? null })
       .select("id")
       .single();
     if (newUser) resolvedUserId = newUser.id;

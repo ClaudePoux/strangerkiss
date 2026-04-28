@@ -13,7 +13,12 @@ export async function POST(req: NextRequest) {
   const { user_id, birth_year } = await req.json();
 
   if (!user_id || !birth_year) {
-    return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
+    return NextResponse.json({ error: "birth_year_required" }, { status: 400 });
+  }
+
+  const minBirthYear = new Date().getFullYear() - 18;
+  if (birth_year > minBirthYear) {
+    return NextResponse.json({ error: "age_minimum_18" }, { status: 400 });
   }
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
