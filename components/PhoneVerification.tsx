@@ -5,7 +5,7 @@ import { useState } from "react";
 interface Props {
   userId: string;
   onSuccess: (bonusCredits: number, isWaitlisted: boolean, refCode: string, newCredits: number) => void;
-  onDismiss: () => void;
+  onDismiss?: () => void;
   t: (key: string, params?: Record<string, string>) => string;
 }
 
@@ -118,13 +118,15 @@ export default function PhoneVerification({ userId, onSuccess, onDismiss, t }: P
               </p>
               <p className="text-xs text-white/40 mt-0.5">{t("verify.subtitle")}</p>
             </div>
-            <button
-              onClick={onDismiss}
-              className="text-white/30 hover:text-white/60 text-lg leading-none ml-3 transition-colors"
-              aria-label="Fermer"
-            >
-              ✕
-            </button>
+            {onDismiss && (
+              <button
+                onClick={onDismiss}
+                className="text-white/30 hover:text-white/60 text-lg leading-none ml-3 transition-colors"
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           {step === "phone" ? (

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { UserPin, LookingFor, Gender } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import PhoneVerification from "@/components/PhoneVerification";
@@ -84,15 +84,11 @@ async function fetchBlocked(pinId: string): Promise<string[]> {
 
 // Composant interne qui utilise useSearchParams() — doit rester dans un Suspense
 function MapPageContent() {
+  const router = useRouter();
   const { t, locale } = useI18n();
   const { unreadCounts, startPing } = useNotifications();
   const searchParams = useSearchParams();
   const isDemo = searchParams.get("demo") === "true";
-
-  const LABEL: Record<string, string> = {
-    hug: t("map.hug"),
-    french_kiss: t("map.frenchKiss"),
-  };
 
   function translateGender(g: string): string {
     const m: Record<string, string> = {
@@ -183,6 +179,16 @@ function MapPageContent() {
   }
 
   useEffect(() => {
+    // Garde : accès carte réservé aux comptes vérifiés (sauf mode démo)
+    if (!isDemo) {
+      try {
+        if (!localStorage.getItem("sk_phone")) {
+          router.replace("/verify");
+          return;
+        }
+      } catch { /* ignore — localStorage indisponible, on laisse passer */ }
+    }
+
     const id = getOrCreateMyId();
     setMyId(id);
     fetchBlocked(id).then(setBlocked);

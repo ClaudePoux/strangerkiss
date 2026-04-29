@@ -75,7 +75,9 @@ export async function POST(req: NextRequest) {
     .eq("phone", phone)
     .maybeSingle();
 
-  const bonusCredits = waitlisted ? 7 : 3;
+  // 6 crédits au total à la vérification (3 inscription + 3 vérification)
+  // Waitlist : 10 crédits (bonus +4 maintenu)
+  const bonusCredits = waitlisted ? 10 : 6;
   const refCode = generateRefCode();
 
   // Mettre à jour l'utilisateur : associer le numéro, générer ref_code

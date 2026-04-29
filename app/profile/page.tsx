@@ -76,7 +76,7 @@ function ProfilePageContent() {
       // localStorage unavailable
     }
 
-    router.push(isDemo ? "/map?demo=true" : "/map");
+    router.push(isDemo ? "/map?demo=true" : "/verify");
   }
 
   return (

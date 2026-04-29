@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
   if (!resolvedUserId) {
     const { data: newUser } = await sb
       .from("users")
-      .insert({ credits: 3, birth_year: birth_year ?? null })
+      .insert({ credits: 0, birth_year: birth_year ?? null })
       .select("id")
       .single();
     if (newUser) resolvedUserId = newUser.id;
