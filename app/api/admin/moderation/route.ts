@@ -23,16 +23,24 @@ export async function GET(req: NextRequest) {
       .limit(200),
   ]);
 
-  // Enrichissement des blocks avec pseudo/âge/nationalité/téléphone masqué
-  const rawBlocks = blocksRes.data ?? [];
-  const pinIds = [...new Set(rawBlocks.flatMap((b) => [b.blocker_id, b.blocked_id]).filter(Boolean))];
-  let blocksEnriched = rawBlocks.map((b) => ({ ...b, blocker: null as null | object, blocked: null as null | object }));
+  // Enrichissement des blocks ET reports avec pseudo/téléphone masqué
+  // Un seul batch de requêtes pour les deux sections.
+  const rawBlocks  = blocksRes.data ?? [];
+  const rawReports = reportsRes.data ?? [];
 
-  if (pinIds.length > 0) {
+  const allPinIds = [...new Set([
+    ...rawBlocks.flatMap((b) => [b.blocker_id, b.blocked_id]),
+    ...rawReports.flatMap((r) => [r.reporter_pin_id, r.reported_pin_id]),
+  ].filter(Boolean))];
+
+  let blocksEnriched  = rawBlocks.map((b) => ({ ...b, blocker: null as null | object, blocked: null as null | object }));
+  let reportsEnriched = rawReports.map((r) => ({ ...r, reporter_name: "—", reporter_phone: "—", reported_name: "—", reported_phone: "—" }));
+
+  if (allPinIds.length > 0) {
     const { data: pinRows } = await adminSb
       .from("user_pins")
       .select("id, name, age, nationality, user_id")
-      .in("id", pinIds);
+      .in("id", allPinIds);
 
     const userIds = [...new Set((pinRows ?? []).map((p) => p.user_id).filter(Boolean))];
     let phoneMap: Record<string, string> = {};
@@ -57,10 +65,22 @@ export async function GET(req: NextRequest) {
       blocker: pinInfo(b.blocker_id),
       blocked: pinInfo(b.blocked_id),
     }));
+
+    reportsEnriched = rawReports.map((r) => {
+      const reporter = pinInfo(r.reporter_pin_id);
+      const reported = pinInfo(r.reported_pin_id);
+      return {
+        ...r,
+        reporter_name:  reporter.name,
+        reporter_phone: reporter.phone,
+        reported_name:  reported.name,
+        reported_phone: reported.phone,
+      };
+    });
   }
 
   return NextResponse.json({
-    reports: reportsRes.data ?? [],
+    reports: reportsEnriched,
     bans: bansRes.data ?? [],
     blocks: blocksEnriched,
   });

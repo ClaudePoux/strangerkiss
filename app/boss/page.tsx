@@ -400,7 +400,7 @@ type BlockRow = {
 };
 
 function ModerationTab({ phone }: { phone: string }) {
-  const [reports, setReports] = useState<{reporter_pin_id:string;reported_pin_id:string;reason:string|null;created_at:string}[]>([]);
+  const [reports, setReports] = useState<{reporter_pin_id:string;reported_pin_id:string;reason:string|null;created_at:string;reporter_name:string;reporter_phone:string;reported_name:string;reported_phone:string}[]>([]);
   const [bans, setBans] = useState<{id:string;phone:string;ban_type:string;banned_until:string|null;reason:string|null;created_at:string}[]>([]);
   const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [msg, setMsg] = useState("");
@@ -488,18 +488,32 @@ function ModerationTab({ phone }: { phone: string }) {
 
       <div>
         <h3 className="text-white/50 text-xs uppercase tracking-wider mb-2">Signalements récents ({reports.length})</h3>
-        <table className="w-full text-sm">
-          <thead><tr className="text-white/30 text-left border-b border-white/10">
-            <th className="pb-2 font-normal">Signalant (pin)</th><th className="pb-2 font-normal">Signalé (pin)</th><th className="pb-2 font-normal">Date</th>
-          </tr></thead>
-          <tbody>{reports.length === 0 ? <tr><td colSpan={3} className="py-3 text-white/20 text-sm">Aucun signalement</td></tr> : reports.map((r, i) => (
-            <tr key={i} className="border-b border-white/5 hover:bg-white/5">
-              <td className="py-2 text-white/50 font-mono text-xs">{r.reporter_pin_id.slice(0, 8)}…</td>
-              <td className="py-2 text-white/80 font-mono text-xs">{r.reported_pin_id.slice(0, 8)}…</td>
-              <td className="py-2 text-white/40">{fmt(r.created_at)}</td>
-            </tr>
-          ))}</tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead><tr className="text-white/30 text-left border-b border-white/10">
+              <th className="pb-2 font-normal">Signalant</th>
+              <th className="pb-2 font-normal">Signalé</th>
+              <th className="pb-2 font-normal">Motif</th>
+              <th className="pb-2 font-normal">Date</th>
+            </tr></thead>
+            <tbody>{reports.length === 0
+              ? <tr><td colSpan={4} className="py-3 text-white/20 text-sm">Aucun signalement</td></tr>
+              : reports.map((r, i) => (
+              <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                <td className="py-2 text-xs">
+                  <span className="text-white/80">{r.reporter_name}</span>
+                  <span className="ml-1.5 font-mono text-white/30">{r.reporter_phone}</span>
+                </td>
+                <td className="py-2 text-xs">
+                  <span className="text-white/80">{r.reported_name}</span>
+                  <span className="ml-1.5 font-mono text-white/30">{r.reported_phone}</span>
+                </td>
+                <td className="py-2 text-white/40 text-xs">{r.reason ?? "—"}</td>
+                <td className="py-2 text-white/40 text-xs">{fmt(r.created_at)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
