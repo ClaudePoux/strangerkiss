@@ -9,10 +9,10 @@ define('ADMIN_USER', 'bleu47');
 define('ADMIN_PASS', password_hash('MOT_DE_PASSE_ICI', PASSWORD_BCRYPT));
 
 // ─── Base de données ──────────────────────────────────────────────
-define('DB_HOST', 'nqmwgujbleu.mysql.db');
-define('DB_NAME', 'nqmwgujbleu');
-define('DB_USER', 'nqmwgujbleu');
-define('DB_PASS', 'mot_de_passe_mysql');
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'bleu47');
+define('DB_USER', 'root');
+define('DB_PASS', '');
 
 // ─── Email ────────────────────────────────────────────────────────
 define('MAIL_TO',   'editeur@bleu47.fr');
