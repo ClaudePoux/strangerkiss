@@ -1,0 +1,7 @@
+# Protection de admin/config.php
+<Files "config.php">
+    Require all denied
+</Files>
+
+# Interdire l'accès direct sans session (géré par PHP, mais double sécurité)
+Options -Indexes

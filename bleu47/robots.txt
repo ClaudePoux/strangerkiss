@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /assets/img/
+Disallow: /tmp/
+Allow: /
+
+Sitemap: https://bleu47.fr/sitemap.xml
