@@ -6,7 +6,12 @@
 // ─── Base URL ─────────────────────────────────────────────────────
 if (!defined('BASE')) {
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    define('BASE', rtrim($protocol . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), '/'));
+    // Déduit le sous-chemin en comparant DOCUMENT_ROOT avec le dossier racine du projet
+    // functions.php est dans <racine>/includes/ → dirname(__DIR__) = <racine>
+    $docRoot  = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+    $projRoot = rtrim(str_replace('\\', '/', dirname(__DIR__)), '/');
+    $subPath  = $docRoot !== '' ? substr($projRoot, strlen($docRoot)) : '';
+    define('BASE', rtrim($protocol . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $subPath, '/'));
 }
 
 // ─── Session sécurisée ───────────────────────────────────────────
