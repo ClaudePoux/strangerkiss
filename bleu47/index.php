@@ -47,43 +47,22 @@ function badge_class(string $slug): string
 
 <!-- ─── Hero ──────────────────────────────────────────────────── -->
 <?php if ($dernierLivre): ?>
-<section class="hero hero--book">
-  <div class="hero-deco" aria-hidden="true">
-    <div class="hero-deco-circle hero-deco-circle--1"></div>
-    <div class="hero-deco-circle hero-deco-circle--2"></div>
-    <div class="hero-deco-circle hero-deco-circle--3"></div>
-    <div class="hero-deco-line hero-deco-line--1"></div>
-    <div class="hero-deco-line hero-deco-line--2"></div>
-  </div>
+<section class="hero">
   <div class="container hero-content">
-    <div class="row align-items-center g-4 g-lg-6">
+    <div class="row align-items-center g-4 g-lg-5 flex-md-row flex-column-reverse">
 
-      <!-- Couverture -->
-      <div class="col-9 col-sm-6 col-md-4 col-lg-3 mx-auto mx-md-0 hero-animate">
-        <div class="hero-book-cover">
-          <?php if ($dernierLivre['couverture']): ?>
-            <img src="<?= BASE ?>/assets/img/<?= e($dernierLivre['couverture']) ?>"
-                 alt="Couverture — <?= e($dernierLivre['titre']) ?>">
-          <?php else: ?>
-            <div class="hero-book-placeholder">
-              <span><?= e($dernierLivre['titre']) ?></span>
-            </div>
-          <?php endif; ?>
-        </div>
-      </div>
-
-      <!-- Méta -->
-      <div class="col-md-8 col-lg-9 text-center text-md-start">
+      <!-- Texte — gauche (60%) -->
+      <div class="col-md-7">
         <p class="hero-book-label hero-animate">Dernière parution</p>
-        <div class="hero-animate" style="animation-delay:.12s">
+        <div class="hero-animate" style="animation-delay:.1s">
           <span class="badge-collection <?= badge_class($dernierLivre['collection_slug']) ?>">
             <?= e($dernierLivre['collection_nom']) ?>
           </span>
         </div>
-        <h1 class="hero-book-title hero-animate" style="animation-delay:.22s">
+        <h1 class="hero-book-title hero-animate" style="animation-delay:.2s">
           <?= e($dernierLivre['titre']) ?>
         </h1>
-        <p class="hero-book-author hero-animate" style="animation-delay:.32s">
+        <p class="hero-book-author hero-animate" style="animation-delay:.28s">
           <a href="<?= BASE ?>/auteur.php?slug=<?= e($dernierLivre['auteur_slug']) ?>">
             <?= e($dernierLivre['prenom'] . ' ' . $dernierLivre['nom']) ?>
           </a>
@@ -95,15 +74,34 @@ function badge_class(string $slug): string
           <?php endif; ?>
         </p>
         <?php if ($dernierLivre['quatrieme']): ?>
-        <p class="hero-book-quatrieme hero-animate" style="animation-delay:.4s">
+        <p class="hero-book-quatrieme hero-animate" style="animation-delay:.36s">
           <?= e(mb_substr(strip_tags($dernierLivre['quatrieme']), 0, 200)) ?>…
         </p>
         <?php endif; ?>
-        <div class="hero-animate" style="animation-delay:.5s">
+        <div class="hero-animate" style="animation-delay:.46s">
           <a href="<?= BASE ?>/livre.php?slug=<?= e($dernierLivre['slug']) ?>"
-             class="btn btn-light btn-lg px-4">
+             class="btn btn-dark btn-lg px-4">
             Voir la fiche →
           </a>
+        </div>
+      </div>
+
+      <!-- Couverture — droite (40%) -->
+      <div class="col-md-5 d-flex justify-content-center hero-animate" style="animation-delay:.18s">
+        <div class="hero-book-cover">
+          <?php if ($dernierLivre['statut'] === 'a_paraitre'): ?>
+            <span class="hero-book-badge hero-book-badge--deparaitre">À paraître</span>
+          <?php else: ?>
+            <span class="hero-book-badge">Nouveauté</span>
+          <?php endif; ?>
+          <?php if ($dernierLivre['couverture']): ?>
+            <img src="<?= BASE ?>/assets/img/<?= e($dernierLivre['couverture']) ?>"
+                 alt="Couverture — <?= e($dernierLivre['titre']) ?>">
+          <?php else: ?>
+            <div class="hero-book-placeholder">
+              <?= e($dernierLivre['titre']) ?>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
 
@@ -112,13 +110,6 @@ function badge_class(string $slug): string
 </section>
 <?php else: ?>
 <section class="hero">
-  <div class="hero-deco" aria-hidden="true">
-    <div class="hero-deco-circle hero-deco-circle--1"></div>
-    <div class="hero-deco-circle hero-deco-circle--2"></div>
-    <div class="hero-deco-circle hero-deco-circle--3"></div>
-    <div class="hero-deco-line hero-deco-line--1"></div>
-    <div class="hero-deco-line hero-deco-line--2"></div>
-  </div>
   <div class="container hero-content text-center">
     <div class="hero-animate">
       <span class="hero-brand-mark">bleu<span>47</span></span>
@@ -126,7 +117,7 @@ function badge_class(string $slug): string
     <p class="hero-title hero-animate">Éditions Bleu 47</p>
     <p class="hero-tagline hero-animate">Maison d'édition indépendante · Bourgogne-Franche-Comté</p>
     <div class="hero-animate">
-      <a href="<?= BASE ?>/catalogue.php" class="btn btn-light btn-lg px-4">
+      <a href="<?= BASE ?>/catalogue.php" class="btn btn-dark btn-lg px-4">
         Découvrir le catalogue →
       </a>
     </div>
