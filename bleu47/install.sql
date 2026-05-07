@@ -119,7 +119,7 @@ INSERT INTO `collections` (`nom`, `slug`, `description`, `couleur`, `ordre`) VAL
   'BD / Romans graphiques',
   'bd',
   'Bande dessinée et romans graphiques : quand le texte et l''image se répondent.',
-  '#2d7a2d',
+  '#e8670a',
   3
 );
 

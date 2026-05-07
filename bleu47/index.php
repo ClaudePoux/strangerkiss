@@ -43,6 +43,13 @@ function badge_class(string $slug): string
         default      => 'badge-fictions',
     };
 }
+
+// Convertit un hex en rgba — utilisé pour le dégradé des cartes collections
+function col_rgba(string $hex, float $alpha): string
+{
+    $hex = ltrim($hex, '#');
+    return 'rgba(' . hexdec(substr($hex, 0, 2)) . ',' . hexdec(substr($hex, 2, 2)) . ',' . hexdec(substr($hex, 4, 2)) . ',' . $alpha . ')';
+}
 ?>
 
 <!-- ─── Hero ──────────────────────────────────────────────────── -->
@@ -125,36 +132,6 @@ function badge_class(string $slug): string
 </section>
 <?php endif; ?>
 
-<!-- ─── Collections ───────────────────────────────────────────── -->
-<section class="section section-alt">
-  <div class="container">
-    <h2 class="section-title text-center">Nos collections</h2>
-    <p class="section-subtitle text-center">Trois univers éditoriaux, une même exigence</p>
-    <div class="row g-4">
-      <?php foreach ($collections as $col): ?>
-      <div class="col-md-4">
-        <a href="<?= BASE ?>/collection.php?slug=<?= e($col['slug']) ?>"
-           class="collection-card"
-           style="background-color:<?= e($col['couleur']) ?>">
-          <?php if ($col['couverture']): ?>
-          <div class="collection-card-bg"
-               style="background-image:url('<?= BASE ?>/assets/img/<?= e($col['couverture']) ?>')"></div>
-          <?php endif; ?>
-          <div class="collection-card-overlay"></div>
-          <div class="collection-card-content">
-            <h3 class="collection-card-name"><?= e($col['nom']) ?></h3>
-            <p class="collection-card-desc"><?= e($col['description']) ?></p>
-            <span class="collection-card-badge">
-              <?= $col['nb_livres'] ?> titre<?= $col['nb_livres'] > 1 ? 's' : '' ?>
-            </span>
-          </div>
-        </a>
-      </div>
-      <?php endforeach; ?>
-    </div>
-  </div>
-</section>
-
 <!-- ─── Dernières parutions ───────────────────────────────────── -->
 <?php if ($dernieresParutions): ?>
 <section class="section">
@@ -202,32 +179,67 @@ function badge_class(string $slug): string
 </section>
 <?php endif; ?>
 
-<!-- ─── Auteurs ───────────────────────────────────────────────── -->
-<?php if ($auteurs): ?>
-<section class="section">
+<!-- ─── Collections ───────────────────────────────────────────── -->
+<section class="section section-alt">
   <div class="container">
-    <h2 class="section-title text-center">Nos auteurs</h2>
-    <p class="section-subtitle text-center">Les voix de Bleu 47</p>
-    <div class="row g-4 justify-content-center">
-      <?php foreach ($auteurs as $auteur): ?>
-      <div class="col-6 col-md-4 col-lg-3">
-        <a href="<?= BASE ?>/auteur.php?slug=<?= e($auteur['slug']) ?>" class="text-decoration-none">
-          <div class="author-card">
-            <?php if ($auteur['photo']): ?>
-              <img src="<?= BASE ?>/assets/img/<?= e($auteur['photo']) ?>"
-                   alt="<?= e($auteur['prenom'] . ' ' . $auteur['nom']) ?>"
-                   class="author-avatar">
-            <?php else: ?>
-              <div class="author-avatar-placeholder">✍</div>
-            <?php endif; ?>
-            <h3 style="font-size:1rem;margin:.25rem 0"><?= e($auteur['prenom'] . ' ' . $auteur['nom']) ?></h3>
-            <p class="text-secondary mb-0" style="font-size:.8rem">
-              <?= $auteur['nb_livres'] ?> titre<?= $auteur['nb_livres'] > 1 ? 's' : '' ?>
-            </p>
+    <h2 class="section-title text-center">Nos collections</h2>
+    <p class="section-subtitle text-center">Trois univers éditoriaux, une même exigence</p>
+    <div class="row g-4">
+      <?php foreach ($collections as $col): ?>
+      <div class="col-md-4">
+        <a href="<?= BASE ?>/collection.php?slug=<?= e($col['slug']) ?>"
+           class="collection-card"
+           style="border-top-color:<?= e($col['couleur']) ?>;background:linear-gradient(180deg,<?= col_rgba($col['couleur'], .07) ?> 0%,#fff 55%)">
+          <div class="collection-card-body">
+            <h3 class="collection-card-name"><?= e($col['nom']) ?></h3>
+            <p class="collection-card-desc"><?= e($col['description']) ?></p>
+            <span class="collection-card-count">
+              <?= $col['nb_livres'] ?> titre<?= $col['nb_livres'] > 1 ? 's' : '' ?>
+            </span>
           </div>
         </a>
       </div>
       <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Auteurs (carrousel) ────────────────────────────────────── -->
+<?php if ($auteurs): ?>
+<section class="section">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+      <div>
+        <h2 class="section-title mb-1">Nos auteurs</h2>
+        <p class="section-subtitle mb-0">Les voix de Bleu 47</p>
+      </div>
+      <div class="carousel-nav" role="group" aria-label="Navigation carrousel auteurs">
+        <button class="carousel-btn" id="authors-prev" aria-label="Précédent" disabled>&#8249;</button>
+        <button class="carousel-btn" id="authors-next" aria-label="Suivant">&#8250;</button>
+      </div>
+    </div>
+    <div class="authors-carousel" id="authorsCarousel">
+      <div class="authors-track" id="authorsTrack">
+        <?php foreach ($auteurs as $auteur): ?>
+        <div class="author-slide">
+          <a href="<?= BASE ?>/auteur.php?slug=<?= e($auteur['slug']) ?>" class="text-decoration-none">
+            <div class="author-card">
+              <?php if ($auteur['photo']): ?>
+                <img src="<?= BASE ?>/assets/img/<?= e($auteur['photo']) ?>"
+                     alt="<?= e($auteur['prenom'] . ' ' . $auteur['nom']) ?>"
+                     class="author-avatar">
+              <?php else: ?>
+                <div class="author-avatar-placeholder">✍</div>
+              <?php endif; ?>
+              <h3 style="font-size:1rem;margin:.35rem 0 .2rem"><?= e($auteur['prenom'] . ' ' . $auteur['nom']) ?></h3>
+              <p class="text-secondary mb-0" style="font-size:.8rem">
+                <?= $auteur['nb_livres'] ?> titre<?= $auteur['nb_livres'] > 1 ? 's' : '' ?>
+              </p>
+            </div>
+          </a>
+        </div>
+        <?php endforeach; ?>
+      </div>
     </div>
   </div>
 </section>
@@ -279,5 +291,49 @@ function badge_class(string $slug): string
     </div>
   </div>
 </section>
+
+<script>
+(function () {
+  var carousel = document.getElementById('authorsCarousel');
+  if (!carousel) return;
+
+  var track   = document.getElementById('authorsTrack');
+  var slides  = Array.from(track.children);
+  var prevBtn = document.getElementById('authors-prev');
+  var nextBtn = document.getElementById('authors-next');
+  var current = 0;
+  var timer   = null;
+
+  function spv() {
+    return window.innerWidth < 768 ? 1 : window.innerWidth < 992 ? 2 : 3;
+  }
+  function maxIdx() { return Math.max(0, slides.length - spv()); }
+
+  function go(idx) {
+    current = Math.max(0, Math.min(idx, maxIdx()));
+    var gap = parseFloat(getComputedStyle(track).gap) || 24;
+    var w   = slides[0] ? slides[0].getBoundingClientRect().width : 0;
+    track.style.transform = 'translateX(-' + (current * (w + gap)) + 'px)';
+    if (prevBtn) prevBtn.disabled = (current === 0);
+    if (nextBtn) nextBtn.disabled = (current >= maxIdx());
+  }
+
+  function next() { go(current < maxIdx() ? current + 1 : 0); }
+  function prev() { go(current > 0       ? current - 1 : maxIdx()); }
+
+  if (prevBtn) prevBtn.addEventListener('click', function () { stopAuto(); prev(); });
+  if (nextBtn) nextBtn.addEventListener('click', function () { stopAuto(); next(); });
+
+  function startAuto() { timer = setInterval(next, 4000); }
+  function stopAuto()  { clearInterval(timer); timer = null; }
+
+  carousel.addEventListener('mouseenter', stopAuto);
+  carousel.addEventListener('mouseleave', startAuto);
+
+  window.addEventListener('resize', function () { stopAuto(); go(0); startAuto(); });
+
+  setTimeout(function () { go(0); startAuto(); }, 60);
+})();
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
