@@ -16,11 +16,25 @@ Options -Indexes
     Header always set Content-Security-Policy   "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';"
 </IfModule>
 
-# ─── Forcer HTTPS ────────────────────────────────────────────────
+# ─── Forcer HTTPS + Rewrite ──────────────────────────────────────
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /bleu47/
+
+    # HTTPS
     RewriteCond %{HTTPS} off
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Protection dossier tmp/
+    RewriteRule ^tmp(/|$) - [F,L]
+
+    # Protection config.php direct
+    RewriteRule ^admin/config\.php$ - [F,L]
+
+    # Front controller — laisse passer fichiers et dossiers réels
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
 </IfModule>
 
 # ─── Protection fichiers sensibles ──────────────────────────────
@@ -28,14 +42,9 @@ Options -Indexes
     Require all denied
 </FilesMatch>
 
-<FilesMatch "^(composer\.(json|lock)|package\.json|\.env.*)$">
+<FilesMatch "^config\.php$">
     Require all denied
 </FilesMatch>
-
-# ─── Protection dossier tmp/ ─────────────────────────────────────
-<IfModule mod_rewrite.c>
-    RewriteRule ^tmp/ - [F,L]
-</IfModule>
 
 # ─── Cache navigateur — assets statiques ─────────────────────────
 <IfModule mod_expires.c>
