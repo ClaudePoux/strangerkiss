@@ -16,11 +16,15 @@ if (!defined('BASE')) {
 
 // ─── Session sécurisée ───────────────────────────────────────────
 if (session_status() === PHP_SESSION_NONE) {
-    $sessionPath = __DIR__ . '/../tmp/sessions';
+    // Chemin absolu sans /../ — dirname(__DIR__) évite le problème de résolution
+    // de session_save_path() sur Windows/XAMPP avec les chemins contenant /../
+    $sessionPath = dirname(__DIR__) . '/tmp/sessions';
     if (!is_dir($sessionPath)) {
-        mkdir($sessionPath, 0700, true);
+        mkdir($sessionPath, 0755, true);
     }
-    session_save_path($sessionPath);
+    // realpath() normalise le chemin (supprime tout séparateur redondant)
+    // Fallback sur le chemin construit si realpath() échoue (ex: droits)
+    session_save_path(realpath($sessionPath) ?: $sessionPath);
     session_set_cookie_params([
         'lifetime' => 0,
         'path'     => '/',
