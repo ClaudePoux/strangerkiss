@@ -3,8 +3,9 @@ $pageTitle = 'Accueil';
 $pageDesc  = 'Maison d\'édition indépendante basée en Bourgogne-Franche-Comté. Collections Adrénaline, Fictions et BD / Romans graphiques.';
 require_once __DIR__ . '/includes/header.php';
 
-// Dernière parution
-$stmt = $pdo->query("SELECT l.*, a.prenom, a.nom, a.slug AS auteur_slug, c.nom AS collection_nom, c.slug AS collection_slug
+// Dernière parution (hero)
+$stmt = $pdo->query("SELECT l.*, a.prenom, a.nom, a.slug AS auteur_slug,
+    c.nom AS collection_nom, c.slug AS collection_slug
     FROM livres l
     JOIN auteurs a ON a.id = l.auteur_id
     JOIN collections c ON c.id = l.collection_id
@@ -12,6 +13,16 @@ $stmt = $pdo->query("SELECT l.*, a.prenom, a.nom, a.slug AS auteur_slug, c.nom A
     ORDER BY l.date_parution DESC, l.id DESC
     LIMIT 1");
 $dernierLivre = $stmt->fetch();
+
+// 4 dernières parutions (grille)
+$dernieresParutions = $pdo->query("SELECT l.*, a.prenom, a.nom, a.slug AS auteur_slug,
+    c.nom AS collection_nom, c.slug AS collection_slug
+    FROM livres l
+    JOIN auteurs a ON a.id = l.auteur_id
+    JOIN collections c ON c.id = l.collection_id
+    WHERE l.statut IN ('publie','a_paraitre')
+    ORDER BY l.date_parution DESC, l.id DESC
+    LIMIT 4")->fetchAll();
 
 // Collections
 $collections = $pdo->query("SELECT *, (SELECT COUNT(*) FROM livres WHERE collection_id = collections.id AND statut IN ('publie','a_paraitre')) AS nb_livres FROM collections ORDER BY ordre")->fetchAll();
@@ -35,7 +46,8 @@ function badge_class(string $slug): string
 ?>
 
 <!-- ─── Hero ──────────────────────────────────────────────────── -->
-<section class="hero">
+<?php if ($dernierLivre): ?>
+<section class="hero hero--book">
   <div class="hero-deco" aria-hidden="true">
     <div class="hero-deco-circle hero-deco-circle--1"></div>
     <div class="hero-deco-circle hero-deco-circle--2"></div>
@@ -44,6 +56,70 @@ function badge_class(string $slug): string
     <div class="hero-deco-line hero-deco-line--2"></div>
   </div>
   <div class="container hero-content">
+    <div class="row align-items-center g-4 g-lg-6">
+
+      <!-- Couverture -->
+      <div class="col-9 col-sm-6 col-md-4 col-lg-3 mx-auto mx-md-0 hero-animate">
+        <div class="hero-book-cover">
+          <?php if ($dernierLivre['couverture']): ?>
+            <img src="<?= BASE ?>/assets/img/<?= e($dernierLivre['couverture']) ?>"
+                 alt="Couverture — <?= e($dernierLivre['titre']) ?>">
+          <?php else: ?>
+            <div class="hero-book-placeholder">
+              <span><?= e($dernierLivre['titre']) ?></span>
+            </div>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Méta -->
+      <div class="col-md-8 col-lg-9 text-center text-md-start">
+        <p class="hero-book-label hero-animate">Dernière parution</p>
+        <div class="hero-animate" style="animation-delay:.12s">
+          <span class="badge-collection <?= badge_class($dernierLivre['collection_slug']) ?>">
+            <?= e($dernierLivre['collection_nom']) ?>
+          </span>
+        </div>
+        <h1 class="hero-book-title hero-animate" style="animation-delay:.22s">
+          <?= e($dernierLivre['titre']) ?>
+        </h1>
+        <p class="hero-book-author hero-animate" style="animation-delay:.32s">
+          <a href="<?= BASE ?>/auteur.php?slug=<?= e($dernierLivre['auteur_slug']) ?>">
+            <?= e($dernierLivre['prenom'] . ' ' . $dernierLivre['nom']) ?>
+          </a>
+          <?php if ($dernierLivre['annee']): ?>
+            <span class="hero-book-meta-sep">·</span><?= e($dernierLivre['annee']) ?>
+          <?php endif; ?>
+          <?php if ($dernierLivre['nb_pages']): ?>
+            <span class="hero-book-meta-sep">·</span><?= e($dernierLivre['nb_pages']) ?> pages
+          <?php endif; ?>
+        </p>
+        <?php if ($dernierLivre['quatrieme']): ?>
+        <p class="hero-book-quatrieme hero-animate" style="animation-delay:.4s">
+          <?= e(mb_substr(strip_tags($dernierLivre['quatrieme']), 0, 200)) ?>…
+        </p>
+        <?php endif; ?>
+        <div class="hero-animate" style="animation-delay:.5s">
+          <a href="<?= BASE ?>/livre.php?slug=<?= e($dernierLivre['slug']) ?>"
+             class="btn btn-light btn-lg px-4">
+            Voir la fiche →
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+<?php else: ?>
+<section class="hero">
+  <div class="hero-deco" aria-hidden="true">
+    <div class="hero-deco-circle hero-deco-circle--1"></div>
+    <div class="hero-deco-circle hero-deco-circle--2"></div>
+    <div class="hero-deco-circle hero-deco-circle--3"></div>
+    <div class="hero-deco-line hero-deco-line--1"></div>
+    <div class="hero-deco-line hero-deco-line--2"></div>
+  </div>
+  <div class="container hero-content text-center">
     <div class="hero-animate">
       <span class="hero-brand-mark">bleu<span>47</span></span>
     </div>
@@ -53,55 +129,6 @@ function badge_class(string $slug): string
       <a href="<?= BASE ?>/catalogue.php" class="btn btn-light btn-lg px-4">
         Découvrir le catalogue →
       </a>
-    </div>
-  </div>
-</section>
-
-<!-- ─── Dernière parution ─────────────────────────────────────── -->
-<?php if ($dernierLivre): ?>
-<section class="section">
-  <div class="container">
-    <div class="row align-items-center g-5">
-      <div class="col-md-4 col-lg-3 text-center">
-        <?php if ($dernierLivre['couverture']): ?>
-          <img src="<?= BASE ?>/assets/img/<?= e($dernierLivre['couverture']) ?>"
-               alt="Couverture de <?= e($dernierLivre['titre']) ?>"
-               class="img-fluid rounded shadow-lg"
-               style="max-height:420px">
-        <?php else: ?>
-          <div class="book-card-cover-placeholder rounded" style="height:320px;width:220px;margin:auto">
-            Couverture à venir
-          </div>
-        <?php endif; ?>
-      </div>
-      <div class="col-md-8 col-lg-9">
-        <p class="text-blue47 fw-600 mb-2" style="font-size:.85rem;text-transform:uppercase;letter-spacing:.08em">
-          Dernière parution
-        </p>
-        <span class="badge-collection <?= badge_class($dernierLivre['collection_slug']) ?> mb-2">
-          <?= e($dernierLivre['collection_nom']) ?>
-        </span>
-        <h2 class="mt-2 mb-1">
-          <a href="<?= BASE ?>/livre.php?slug=<?= e($dernierLivre['slug']) ?>" class="text-decoration-none text-dark">
-            <?= e($dernierLivre['titre']) ?>
-          </a>
-        </h2>
-        <p class="text-secondary mb-3">
-          <a href="<?= BASE ?>/auteur.php?slug=<?= e($dernierLivre['auteur_slug']) ?>" class="text-blue47">
-            <?= e($dernierLivre['prenom'] . ' ' . $dernierLivre['nom']) ?>
-          </a>
-          <?php if ($dernierLivre['annee']): ?> · <?= e($dernierLivre['annee']) ?><?php endif; ?>
-          <?php if ($dernierLivre['nb_pages']): ?> · <?= e($dernierLivre['nb_pages']) ?> pages<?php endif; ?>
-        </p>
-        <?php if ($dernierLivre['quatrieme']): ?>
-          <div class="mb-4" style="max-width:600px">
-            <?= $dernierLivre['quatrieme'] ?>
-          </div>
-        <?php endif; ?>
-        <a href="<?= BASE ?>/livre.php?slug=<?= e($dernierLivre['slug']) ?>" class="btn btn-primary">
-          Voir la fiche →
-        </a>
-      </div>
     </div>
   </div>
 </section>
@@ -136,6 +163,53 @@ function badge_class(string $slug): string
     </div>
   </div>
 </section>
+
+<!-- ─── Dernières parutions ───────────────────────────────────── -->
+<?php if ($dernieresParutions): ?>
+<section class="section">
+  <div class="container">
+    <div class="d-flex align-items-end justify-content-between mb-4 flex-wrap gap-3">
+      <div>
+        <h2 class="section-title mb-1">Dernières parutions</h2>
+        <p class="section-subtitle mb-0">Nos titres les plus récents</p>
+      </div>
+      <a href="<?= BASE ?>/catalogue.php" class="btn btn-outline-primary btn-sm">
+        Voir tout le catalogue →
+      </a>
+    </div>
+    <div class="row g-4">
+      <?php foreach ($dernieresParutions as $livre): ?>
+      <div class="col-6 col-md-3">
+        <a href="<?= BASE ?>/livre.php?slug=<?= e($livre['slug']) ?>" class="text-decoration-none">
+          <div class="book-card">
+            <div class="book-card-cover">
+              <?php if ($livre['couverture']): ?>
+                <img src="<?= BASE ?>/assets/img/<?= e($livre['couverture']) ?>"
+                     alt="Couverture — <?= e($livre['titre']) ?>">
+              <?php else: ?>
+                <div class="book-card-cover-placeholder">Couverture à venir</div>
+              <?php endif; ?>
+            </div>
+            <div class="book-card-body">
+              <span class="badge-collection <?= badge_class($livre['collection_slug']) ?>">
+                <?= e($livre['collection_nom']) ?>
+              </span>
+              <?php if ($livre['statut'] === 'a_paraitre'): ?>
+                <span class="badge-a-paraitre ms-1">À paraître</span>
+              <?php endif; ?>
+              <h3 class="book-card-title"><?= e($livre['titre']) ?></h3>
+              <p class="book-card-author">
+                <?= e($livre['prenom'] . ' ' . $livre['nom']) ?>
+              </p>
+            </div>
+          </div>
+        </a>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
 
 <!-- ─── Auteurs ───────────────────────────────────────────────── -->
 <?php if ($auteurs): ?>
