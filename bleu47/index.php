@@ -36,17 +36,24 @@ function badge_class(string $slug): string
 
 <!-- ─── Hero ──────────────────────────────────────────────────── -->
 <section class="hero">
-  <div class="container">
-    <div class="hero-brand-logo" aria-hidden="true">
-      <span style="font-family:'Playfair Display',Georgia,serif;font-size:4rem;font-weight:700;color:#fff;letter-spacing:-.02em">
-        bleu<span style="color:#2563c4">47</span>
-      </span>
+  <div class="hero-deco" aria-hidden="true">
+    <div class="hero-deco-circle hero-deco-circle--1"></div>
+    <div class="hero-deco-circle hero-deco-circle--2"></div>
+    <div class="hero-deco-circle hero-deco-circle--3"></div>
+    <div class="hero-deco-line hero-deco-line--1"></div>
+    <div class="hero-deco-line hero-deco-line--2"></div>
+  </div>
+  <div class="container hero-content">
+    <div class="hero-animate">
+      <span class="hero-brand-mark">bleu<span>47</span></span>
     </div>
-    <h1 class="hero-title mt-3">Éditions Bleu 47</h1>
-    <p class="hero-tagline">Maison d'édition indépendante en Bourgogne-Franche-Comté</p>
-    <a href="<?= BASE ?>/catalogue.php" class="btn btn-light btn-lg px-4">
-      Découvrir le catalogue →
-    </a>
+    <p class="hero-title hero-animate">Éditions Bleu 47</p>
+    <p class="hero-tagline hero-animate">Maison d'édition indépendante · Bourgogne-Franche-Comté</p>
+    <div class="hero-animate">
+      <a href="<?= BASE ?>/catalogue.php" class="btn btn-light btn-lg px-4">
+        Découvrir le catalogue →
+      </a>
+    </div>
   </div>
 </section>
 
@@ -108,14 +115,20 @@ function badge_class(string $slug): string
     <div class="row g-4">
       <?php foreach ($collections as $col): ?>
       <div class="col-md-4">
-        <a href="<?= BASE ?>/collection.php?slug=<?= e($col['slug']) ?>" class="collection-card">
-          <div class="collection-card-bar" style="background:<?= e($col['couleur']) ?>"></div>
-          <div class="collection-card-body">
+        <a href="<?= BASE ?>/collection.php?slug=<?= e($col['slug']) ?>"
+           class="collection-card"
+           style="background-color:<?= e($col['couleur']) ?>">
+          <?php if ($col['couverture']): ?>
+          <div class="collection-card-bg"
+               style="background-image:url('<?= BASE ?>/assets/img/<?= e($col['couverture']) ?>')"></div>
+          <?php endif; ?>
+          <div class="collection-card-overlay"></div>
+          <div class="collection-card-content">
             <h3 class="collection-card-name"><?= e($col['nom']) ?></h3>
-            <p class="text-secondary mb-2" style="font-size:.9rem"><?= e($col['description']) ?></p>
-            <p class="mb-0" style="font-size:.8rem;color:var(--text-muted)">
+            <p class="collection-card-desc"><?= e($col['description']) ?></p>
+            <span class="collection-card-badge">
               <?= $col['nb_livres'] ?> titre<?= $col['nb_livres'] > 1 ? 's' : '' ?>
-            </p>
+            </span>
           </div>
         </a>
       </div>
@@ -168,14 +181,14 @@ function badge_class(string $slug): string
     <div class="row g-4">
       <?php foreach ($actus as $actu): ?>
       <div class="col-md-4">
-        <article class="admin-card h-100 p-3">
-          <p class="mb-1" style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">
+        <article class="actu-card">
+          <p class="label-overline mb-2">
             <?= e($actu['categorie']) ?> · <?= date('d/m/Y', strtotime($actu['date_actu'])) ?>
           </p>
-          <h3 style="font-size:1rem;font-family:'Playfair Display',Georgia,serif;margin:.25rem 0 .5rem">
+          <h3 style="font-size:1.05rem;font-family:'Playfair Display',Georgia,serif;margin:.2rem 0 .6rem;line-height:1.3">
             <?= e($actu['titre']) ?>
           </h3>
-          <div style="font-size:.875rem;color:var(--text-secondary)">
+          <div style="font-size:.875rem;color:var(--text-secondary);line-height:1.6">
             <?= mb_substr(strip_tags($actu['contenu']), 0, 140) ?>…
           </div>
         </article>
