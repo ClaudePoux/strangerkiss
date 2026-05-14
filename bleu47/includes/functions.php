@@ -15,30 +15,20 @@ if (!defined('BASE')) {
 }
 
 // ─── Session sécurisée ───────────────────────────────────────────
-if (session_status() === PHP_SESSION_NONE) {
-    // Chemin absolu sans /../ — dirname(__DIR__) évite le problème de résolution
-    // de session_save_path() sur Windows/XAMPP avec les chemins contenant /../
-    $sessionPath = dirname(__DIR__) . '/tmp/sessions';
-    if (!is_dir($sessionPath)) {
-        mkdir($sessionPath, 0755, true);
-    }
-    // realpath() normalise le chemin (supprime tout séparateur redondant)
-    // Fallback sur le chemin construit si realpath() échoue (ex: droits)
-    session_save_path(realpath($sessionPath) ?: $sessionPath);
-    session_set_cookie_params([
-        'lifetime' => 0,
-        'path'     => '/',
-        'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
-    session_start();
+$sessionPath = dirname(__DIR__) . '/tmp/sessions';
+if (!is_dir($sessionPath)) {
+    mkdir($sessionPath, 0755, true);
 }
+$realPath = realpath($sessionPath);
+if ($realPath) {
+    session_save_path($realPath);
+}
+session_start();
 
 // ─── Authentification admin ──────────────────────────────────────
 function require_admin(): void
 {
-    if (empty($_SESSION['admin_logged_in'])) {
+    if (empty($_SESSION['admin'])) {
         header('Location: ' . BASE . '/admin/login.php');
         exit;
     }
@@ -205,4 +195,174 @@ function input(string $key, string $from = 'post', mixed $default = ''): mixed
 {
     $source = $from === 'get' ? $_GET : $_POST;
     return $source[$key] ?? $default;
+}
+
+// ============================================================
+// ─── Phase 2 : Panier ────────────────────────────────────────
+// ============================================================
+
+/**
+ * Retourne le contenu du panier depuis la session.
+ * @return array<int, array{livre_id:int,type:string,titre:string,auteur:string,prix:float,poids_g:int,couverture:string,quantite:int}>
+ */
+function panier_get(): array
+{
+    return $_SESSION['panier'] ?? [];
+}
+
+/**
+ * Ajoute un article au panier ou incrémente sa quantité s'il est déjà présent.
+ */
+function panier_ajouter(array $article): void
+{
+    if (!isset($_SESSION['panier'])) {
+        $_SESSION['panier'] = [];
+    }
+    // Cherche un article identique (même livre_id + même type)
+    foreach ($_SESSION['panier'] as &$item) {
+        if ($item['livre_id'] === $article['livre_id'] && $item['type'] === $article['type']) {
+            $item['quantite']++;
+            return;
+        }
+    }
+    unset($item);
+    $article['quantite'] = 1;
+    $_SESSION['panier'][] = $article;
+}
+
+/**
+ * Supprime l'article à l'index donné du panier.
+ */
+function panier_supprimer(int $index): void
+{
+    if (isset($_SESSION['panier'][$index])) {
+        array_splice($_SESSION['panier'], $index, 1);
+    }
+}
+
+/**
+ * Vide entièrement le panier.
+ */
+function panier_vider(): void
+{
+    $_SESSION['panier'] = [];
+}
+
+/**
+ * Retourne le nombre total d'articles dans le panier (somme des quantités).
+ */
+function panier_count(): int
+{
+    $total = 0;
+    foreach (panier_get() as $item) {
+        $total += (int)$item['quantite'];
+    }
+    return $total;
+}
+
+/**
+ * Retourne le poids total (grammes) des articles papier du panier.
+ */
+function panier_poids_total(): int
+{
+    $poids = 0;
+    foreach (panier_get() as $item) {
+        if ($item['type'] === 'papier') {
+            $poids += (int)$item['poids_g'] * (int)$item['quantite'];
+        }
+    }
+    return $poids;
+}
+
+/**
+ * Retourne le sous-total articles TTC (sans frais de port).
+ */
+function panier_sous_total(): float
+{
+    $total = 0.0;
+    foreach (panier_get() as $item) {
+        $total += (float)$item['prix'] * (int)$item['quantite'];
+    }
+    return round($total, 2);
+}
+
+/**
+ * Retourne le tarif de frais de port pour un poids donné (grammes),
+ * ou null si aucune tranche ne correspond (message "nous contacter").
+ */
+function get_frais_port(PDO $pdo, int $poids): ?float
+{
+    if ($poids === 0) {
+        return 0.0; // Commande 100% numérique
+    }
+    $stmt = $pdo->prepare(
+        'SELECT tarif FROM frais_port WHERE poids_min_g <= :pmin AND poids_max_g >= :pmax AND actif = 1 LIMIT 1'
+    );
+    $stmt->execute([':pmin' => $poids, ':pmax' => $poids]);
+    $row = $stmt->fetch();
+    return $row ? (float)$row['tarif'] : null;
+}
+
+/**
+ * Génère une référence de commande unique au format BL47-YYYYMMDD-XXXX.
+ */
+function generate_reference(PDO $pdo): string
+{
+    $date = date('Ymd');
+    // Compte les commandes du jour pour obtenir le prochain numéro séquentiel
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM commandes WHERE reference LIKE :pattern"
+    );
+    $stmt->execute([':pattern' => 'BL47-' . $date . '-%']);
+    $count = (int)$stmt->fetchColumn();
+    return 'BL47-' . $date . '-' . str_pad((string)($count + 1), 4, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Détermine le type de commande (papier / numerique / mixte) selon le panier.
+ */
+function panier_type_commande(): string
+{
+    $hasPapier    = false;
+    $hasNumerique = false;
+    foreach (panier_get() as $item) {
+        if ($item['type'] === 'papier')    $hasPapier    = true;
+        if ($item['type'] === 'numerique') $hasNumerique = true;
+    }
+    if ($hasPapier && $hasNumerique) return 'mixte';
+    if ($hasPapier)                  return 'papier';
+    return 'numerique';
+}
+
+/**
+ * Retourne true si le panier contient au moins un article papier.
+ */
+function panier_has_papier(): bool
+{
+    foreach (panier_get() as $item) {
+        if ($item['type'] === 'papier') return true;
+    }
+    return false;
+}
+
+/**
+ * Valide un token hCaptcha côté serveur.
+ */
+function hcaptcha_verify(string $token): bool
+{
+    if (empty($token)) return false;
+    $data = http_build_query([
+        'secret'   => HCAPTCHA_SECRET_KEY,
+        'response' => $token,
+    ]);
+    $ctx = stream_context_create(['http' => [
+        'method'  => 'POST',
+        'header'  => 'Content-Type: application/x-www-form-urlencoded',
+        'content' => $data,
+        'timeout' => 5,
+    ]]);
+    $result = @file_get_contents('https://hcaptcha.com/siteverify', false, $ctx);
+    if (!$result) return false;
+    $json = json_decode($result, true);
+    return !empty($json['success']);
 }

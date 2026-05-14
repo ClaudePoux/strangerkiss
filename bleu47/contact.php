@@ -20,6 +20,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($honeypot) {
         $success = true;
     } else {
+        // Vérification hCaptcha
+        $hcaptchaToken = $_POST['h-captcha-response'] ?? '';
+        if (!hcaptcha_verify($hcaptchaToken)) {
+            $errors['captcha'] = 'Vérification de sécurité échouée. Merci de recommencer.';
+        }
+
         if (!$vals['nom'])     $errors['nom']     = 'Nom requis.';
         if (!$vals['prenom'])  $errors['prenom']  = 'Prénom requis.';
         if (!filter_var($vals['email'], FILTER_VALIDATE_EMAIL))
@@ -48,6 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
+<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+
 <div class="container" style="padding-top:2.5rem;padding-bottom:4rem">
 
   <!-- Fil d'Ariane -->
@@ -64,14 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="d-flex flex-column gap-3">
         <div>
           <p class="mb-1 fw-500">Email</p>
-          <a href="mailto:contact@bleu47.fr" class="text-blue47">contact@bleu47.fr</a>
+          <a href="mailto:editeur@bleu47.fr" class="text-blue47">editeur@bleu47.fr</a>
         </div>
         <div>
           <p class="mb-1 fw-500">Adresse</p>
           <address style="font-style:normal;color:var(--text-secondary);font-size:.9rem">
             Éditions Bleu 47<br>
-            Bourgogne-Franche-Comté<br>
-            France
+            24 rue de la Banque<br>
+            71100 Chalon-sur-Saône
           </address>
         </div>
         <div>
@@ -134,6 +142,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       required><?= e($vals['message'] ?? '') ?></textarea>
             <?php if (isset($errors['message'])): ?>
               <div class="invalid-feedback"><?= e($errors['message']) ?></div>
+            <?php endif; ?>
+          </div>
+          <div class="col-12">
+            <div class="h-captcha" data-sitekey="<?= HCAPTCHA_SITE_KEY ?>"></div>
+            <?php if (isset($errors['captcha'])): ?>
+              <div class="text-danger mt-1" style="font-size:.875rem"><?= e($errors['captcha']) ?></div>
             <?php endif; ?>
           </div>
           <div class="col-12">
