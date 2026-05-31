@@ -1,11 +1,16 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
+
+// ── Base URL ─────────────────────────────────────────────────────────────────
+define('BASE_URL', '/lexika');
 
 // ── Database configuration ──────────────────────────────────────────────────
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'lexika');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', 'nqmwgujcp.mysql.db');
+define('DB_NAME', 'nqmwgujcp');
+define('DB_USER', 'nqmwgujcp');
+define('DB_PASS', 'jerkDerFF47zQlu');
 
 function getDB(): PDO {
     static $pdo = null;
@@ -27,6 +32,7 @@ function getDB(): PDO {
 // ── Session helpers ──────────────────────────────────────────────────────────
 function sessionStart(): void {
     if (session_status() === PHP_SESSION_NONE) {
+        session_name('lexika_session');
         session_start();
     }
 }
@@ -34,7 +40,7 @@ function sessionStart(): void {
 function requireLogin(): void {
     sessionStart();
     if (empty($_SESSION['user_id'])) {
-        header('Location: login.php');
+        header('Location: ' . BASE_URL . '/login.php');
         exit;
     }
 }
@@ -42,7 +48,7 @@ function requireLogin(): void {
 function requireAdmin(): void {
     requireLogin();
     if ($_SESSION['role'] !== 'admin') {
-        header('Location: index.php');
+        header('Location: ' . BASE_URL . '/index.php');
         exit;
     }
 }

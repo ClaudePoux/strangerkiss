@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lexika-config.php';
 requireLogin();
 
 $user = currentUser();
@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $p2id = (int)($_POST['player2_id'] ?? 0);
     if ($p2id > 0 && $p2id !== $uid) {
         // Verify opponent exists
-        $st = $pdo->prepare('SELECT id FROM users WHERE id = ?');
+        $st = $pdo->prepare('SELECT id FROM lxk_users WHERE id = ?');
         $st->execute([$p2id]);
         if ($st->fetch()) {
             $bag = makeBag();
@@ -22,17 +22,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $pdo->beginTransaction();
             try {
                 $ins = $pdo->prepare(
-                    'INSERT INTO games (player1_id, player2_id, board, bag, status, current_turn) VALUES (?,?,?,?,\'playing\',?)'
+                    'INSERT INTO lxk_games (player1_id, player2_id, board, bag, status, current_turn) VALUES (?,?,?,?,\'playing\',?)'
                 );
                 $ins->execute([$uid, $p2id, json_encode((object)[]), json_encode($bag), $uid]);
                 $gid = (int)$pdo->lastInsertId();
 
-                $gp = $pdo->prepare('INSERT INTO game_players (game_id, user_id, rack, score) VALUES (?,?,?,0)');
+                $gp = $pdo->prepare('INSERT INTO lxk_game_players (game_id, user_id, rack, score) VALUES (?,?,?,0)');
                 $gp->execute([$gid, $uid, json_encode($p1Rack)]);
                 $gp->execute([$gid, $p2id, json_encode($p2Rack)]);
 
                 $pdo->commit();
-                header('Location: game.php?id=' . $gid);
+                header('Location: ' . BASE_URL . '/game.php?id=' . $gid);
                 exit;
             } catch (Exception $e) {
                 $pdo->rollBack();
@@ -47,15 +47,15 @@ $stPlaying = $pdo->prepare(
             u1.id AS p1_id, u1.prenom AS p1_prenom,
             u2.id AS p2_id, u2.prenom AS p2_prenom,
             gp1.score AS p1_score, gp2.score AS p2_score
-     FROM games g
-     JOIN users u1 ON u1.id = g.player1_id
-     JOIN users u2 ON u2.id = g.player2_id
-     JOIN game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
-     JOIN game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
-     WHERE g.status = \'playing\' AND (g.player1_id = :uid OR g.player2_id = :uid)
+     FROM lxk_games g
+     JOIN lxk_users u1 ON u1.id = g.player1_id
+     JOIN lxk_users u2 ON u2.id = g.player2_id
+     JOIN lxk_game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
+     JOIN lxk_game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
+     WHERE g.status = \'playing\' AND (g.player1_id = :uid1 OR g.player2_id = :uid2)
      ORDER BY g.id DESC'
 );
-$stPlaying->execute([':uid' => $uid]);
+$stPlaying->execute([':uid1' => $uid, ':uid2' => $uid]);
 $playingGames = $stPlaying->fetchAll();
 
 // ── Finished games (last 20) ─────────────────────────────────────────────────
@@ -64,27 +64,27 @@ $stFinished = $pdo->prepare(
             u1.id AS p1_id, u1.prenom AS p1_prenom,
             u2.id AS p2_id, u2.prenom AS p2_prenom,
             gp1.score AS p1_score, gp2.score AS p2_score
-     FROM games g
-     JOIN users u1 ON u1.id = g.player1_id
-     JOIN users u2 ON u2.id = g.player2_id
-     JOIN game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
-     JOIN game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
-     WHERE g.status = \'finished\' AND (g.player1_id = :uid OR g.player2_id = :uid)
+     FROM lxk_games g
+     JOIN lxk_users u1 ON u1.id = g.player1_id
+     JOIN lxk_users u2 ON u2.id = g.player2_id
+     JOIN lxk_game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
+     JOIN lxk_game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
+     WHERE g.status = \'finished\' AND (g.player1_id = :uid1 OR g.player2_id = :uid2)
      ORDER BY g.finished_at DESC
      LIMIT 20'
 );
-$stFinished->execute([':uid' => $uid]);
+$stFinished->execute([':uid1' => $uid, ':uid2' => $uid]);
 $finishedGames = $stFinished->fetchAll();
 
 // ── Personal stats ────────────────────────────────────────────────────────────
 $stStats = $pdo->prepare(
     'SELECT
         COUNT(*) AS played,
-        SUM(CASE WHEN winner_id = :uid THEN 1 ELSE 0 END) AS won
-     FROM games
-     WHERE status = \'finished\' AND (player1_id = :uid OR player2_id = :uid)'
+        SUM(CASE WHEN winner_id = :uid1 THEN 1 ELSE 0 END) AS won
+     FROM lxk_games
+     WHERE status = \'finished\' AND (player1_id = :uid2 OR player2_id = :uid3)'
 );
-$stStats->execute([':uid' => $uid]);
+$stStats->execute([':uid1' => $uid, ':uid2' => $uid, ':uid3' => $uid]);
 $stats = $stStats->fetch();
 $played = (int)($stats['played'] ?? 0);
 $won    = (int)($stats['won']    ?? 0);
@@ -93,8 +93,8 @@ $lost   = $played - $won;
 // Average score
 $stAvg = $pdo->prepare(
     'SELECT AVG(gp.score) AS avg_score
-     FROM game_players gp
-     JOIN games g ON g.id = gp.game_id
+     FROM lxk_game_players gp
+     JOIN lxk_games g ON g.id = gp.game_id
      WHERE gp.user_id = ? AND g.status = \'finished\''
 );
 $stAvg->execute([$uid]);
@@ -103,13 +103,13 @@ $avgScore = $avgRow ? round((float)($avgRow['avg_score'] ?? 0)) : 0;
 
 // Best single move (highest scoring play)
 $stBest = $pdo->prepare(
-    'SELECT word, score FROM game_moves WHERE user_id = ? AND move_type = \'play\' ORDER BY score DESC LIMIT 1'
+    'SELECT word, score FROM lxk_game_moves WHERE user_id = ? AND move_type = \'play\' ORDER BY score DESC LIMIT 1'
 );
 $stBest->execute([$uid]);
 $bestMove = $stBest->fetch();
 
 // ── Opponents list ────────────────────────────────────────────────────────────
-$stOpponents = $pdo->prepare('SELECT id, login, prenom FROM users WHERE id != ? ORDER BY prenom, login');
+$stOpponents = $pdo->prepare('SELECT id, login, prenom FROM lxk_users WHERE id != ? ORDER BY prenom, login');
 $stOpponents->execute([$uid]);
 $opponents = $stOpponents->fetchAll();
 ?>

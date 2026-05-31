@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lexika-config.php';
 
 sessionStart();
 
 // Already logged in
 if (!empty($_SESSION['user_id'])) {
-    header('Location: index.php');
+    header('Location: ' . BASE_URL . '/index.php');
     exit;
 }
 
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $pdo  = getDB();
-            $stmt = $pdo->prepare('SELECT id, login, prenom, password, role FROM users WHERE login = ? LIMIT 1');
+            $stmt = $pdo->prepare('SELECT id, login, prenom, password, role FROM lxk_users WHERE login = ? LIMIT 1');
             $stmt->execute([$login]);
             $user = $stmt->fetch();
 
@@ -30,7 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['login']   = $user['login'];
                 $_SESSION['prenom']  = $user['prenom'];
                 $_SESSION['role']    = $user['role'];
-                header('Location: index.php');
+                if ($_SESSION['role'] === 'admin') {
+                    header('Location: ' . BASE_URL . '/admin.php');
+                } else {
+                    header('Location: ' . BASE_URL . '/index.php');
+                }
                 exit;
             } else {
                 $error = 'Identifiant ou mot de passe incorrect.';

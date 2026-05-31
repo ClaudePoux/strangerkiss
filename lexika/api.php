@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lexika-config.php';
 
 sessionStart();
 header('Content-Type: application/json; charset=utf-8');
@@ -29,7 +29,7 @@ function jsonOk(array $data): void {
 }
 
 function loadGame(PDO $pdo, int $gameId, int $uid, bool $requireMyTurn = false): array {
-    $st = $pdo->prepare('SELECT * FROM games WHERE id = ?');
+    $st = $pdo->prepare('SELECT * FROM lxk_games WHERE id = ?');
     $st->execute([$gameId]);
     $game = $st->fetch();
     if (!$game) jsonErr('Partie introuvable', 404);
@@ -47,7 +47,7 @@ function checkEndGame(PDO $pdo, array $game, int $gameId): bool {
     $bag = json_decode($game['bag'], true) ?: [];
     if (count($bag) > 0) return false;
 
-    $st = $pdo->prepare('SELECT user_id, rack FROM game_players WHERE game_id = ?');
+    $st = $pdo->prepare('SELECT user_id, rack FROM lxk_game_players WHERE game_id = ?');
     $st->execute([$gameId]);
     $gps = $st->fetchAll();
     foreach ($gps as $gp) {
@@ -60,7 +60,7 @@ function checkEndGame(PDO $pdo, array $game, int $gameId): bool {
 function checkConsecutivePasses(PDO $pdo, int $gameId): bool {
     // Check if last 2 moves (from different players) were both passes
     $st = $pdo->prepare(
-        'SELECT user_id, move_type FROM game_moves WHERE game_id = ? ORDER BY id DESC LIMIT 2'
+        'SELECT user_id, move_type FROM lxk_game_moves WHERE game_id = ? ORDER BY id DESC LIMIT 2'
     );
     $st->execute([$gameId]);
     $moves = $st->fetchAll();
@@ -72,13 +72,13 @@ function checkConsecutivePasses(PDO $pdo, int $gameId): bool {
 
 function finishGame(PDO $pdo, int $gameId, int $winnerId): void {
     $st = $pdo->prepare(
-        'UPDATE games SET status=\'finished\', winner_id=?, finished_at=NOW() WHERE id=?'
+        'UPDATE lxk_games SET status=\'finished\', winner_id=?, finished_at=NOW() WHERE id=?'
     );
     $st->execute([$winnerId, $gameId]);
 }
 
 function determineWinner(PDO $pdo, int $gameId, int $p1Id, int $p2Id): int {
-    $st = $pdo->prepare('SELECT user_id, score FROM game_players WHERE game_id = ?');
+    $st = $pdo->prepare('SELECT user_id, score FROM lxk_game_players WHERE game_id = ?');
     $st->execute([$gameId]);
     $scores = [];
     foreach ($st->fetchAll() as $row) {
@@ -98,7 +98,7 @@ switch ($action) {
         $p2id = (int)($_POST['player2_id'] ?? 0);
         if ($p2id <= 0 || $p2id === $uid) jsonErr('Adversaire invalide');
 
-        $st = $pdo->prepare('SELECT id FROM users WHERE id = ?');
+        $st = $pdo->prepare('SELECT id FROM lxk_users WHERE id = ?');
         $st->execute([$p2id]);
         if (!$st->fetch()) jsonErr('Adversaire introuvable', 404);
 
@@ -109,12 +109,12 @@ switch ($action) {
         $pdo->beginTransaction();
         try {
             $ins = $pdo->prepare(
-                'INSERT INTO games (player1_id, player2_id, board, bag, status, current_turn) VALUES (?,?,?,?,\'playing\',?)'
+                'INSERT INTO lxk_games (player1_id, player2_id, board, bag, status, current_turn) VALUES (?,?,?,?,\'playing\',?)'
             );
             $ins->execute([$uid, $p2id, json_encode((object)[]), json_encode($bag), $uid]);
             $gid = (int)$pdo->lastInsertId();
 
-            $gp = $pdo->prepare('INSERT INTO game_players (game_id, user_id, rack, score) VALUES (?,?,?,0)');
+            $gp = $pdo->prepare('INSERT INTO lxk_game_players (game_id, user_id, rack, score) VALUES (?,?,?,0)');
             $gp->execute([$gid, $uid, json_encode($p1Rack)]);
             $gp->execute([$gid, $p2id, json_encode($p2Rack)]);
 
@@ -134,7 +134,7 @@ switch ($action) {
 
         $stGP = $pdo->prepare(
             'SELECT gp.user_id, gp.rack, gp.score, u.prenom
-             FROM game_players gp JOIN users u ON u.id = gp.user_id
+             FROM lxk_game_players gp JOIN lxk_users u ON u.id = gp.user_id
              WHERE gp.game_id = ?'
         );
         $stGP->execute([$gameId]);
@@ -148,7 +148,7 @@ switch ($action) {
             }
         }
 
-        $stLast = $pdo->prepare('SELECT * FROM game_moves WHERE game_id = ? ORDER BY id DESC LIMIT 1');
+        $stLast = $pdo->prepare('SELECT * FROM lxk_game_moves WHERE game_id = ? ORDER BY id DESC LIMIT 1');
         $stLast->execute([$gameId]);
         $lastMove = $stLast->fetch() ?: null;
 
@@ -214,7 +214,7 @@ switch ($action) {
         }
 
         // Load current rack
-        $stRack = $pdo->prepare('SELECT rack FROM game_players WHERE game_id = ? AND user_id = ?');
+        $stRack = $pdo->prepare('SELECT rack FROM lxk_game_players WHERE game_id = ? AND user_id = ?');
         $stRack->execute([$gameId, $uid]);
         $rackRow  = $stRack->fetch();
         $rack     = json_decode($rackRow['rack'] ?? '[]', true) ?: [];
@@ -257,16 +257,16 @@ switch ($action) {
         $pdo->beginTransaction();
         try {
             // Update board and bag
-            $st = $pdo->prepare('UPDATE games SET board=?, bag=?, current_turn=? WHERE id=?');
+            $st = $pdo->prepare('UPDATE lxk_games SET board=?, bag=?, current_turn=? WHERE id=?');
             $st->execute([json_encode($board), json_encode($bag), $oppId, $gameId]);
 
             // Update rack and score
-            $st = $pdo->prepare('UPDATE game_players SET rack=?, score=score+? WHERE game_id=? AND user_id=?');
+            $st = $pdo->prepare('UPDATE lxk_game_players SET rack=?, score=score+? WHERE game_id=? AND user_id=?');
             $st->execute([json_encode($newRack), $score, $gameId, $uid]);
 
             // Insert move
             $st = $pdo->prepare(
-                'INSERT INTO game_moves (game_id, user_id, move_type, word, tiles, score) VALUES (?,?,\'play\',?,?,?)'
+                'INSERT INTO lxk_game_moves (game_id, user_id, move_type, word, tiles, score) VALUES (?,?,\'play\',?,?,?)'
             );
             $st->execute([$gameId, $uid, $bestWord, json_encode($tiles), $score]);
 
@@ -277,7 +277,7 @@ switch ($action) {
         }
 
         // Check end game
-        $gameUpdated = $pdo->prepare('SELECT * FROM games WHERE id=?');
+        $gameUpdated = $pdo->prepare('SELECT * FROM lxk_games WHERE id=?');
         $gameUpdated->execute([$gameId]);
         $updatedGame = $gameUpdated->fetch();
         $gameOver    = checkEndGame($pdo, $updatedGame, $gameId);
@@ -307,7 +307,7 @@ switch ($action) {
         $indices    = json_decode($indicesRaw, true);
         if (!is_array($indices) || empty($indices)) jsonErr('Aucune tuile sélectionnée');
 
-        $stRack = $pdo->prepare('SELECT rack FROM game_players WHERE game_id=? AND user_id=?');
+        $stRack = $pdo->prepare('SELECT rack FROM lxk_game_players WHERE game_id=? AND user_id=?');
         $stRack->execute([$gameId, $uid]);
         $rackRow = $stRack->fetch();
         $rack    = json_decode($rackRow['rack'] ?? '[]', true) ?: [];
@@ -336,14 +336,14 @@ switch ($action) {
 
         $pdo->beginTransaction();
         try {
-            $st = $pdo->prepare('UPDATE games SET bag=?, current_turn=? WHERE id=?');
+            $st = $pdo->prepare('UPDATE lxk_games SET bag=?, current_turn=? WHERE id=?');
             $st->execute([json_encode($bag), $oppId, $gameId]);
 
-            $st = $pdo->prepare('UPDATE game_players SET rack=? WHERE game_id=? AND user_id=?');
+            $st = $pdo->prepare('UPDATE lxk_game_players SET rack=? WHERE game_id=? AND user_id=?');
             $st->execute([json_encode($newRack), $gameId, $uid]);
 
             $st = $pdo->prepare(
-                'INSERT INTO game_moves (game_id, user_id, move_type, score) VALUES (?,?,\'exchange\',0)'
+                'INSERT INTO lxk_game_moves (game_id, user_id, move_type, score) VALUES (?,?,\'exchange\',0)'
             );
             $st->execute([$gameId, $uid]);
 
@@ -367,11 +367,11 @@ switch ($action) {
 
         $pdo->beginTransaction();
         try {
-            $st = $pdo->prepare('UPDATE games SET current_turn=? WHERE id=?');
+            $st = $pdo->prepare('UPDATE lxk_games SET current_turn=? WHERE id=?');
             $st->execute([$oppId, $gameId]);
 
             $st = $pdo->prepare(
-                'INSERT INTO game_moves (game_id, user_id, move_type, score) VALUES (?,?,\'pass\',0)'
+                'INSERT INTO lxk_game_moves (game_id, user_id, move_type, score) VALUES (?,?,\'pass\',0)'
             );
             $st->execute([$gameId, $uid]);
 
@@ -402,11 +402,11 @@ switch ($action) {
 
         $pdo->beginTransaction();
         try {
-            $st = $pdo->prepare('UPDATE games SET status=\'finished\', winner_id=?, finished_at=NOW() WHERE id=?');
+            $st = $pdo->prepare('UPDATE lxk_games SET status=\'finished\', winner_id=?, finished_at=NOW() WHERE id=?');
             $st->execute([$oppId, $gameId]);
 
             $st = $pdo->prepare(
-                'INSERT INTO game_moves (game_id, user_id, move_type, score) VALUES (?,?,\'abandon\',0)'
+                'INSERT INTO lxk_game_moves (game_id, user_id, move_type, score) VALUES (?,?,\'abandon\',0)'
             );
             $st->execute([$gameId, $uid]);
 

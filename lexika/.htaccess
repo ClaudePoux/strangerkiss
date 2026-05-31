@@ -1,0 +1,12 @@
+RewriteEngine On
+RewriteOptions InheritDownBefore
+Options +FollowSymLinks
+
+# Bloquer config.php
+<Files "config.php">
+    Require all denied
+</Files>
+
+# Laisser passer tous les fichiers PHP de lexika
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule \.php$ - [L]

@@ -1,7 +1,16 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/config.php';
-requireAdmin();
+require_once __DIR__ . '/lexika-config.php';
+session_name('lexika_session');
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ' . BASE_URL . '/login.php');
+    exit;
+}
+if ($_SESSION['role'] !== 'admin') {
+    header('Location: ' . BASE_URL . '/index.php');
+    exit;
+}
 
 $pdo   = getDB();
 $error = '';
@@ -24,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
                 $st   = $pdo->prepare(
-                    'INSERT INTO users (login, prenom, password, role) VALUES (?,?,?,?)'
+                    'INSERT INTO lxk_users (login, prenom, password, role) VALUES (?,?,?,?)'
                 );
                 $st->execute([$login, $prenom, $hash, $role]);
                 $success = 'Joueur créé avec succès.';
@@ -46,10 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($editId > 0) {
             if ($password !== '') {
                 $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
-                $st   = $pdo->prepare('UPDATE users SET prenom=?, role=?, password=? WHERE id=?');
+                $st   = $pdo->prepare('UPDATE lxk_users SET prenom=?, role=?, password=? WHERE id=?');
                 $st->execute([$prenom, $role, $hash, $editId]);
             } else {
-                $st = $pdo->prepare('UPDATE users SET prenom=?, role=? WHERE id=?');
+                $st = $pdo->prepare('UPDATE lxk_users SET prenom=?, role=? WHERE id=?');
                 $st->execute([$prenom, $role, $editId]);
             }
             $success = 'Joueur mis à jour.';
@@ -61,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $delId = (int)($_POST['del_id'] ?? 0);
         $me    = (int)($_SESSION['user_id']);
         if ($delId > 0 && $delId !== $me) {
-            $pdo->prepare('DELETE FROM users WHERE id=?')->execute([$delId]);
+            $pdo->prepare('DELETE FROM lxk_users WHERE id=?')->execute([$delId]);
             $success = 'Joueur supprimé.';
         } else {
             $error = 'Impossible de supprimer votre propre compte.';
@@ -71,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ── Load data ─────────────────────────────────────────────────────────────
 $users = $pdo->query(
-    'SELECT id, login, prenom, role, created_at FROM users ORDER BY created_at DESC'
+    'SELECT id, login, prenom, role, created_at FROM lxk_users ORDER BY created_at DESC'
 )->fetchAll();
 
 $statusFilter = $_GET['status'] ?? 'all';
@@ -79,12 +88,12 @@ $gameSql = 'SELECT g.id, g.status, g.created_at, g.finished_at,
                    u1.prenom AS p1_prenom, u2.prenom AS p2_prenom,
                    gp1.score AS p1_score, gp2.score AS p2_score,
                    uw.prenom AS winner_prenom
-            FROM games g
-            JOIN users u1 ON u1.id = g.player1_id
-            JOIN users u2 ON u2.id = g.player2_id
-            JOIN game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
-            JOIN game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
-            LEFT JOIN users uw ON uw.id = g.winner_id';
+            FROM lxk_games g
+            JOIN lxk_users u1 ON u1.id = g.player1_id
+            JOIN lxk_users u2 ON u2.id = g.player2_id
+            JOIN lxk_game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
+            JOIN lxk_game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
+            LEFT JOIN lxk_users uw ON uw.id = g.winner_id';
 if ($statusFilter !== 'all') {
     $gameSql .= ' WHERE g.status = ' . $pdo->quote($statusFilter);
 }
@@ -93,8 +102,8 @@ $games = $pdo->query($gameSql)->fetchAll();
 
 $logs = $pdo->query(
     'SELECT gm.id, gm.game_id, u.prenom AS player, gm.move_type, gm.word, gm.score, gm.created_at
-     FROM game_moves gm
-     JOIN users u ON u.id = gm.user_id
+     FROM lxk_game_moves gm
+     JOIN lxk_users u ON u.id = gm.user_id
      ORDER BY gm.id DESC
      LIMIT 50'
 )->fetchAll();

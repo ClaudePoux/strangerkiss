@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lexika-config.php';
 
 sessionStart();
 $_SESSION = [];
@@ -19,5 +19,5 @@ if (ini_get('session.use_cookies')) {
 }
 
 session_destroy();
-header('Location: login.php');
+header('Location: ' . BASE_URL . '/login.php');
 exit;

@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lexika-config.php';
 requireLogin();
 
 $user = currentUser();
@@ -9,34 +9,34 @@ $pdo  = getDB();
 
 $gameId = (int)($_GET['id'] ?? 0);
 if ($gameId <= 0) {
-    header('Location: index.php');
+    header('Location: ' . BASE_URL . '/index.php');
     exit;
 }
 
 // Load game
 $stGame = $pdo->prepare(
     'SELECT g.*, u1.prenom AS p1_prenom, u2.prenom AS p2_prenom
-     FROM games g
-     JOIN users u1 ON u1.id = g.player1_id
-     JOIN users u2 ON u2.id = g.player2_id
+     FROM lxk_games g
+     JOIN lxk_users u1 ON u1.id = g.player1_id
+     JOIN lxk_users u2 ON u2.id = g.player2_id
      WHERE g.id = ?'
 );
 $stGame->execute([$gameId]);
 $game = $stGame->fetch();
 
 if (!$game) {
-    header('Location: index.php');
+    header('Location: ' . BASE_URL . '/index.php');
     exit;
 }
 
 // Verify current user is a player
 if ($game['player1_id'] != $uid && $game['player2_id'] != $uid) {
-    header('Location: index.php');
+    header('Location: ' . BASE_URL . '/index.php');
     exit;
 }
 
 // Load racks and scores
-$stGP = $pdo->prepare('SELECT user_id, rack, score FROM game_players WHERE game_id = ?');
+$stGP = $pdo->prepare('SELECT user_id, rack, score FROM lxk_game_players WHERE game_id = ?');
 $stGP->execute([$gameId]);
 $gpRows = $stGP->fetchAll();
 $gpMap  = [];
@@ -57,7 +57,7 @@ $bagCount = count($bag);
 
 // Last move
 $stLast = $pdo->prepare(
-    'SELECT * FROM game_moves WHERE game_id = ? ORDER BY id DESC LIMIT 1'
+    'SELECT * FROM lxk_game_moves WHERE game_id = ? ORDER BY id DESC LIMIT 1'
 );
 $stLast->execute([$gameId]);
 $lastMove = $stLast->fetch();
