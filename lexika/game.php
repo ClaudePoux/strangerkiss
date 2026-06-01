@@ -112,12 +112,11 @@ $initialStateJson = json_encode($initialState);
         </div>
     </header>
 
-    <!-- Not my turn overlay -->
-    <div id="wait-overlay" class="wait-overlay" style="display:<?= $isMyTurn ? 'none' : 'flex' ?>">
-        <div class="wait-message">
-            <div class="wait-spinner"></div>
-            <p>En attente de l'adversaire…</p>
-        </div>
+    <!-- Not my turn banner -->
+    <?php $oppPrenom = ($uid === $p1Id) ? $p2Prenom : $p1Prenom; ?>
+    <div id="wait-banner" class="wait-banner" style="display:<?= $isMyTurn ? 'none' : 'flex' ?>">
+        <div class="wait-spinner-sm"></div>
+        <span>En attente de <?= htmlspecialchars($oppPrenom) ?>…</span>
     </div>
 
     <!-- Board -->

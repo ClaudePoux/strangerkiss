@@ -230,13 +230,18 @@ function updateBagCount(n) {
 }
 
 function updateTurnUI() {
-    const overlay  = document.getElementById('wait-overlay');
+    const banner   = document.getElementById('wait-banner');
     const btnPlay  = document.getElementById('btn-play');
+    const btnRecall= document.getElementById('btn-recall');
     const btnExch  = document.getElementById('btn-exchange');
     const btnPass  = document.getElementById('btn-pass');
     const btnAband = document.getElementById('btn-abandon');
 
-    if (overlay) overlay.style.display = isMyTurn ? 'none' : 'flex';
+    if (banner)    banner.style.display = isMyTurn ? 'none' : 'flex';
+    if (!isMyTurn) {
+        if (btnPlay)   btnPlay.disabled   = true;
+        if (btnRecall) btnRecall.disabled = true;
+    }
     if (btnExch)  btnExch.disabled  = !isMyTurn;
     if (btnPass)  btnPass.disabled  = !isMyTurn;
     if (btnAband) btnAband.disabled = !isMyTurn;
@@ -695,8 +700,8 @@ function showGameOver(state) {
     }
     modal.style.display = 'flex';
 
-    const overlay = document.getElementById('wait-overlay');
-    if (overlay) overlay.style.display = 'none';
+    const banner = document.getElementById('wait-banner');
+    if (banner) banner.style.display = 'none';
 }
 
 // ── Toast notifications ──────────────────────────────────────────────────────
