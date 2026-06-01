@@ -350,7 +350,8 @@ h3 { font-size: 1rem; }
 .game-header {
     background: #333;
     color: #fff;
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.75rem;
+    min-height: 60px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -361,19 +362,20 @@ h3 { font-size: 1rem; }
     box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 .home-link {
-    color: #ccc;
-    font-size: 1.4rem;
+    color: #fff;
+    font-size: 1.7rem;
     line-height: 1;
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
+    padding: 0.35rem 0.55rem;
+    border-radius: 6px;
     transition: background 0.15s;
     text-decoration: none;
+    flex-shrink: 0;
 }
-.home-link:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.home-link:hover { background: rgba(255,255,255,0.2); }
 .game-scores {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
     flex: 1;
     justify-content: center;
 }
@@ -381,13 +383,13 @@ h3 { font-size: 1rem; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 60px;
+    min-width: 64px;
 }
-.player-score-me .player-name { color: #f5deb3; }
-.player-score-me .player-pts  { color: #f5deb3; }
-.player-name { font-size: 0.7rem; color: #aaa; }
-.player-pts  { font-size: 1.3rem; font-weight: 800; color: #fff; line-height: 1; }
-.score-divider { color: #666; font-size: 0.7rem; }
+.player-score-me .player-name { color: #ffd700; }
+.player-score-me .player-pts  { color: #ffd700; }
+.player-name { font-size: 0.8rem; font-weight: 700; color: #ccc; }
+.player-pts  { font-size: 1.8rem; font-weight: 800; color: #fff; line-height: 1; }
+.score-divider { color: #777; font-size: 0.65rem; letter-spacing: 0.05em; }
 .bag-count {
     display: flex;
     flex-direction: column;
