@@ -127,24 +127,54 @@ switch ($action) {
         $p1Rack = drawTiles($bag, 7);
         $p2Rack = drawTiles($bag, 7);
 
+        $debug = [
+            'step'            => 'before_transaction',
+            'game_id'         => $gameId,
+            'p1id'            => $p1id,
+            'p2id'            => $uid,
+            'bag_size'        => count($bag),
+            'p1_rack_size'    => count($p1Rack),
+            'p2_rack_size'    => count($p2Rack),
+            'p1_rack'         => $p1Rack,
+            'p2_rack'         => $p2Rack,
+        ];
+
         $pdo->beginTransaction();
         try {
             $st = $pdo->prepare(
                 'UPDATE lxk_games SET status=\'playing\', bag=?, current_turn=? WHERE id=?'
             );
             $st->execute([json_encode($bag), $p1id, $gameId]);
+            $debug['update_rowCount'] = $st->rowCount();
 
             $gp = $pdo->prepare('INSERT INTO lxk_game_players (game_id, user_id, rack, score) VALUES (?,?,?,0)');
             $gp->execute([$gameId, $p1id, json_encode($p1Rack)]);
+            $debug['insert_p1_rowCount'] = $gp->rowCount();
             $gp->execute([$gameId, $uid,  json_encode($p2Rack)]);
+            $debug['insert_p2_rowCount'] = $gp->rowCount();
 
             $pdo->commit();
+            $debug['step'] = 'committed';
+
+            // Re-read to confirm
+            $verify = $pdo->prepare('SELECT status, current_turn FROM lxk_games WHERE id = ?');
+            $verify->execute([$gameId]);
+            $debug['db_after_update'] = $verify->fetch();
+
+            $gpCheck = $pdo->prepare('SELECT user_id, score, JSON_LENGTH(rack) AS rack_size FROM lxk_game_players WHERE game_id = ?');
+            $gpCheck->execute([$gameId]);
+            $debug['db_game_players'] = $gpCheck->fetchAll();
+
         } catch (Exception $e) {
             $pdo->rollBack();
-            jsonErr('Erreur lors de l\'acceptation');
+            $debug['step']  = 'rolled_back';
+            $debug['error'] = $e->getMessage();
+            error_log('[accept_game] ' . $e->getMessage());
+            jsonErr('Erreur lors de l\'acceptation : ' . $e->getMessage());
         }
 
-        jsonOk(['game_id' => $gameId]);
+        error_log('[accept_game] ' . json_encode($debug));
+        jsonOk(['game_id' => $gameId, 'debug' => $debug]);
     }
 
     // ── refuse_game ──────────────────────────────────────────────────────────
