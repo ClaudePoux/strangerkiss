@@ -221,8 +221,8 @@ function handleDrop(target) {
             // Board -> Rack: return tile
             dropBoardToRack(dragState.boardRow, dragState.boardCol);
         } else if (dragState.source === 'rack') {
-            // Rack -> Rack: reorder (visual only, currentRack stays same)
-            // Just do nothing special — tile stays in rack
+            // Rack -> Rack: reorder by insertion
+            dropRackToRack(dragState.rackIndex, target);
         }
     } else {
         // Dropped outside a valid target — cancel (return to source)
@@ -254,6 +254,30 @@ function dropBoardToBoard(fromRow, fromCol, toRow, toColl) {
     if (typeof showPreviewScore === 'function') showPreviewScore();
     // Rebind new tile event listeners
     setTimeout(rebindBoardNewTiles, 50);
+}
+
+function dropRackToRack(fromIndex, targetEl) {
+    if (typeof currentRack === 'undefined' || typeof placedTiles === 'undefined') return;
+    // Ne pas réordonner si des tuiles sont déjà posées (rackIndex deviendrait invalide)
+    if (placedTiles.length > 0) return;
+
+    let toIndex = fromIndex;
+    if (targetEl.classList.contains('tile-rack')) {
+        toIndex = parseInt(targetEl.dataset.rackIndex, 10);
+    } else if (targetEl.classList.contains('tile-slot')) {
+        const m = targetEl.id.match(/rack-slot-(\d+)/);
+        if (m) toIndex = parseInt(m[1], 10);
+    } else if (targetEl.classList.contains('rack')) {
+        toIndex = currentRack.length - 1;
+    }
+
+    if (isNaN(toIndex) || toIndex === fromIndex) return;
+    toIndex = Math.max(0, Math.min(currentRack.length - 1, toIndex));
+
+    const [tile] = currentRack.splice(fromIndex, 1);
+    currentRack.splice(toIndex, 0, tile);
+
+    if (typeof renderRack === 'function') renderRack();
 }
 
 function dropBoardToRack(row, col) {

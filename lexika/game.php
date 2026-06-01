@@ -175,8 +175,8 @@ $initialStateJson = json_encode($initialState);
             <?php endfor; ?>
         </div>
         <div class="rack-controls">
-            <button class="btn btn-secondary btn-rack-ctrl" id="btn-recall" onclick="recallTiles()" disabled>Rappeler</button>
-            <button class="btn btn-secondary btn-rack-ctrl" id="btn-shuffle" onclick="shuffleRack()">Mélanger</button>
+            <button class="btn-rack-ctrl" id="btn-recall" onclick="recallTiles()" disabled>Rappeler</button>
+            <button class="btn-rack-ctrl" id="btn-shuffle" onclick="shuffleRack()">Mélanger</button>
         </div>
     </div>
 

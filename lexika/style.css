@@ -446,7 +446,7 @@ h3 { font-size: 1rem; }
 .cell {
     width: 22px;
     height: 22px;
-    background: #dcdcdc;
+    background: #e0ddd8;
     border: 1px solid #ffffff;
     border-radius: 4px;
     display: flex;
@@ -590,9 +590,19 @@ h3 { font-size: 1rem; }
 .btn-rack-ctrl {
     flex: 1;
     max-width: 130px;
-    padding: 0.45rem 0.5rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.78rem;
+    font-weight: 600;
+    background: #fff;
+    border: 1.5px solid #c8c8c8;
+    border-radius: 8px;
+    color: #333;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    -webkit-tap-highlight-color: transparent;
 }
+.btn-rack-ctrl:hover:not(:disabled) { background: #f2f2f2; border-color: #aaa; }
+.btn-rack-ctrl:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Preview score */
 .preview-area {
@@ -672,18 +682,35 @@ h3 { font-size: 1rem; }
 }
 .burger-option {
     width: 100%;
-    padding: 0.85rem 1rem;
-    border: none;
-    background: #f5f5f5;
+    padding: 1rem 1.2rem;
+    border: 1.5px solid #e0e0e0;
+    background: #fafafa;
     border-radius: 10px;
-    font-size: 0.95rem;
+    font-size: 0.97rem;
+    font-weight: 600;
     cursor: pointer;
     text-align: left;
     color: #222;
+    transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
 }
+.burger-option:hover  { background: #f0f0f0; }
 .burger-option:active { background: #e8e8e8; }
-.burger-option-danger { color: #c0392b; }
-.burger-option-cancel { background: transparent; color: #888; text-align: center; font-size: 0.85rem; }
+.burger-option-danger {
+    color: #c0392b;
+    border-color: #f2c4c4;
+    background: #fff8f8;
+}
+.burger-option-danger:hover  { background: #fde8e8; }
+.burger-option-cancel {
+    background: transparent;
+    border-color: transparent;
+    color: #999;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+.burger-option-cancel:hover { background: #f5f5f5; }
 
 @media (min-width: 600px) {
     .board {
