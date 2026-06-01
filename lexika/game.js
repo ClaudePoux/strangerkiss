@@ -183,8 +183,12 @@ function renderRack() {
     if (!rack) return;
     rack.innerHTML = '';
 
+    // Indices des tuiles actuellement posées sur le plateau
+    const placedIndices = new Set(placedTiles.map(function(p) { return p.rackIndex; }));
+
     for (let i = 0; i < 7; i++) {
-        if (i < currentRack.length) {
+        // Tuile disponible ET non posée sur le plateau
+        if (i < currentRack.length && !placedIndices.has(i)) {
             const tile = currentRack[i];
             const div  = document.createElement('div');
             div.className          = 'tile tile-rack';
@@ -207,6 +211,7 @@ function renderRack() {
             div.appendChild(vSpan);
             rack.appendChild(div);
         } else {
+            // Slot vide : tuile absente ou déjà posée sur le plateau
             const slot = document.createElement('div');
             slot.className = 'tile-slot';
             slot.id        = 'rack-slot-' + i;
@@ -291,6 +296,7 @@ function placeTileOnBoard(rackIndex, row, col) {
     };
     placedTiles.push(placement);
     renderBoard();
+    renderRack();
     showPreviewScore();
     return true;
 }
@@ -683,6 +689,7 @@ function selectJokerLetter(letter) {
     placedTiles.push(placement);
     jokerPending = null;
     renderBoard();
+    renderRack();
     showPreviewScore();
 }
 
