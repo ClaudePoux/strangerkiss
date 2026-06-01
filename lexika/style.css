@@ -446,7 +446,8 @@ h3 { font-size: 1rem; }
 .cell {
     width: 22px;
     height: 22px;
-    background: #eee;
+    background: #d0d0d0;
+    border: 1px solid #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -458,10 +459,10 @@ h3 { font-size: 1rem; }
 .cell.drop-target { background: #f9c0b8 !important; }
 
 /* Bonus cells */
-.bonus-3m   { background: #922b21; }
-.bonus-2m   { background: #e8b4b0; }
-.bonus-3l   { background: #555; }
-.bonus-2l   { background: #bbb; }
+.bonus-3m   { background: #cc2200; }
+.bonus-2m   { background: #e8770d; }
+.bonus-3l   { background: #1a3a6b; }
+.bonus-2l   { background: #4a90d9; }
 .bonus-star { background: #c0392b; }
 
 .bonus-label {
@@ -472,10 +473,10 @@ h3 { font-size: 1rem; }
     pointer-events: none;
 }
 .bonus-3m .bonus-label,
-.bonus-star .bonus-label { color: #fff; }
-.bonus-2m .bonus-label   { color: #922b21; }
-.bonus-3l .bonus-label   { color: #fff; }
-.bonus-2l .bonus-label   { color: #555; }
+.bonus-2m .bonus-label,
+.bonus-3l .bonus-label,
+.bonus-2l .bonus-label,
+.bonus-star .bonus-label { color: #fff; font-weight: bold; }
 
 /* Tile on board */
 .tile {

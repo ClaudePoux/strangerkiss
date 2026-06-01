@@ -129,11 +129,11 @@ $initialStateJson = json_encode($initialState);
                         $bonus    = BONUS_SQUARES[$key] ?? '';
                         $bonusCls = '';
                         $bonusLbl = '';
-                        if ($bonus === '3M') { $bonusCls = 'bonus-3m'; $bonusLbl = 'MT'; }
-                        elseif ($bonus === '2M' && $key !== '7,7') { $bonusCls = 'bonus-2m'; $bonusLbl = 'MD'; }
+                        if ($bonus === '3M') { $bonusCls = 'bonus-3m'; $bonusLbl = '3M'; }
+                        elseif ($bonus === '2M' && $key !== '7,7') { $bonusCls = 'bonus-2m'; $bonusLbl = '2M'; }
                         elseif ($key === '7,7') { $bonusCls = 'bonus-star'; $bonusLbl = '★'; }
-                        elseif ($bonus === '3L') { $bonusCls = 'bonus-3l'; $bonusLbl = 'LT'; }
-                        elseif ($bonus === '2L') { $bonusCls = 'bonus-2l'; $bonusLbl = 'LD'; }
+                        elseif ($bonus === '3L') { $bonusCls = 'bonus-3l'; $bonusLbl = '3L'; }
+                        elseif ($bonus === '2L') { $bonusCls = 'bonus-2l'; $bonusLbl = '2L'; }
 
                         $tileData = $board[$key] ?? null;
                     ?>
