@@ -170,10 +170,13 @@ $initialStateJson = json_encode($initialState);
                     <span class="tile-value"><?= (int)$tile['value'] ?></span>
                 </div>
             <?php endforeach; ?>
-            <!-- Empty slots for visual alignment -->
             <?php for ($i = count($myRack); $i < 7; $i++): ?>
                 <div class="tile-slot" id="rack-slot-<?= $i ?>"></div>
             <?php endfor; ?>
+        </div>
+        <div class="rack-controls">
+            <button class="btn btn-secondary btn-rack-ctrl" id="btn-recall" onclick="recallTiles()" disabled>Rappeler</button>
+            <button class="btn btn-secondary btn-rack-ctrl" id="btn-shuffle" onclick="shuffleRack()">Mélanger</button>
         </div>
     </div>
 
@@ -184,13 +187,22 @@ $initialStateJson = json_encode($initialState);
         <span class="preview-words" id="preview-words"></span>
     </div>
 
-    <!-- Action buttons -->
-    <div class="actions-area">
-        <button class="btn btn-primary" id="btn-play" onclick="sendPlay()" disabled>Valider</button>
-        <button class="btn btn-secondary" id="btn-recall" onclick="recallTiles()" disabled>Rappeler</button>
-        <button class="btn btn-secondary" id="btn-exchange" onclick="openExchangeModal()">Changer</button>
-        <button class="btn btn-secondary" id="btn-pass" onclick="sendPass()">Passer</button>
-        <button class="btn btn-danger" id="btn-abandon" onclick="sendAbandon()">Abandonner</button>
+    <!-- Jouer button -->
+    <div class="play-area">
+        <button class="btn btn-primary btn-play-main" id="btn-play" onclick="sendPlay()" disabled>Jouer</button>
+    </div>
+
+    <!-- Burger button (bottom-left, fixed) -->
+    <button class="burger-btn" id="btn-burger" onclick="openBurgerMenu()">☰</button>
+
+    <!-- Burger menu -->
+    <div id="burger-menu" class="burger-menu" style="display:none" onclick="closeBurgerMenu()">
+        <div class="burger-sheet" onclick="event.stopPropagation()">
+            <button class="burger-option" onclick="closeBurgerMenu(); openExchangeModal()">Changer mes lettres</button>
+            <button class="burger-option" onclick="closeBurgerMenu(); sendPass()">Passer mon tour</button>
+            <button class="burger-option burger-option-danger" onclick="closeBurgerMenu(); sendAbandon()">Abandonner la partie</button>
+            <button class="burger-option burger-option-cancel" onclick="closeBurgerMenu()">Annuler</button>
+        </div>
     </div>
 
     <!-- Joker modal -->

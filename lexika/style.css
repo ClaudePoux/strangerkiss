@@ -580,37 +580,110 @@ h3 { font-size: 1rem; }
     transform: translate(-50%, -50%);
 }
 
-/* Preview & actions */
+/* Rack controls (Rappeler + Mélanger) */
+.rack-controls {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 0.4rem 0.5rem 0.2rem;
+}
+.btn-rack-ctrl {
+    flex: 1;
+    max-width: 130px;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.78rem;
+}
+
+/* Preview score */
 .preview-area {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.4rem 0.75rem;
+    padding: 0.3rem 0.75rem;
     background: #fff;
     border-top: 1px solid #ddd;
     font-size: 0.85rem;
     flex-wrap: wrap;
+    justify-content: center;
 }
 .preview-label { color: #666; }
 .preview-score { font-size: 1.2rem; font-weight: 800; color: #c0392b; }
 .preview-score.invalid { color: #aaa; text-decoration: line-through; }
 .preview-words { color: #555; font-style: italic; font-size: 0.8rem; }
 
-.actions-area {
+/* Jouer button */
+.play-area {
     display: flex;
-    gap: 0.4rem;
-    padding: 0.5rem 0.5rem;
+    justify-content: center;
+    padding: 0.5rem 1rem;
     background: #f0f0f0;
     border-top: 1px solid #ddd;
-    flex-wrap: wrap;
+}
+.btn-play-main {
+    width: 100%;
+    max-width: 280px;
+    padding: 0.75rem 1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+/* Burger button (fixed, bottom-left) */
+.burger-btn {
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 40;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #444;
+    color: #fff;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: background 0.15s;
 }
-.actions-area .btn {
-    flex: 1;
-    min-width: 70px;
-    padding: 0.55rem 0.5rem;
-    font-size: 0.78rem;
+.burger-btn:disabled { background: #bbb; cursor: default; box-shadow: none; }
+
+/* Burger menu (bottom sheet) */
+.burger-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0,0,0,0.45);
 }
+.burger-sheet {
+    background: #fff;
+    width: 100%;
+    max-width: 420px;
+    border-radius: 16px 16px 0 0;
+    padding: 1rem 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.burger-option {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: none;
+    background: #f5f5f5;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    color: #222;
+}
+.burger-option:active { background: #e8e8e8; }
+.burger-option-danger { color: #c0392b; }
+.burger-option-cancel { background: transparent; color: #888; text-align: center; font-size: 0.85rem; }
 
 @media (min-width: 600px) {
     .board {
@@ -626,7 +699,8 @@ h3 { font-size: 1rem; }
     .tile-rack .tile-letter { font-size: 17px; }
     .tile-rack .tile-value  { font-size: 9px; }
     .tile-slot { width: 42px; height: 42px; }
-    .actions-area .btn { font-size: 0.88rem; }
+    .btn-rack-ctrl { font-size: 0.88rem; }
+    .btn-play-main { font-size: 1.1rem; }
 }
 
 /* ================================================================

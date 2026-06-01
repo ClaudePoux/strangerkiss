@@ -247,21 +247,39 @@ function updateBagCount(n) {
 }
 
 function updateTurnUI() {
-    const banner   = document.getElementById('wait-banner');
-    const btnPlay  = document.getElementById('btn-play');
-    const btnRecall= document.getElementById('btn-recall');
-    const btnExch  = document.getElementById('btn-exchange');
-    const btnPass  = document.getElementById('btn-pass');
-    const btnAband = document.getElementById('btn-abandon');
+    const banner    = document.getElementById('wait-banner');
+    const btnPlay   = document.getElementById('btn-play');
+    const btnRecall = document.getElementById('btn-recall');
+    const btnShuffle= document.getElementById('btn-shuffle');
+    const btnBurger = document.getElementById('btn-burger');
 
-    if (banner)    banner.style.display = isMyTurn ? 'none' : 'flex';
+    if (banner) banner.style.display = isMyTurn ? 'none' : 'flex';
     if (!isMyTurn) {
         if (btnPlay)   btnPlay.disabled   = true;
         if (btnRecall) btnRecall.disabled = true;
     }
-    if (btnExch)  btnExch.disabled  = !isMyTurn;
-    if (btnPass)  btnPass.disabled  = !isMyTurn;
-    if (btnAband) btnAband.disabled = !isMyTurn;
+    if (btnShuffle) btnShuffle.disabled = !isMyTurn;
+    if (btnBurger)  btnBurger.disabled  = !isMyTurn;
+}
+
+// ── Shuffle rack ──────────────────────────────────────────────────────────────
+function shuffleRack() {
+    if (!isMyTurn) return;
+    if (placedTiles.length > 0) recallTiles();
+    for (let i = currentRack.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [currentRack[i], currentRack[j]] = [currentRack[j], currentRack[i]];
+    }
+    renderRack();
+}
+
+// ── Burger menu ───────────────────────────────────────────────────────────────
+function openBurgerMenu() {
+    document.getElementById('burger-menu').style.display = 'flex';
+}
+
+function closeBurgerMenu() {
+    document.getElementById('burger-menu').style.display = 'none';
 }
 
 // ── Tile placement ────────────────────────────────────────────────────────────
