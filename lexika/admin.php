@@ -65,6 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success = 'Joueur supprimé.';
         }
     }
+
+    // Delete game
+    if ($postAction === 'delete_game') {
+        $delId = (int)($_POST['del_id'] ?? 0);
+        if ($delId > 0) {
+            $pdo->prepare('DELETE FROM lxk_game_moves   WHERE game_id=?')->execute([$delId]);
+            $pdo->prepare('DELETE FROM lxk_game_players WHERE game_id=?')->execute([$delId]);
+            $pdo->prepare('DELETE FROM lxk_games        WHERE id=?'     )->execute([$delId]);
+            $success = 'Partie #' . $delId . ' supprimée.';
+        }
+    }
 }
 
 // ── Load data ─────────────────────────────────────────────────────────────
@@ -271,6 +282,7 @@ $activeTab = $_GET['tab'] ?? 'users';
                             <th>Scores</th>
                             <th>Vainqueur</th>
                             <th>Créé le</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -285,6 +297,14 @@ $activeTab = $_GET['tab'] ?? 'users';
                             <td><?= $g['p1_score'] ?> – <?= $g['p2_score'] ?></td>
                             <td><?= $g['winner_prenom'] ? htmlspecialchars($g['winner_prenom']) : '–' ?></td>
                             <td><?= date('d/m/Y', strtotime($g['created_at'])) ?></td>
+                            <td class="actions-cell">
+                                <form method="post" style="display:inline"
+                                      onsubmit="return confirm('Supprimer la partie #<?= $g['id'] ?> et tous ses coups ?')">
+                                    <input type="hidden" name="post_action" value="delete_game">
+                                    <input type="hidden" name="del_id" value="<?= $g['id'] ?>">
+                                    <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                                </form>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
