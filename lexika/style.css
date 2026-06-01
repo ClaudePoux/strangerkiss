@@ -668,13 +668,14 @@ h3 { font-size: 1rem; }
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0,0,0,0.6);
 }
 .burger-sheet {
     background: #fff;
     width: 100%;
     max-width: 420px;
     border-radius: 16px 16px 0 0;
+    box-shadow: 0 -6px 30px rgba(0,0,0,0.25);
     padding: 1rem 1rem 1.5rem;
     display: flex;
     flex-direction: column;
