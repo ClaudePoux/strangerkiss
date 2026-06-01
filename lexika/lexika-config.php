@@ -29,7 +29,12 @@ function getDB(): PDO {
     return $pdo;
 }
 
-// ── Session helpers ──────────────────────────────────────────────────────────
+// ── Admin credentials (hardcoded, independent of lxk_users) ─────────────────
+define('ADMIN_LOGIN',         'admin');
+define('ADMIN_PASSWORD_HASH', '$2y$12$BqmHiYrbaB5bkhch3AZHHe63fIUHvQyUnu918IAyVPFSyCqaDfSKy');
+// Mot de passe par défaut : lexika2026!  — à changer via makehash.php
+
+// ── Session helpers — joueurs ─────────────────────────────────────────────────
 function sessionStart(): void {
     if (session_status() === PHP_SESSION_NONE) {
         session_name('lexika_session');
@@ -45,9 +50,26 @@ function requireLogin(): void {
     }
 }
 
+// ── Session helpers — admin (session séparée, indépendante) ──────────────────
+function adminSessionStart(): void {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_name('lexika_admin_session');
+        session_start();
+    }
+}
+
+function requireAdminSession(): void {
+    adminSessionStart();
+    if (empty($_SESSION['admin_auth'])) {
+        header('Location: ' . BASE_URL . '/admin_login.php');
+        exit;
+    }
+}
+
+// Conservé pour compatibilité éventuelle (non utilisé par admin.php)
 function requireAdmin(): void {
     requireLogin();
-    if ($_SESSION['role'] !== 'admin') {
+    if (($_SESSION['role'] ?? '') !== 'admin') {
         header('Location: ' . BASE_URL . '/index.php');
         exit;
     }

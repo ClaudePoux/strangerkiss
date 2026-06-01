@@ -1,16 +1,8 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/lexika-config.php';
-session_name('lexika_session');
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header('Location: ' . BASE_URL . '/login.php');
-    exit;
-}
-if ($_SESSION['role'] !== 'admin') {
-    header('Location: ' . BASE_URL . '/index.php');
-    exit;
-}
+
+requireAdminSession(); // session lexika_admin_session, indépendante de la session joueur
 
 $pdo   = getDB();
 $error = '';
@@ -68,12 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Delete user
     if ($postAction === 'delete_user') {
         $delId = (int)($_POST['del_id'] ?? 0);
-        $me    = (int)($_SESSION['user_id']);
-        if ($delId > 0 && $delId !== $me) {
+        if ($delId > 0) {
             $pdo->prepare('DELETE FROM lxk_users WHERE id=?')->execute([$delId]);
             $success = 'Joueur supprimé.';
-        } else {
-            $error = 'Impossible de supprimer votre propre compte.';
         }
     }
 }
@@ -131,8 +120,7 @@ $activeTab = $_GET['tab'] ?? 'users';
                 <span class="admin-badge">Admin</span>
             </h1>
             <nav class="header-nav">
-                <a href="index.php" class="nav-link">Accueil</a>
-                <a href="logout.php" class="nav-link">Déconnexion</a>
+                <a href="admin_login.php?logout" class="nav-link">Déconnexion</a>
             </nav>
         </div>
     </header>
