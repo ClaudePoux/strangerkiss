@@ -446,8 +446,9 @@ h3 { font-size: 1rem; }
 .cell {
     width: 22px;
     height: 22px;
-    background: #e8e8e8;
+    background: #dcdcdc;
     border: 1px solid #ffffff;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
