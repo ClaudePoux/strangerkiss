@@ -94,18 +94,30 @@ function pollGameState() {
         renderBoard();
         renderScores(data);
         updateBagCount(bagCount);
-        updateTurnUI();
 
         if (gameStatus === 'finished') {
             stopPolling();
+            updateTurnUI();
             showGameOver(data);
             return;
         }
 
         if (!prevTurn && isMyTurn) {
+            // Tour changé : nettoyer l'état client et afficher le nouveau plateau
+            placedTiles = [];
+            const previewArea = document.getElementById('preview-area');
+            if (previewArea) previewArea.style.display = 'none';
+            const btnPlay   = document.getElementById('btn-play');
+            const btnRecall = document.getElementById('btn-recall');
+            if (btnPlay)   btnPlay.disabled   = true;
+            if (btnRecall) btnRecall.disabled = true;
+
+            renderRack();   // nouveaux tiles d'abord
+            updateTurnUI(); // puis UI (cache bannière, active les boutons d'action)
             showNotification('C\'est ton tour !', 'success');
             stopPolling();
-            renderRack(); // refresh rack with new tiles
+        } else {
+            updateTurnUI();
         }
     });
 }
