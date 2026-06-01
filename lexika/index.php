@@ -11,32 +11,15 @@ $uid  = (int)$user['id'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'new_game') {
     $p2id = (int)($_POST['player2_id'] ?? 0);
     if ($p2id > 0 && $p2id !== $uid) {
-        // Verify opponent exists
         $st = $pdo->prepare('SELECT id FROM lxk_users WHERE id = ?');
         $st->execute([$p2id]);
         if ($st->fetch()) {
-            $bag = makeBag();
-            $p1Rack = drawTiles($bag, 7);
-            $p2Rack = drawTiles($bag, 7);
-
-            $pdo->beginTransaction();
-            try {
-                $ins = $pdo->prepare(
-                    'INSERT INTO lxk_games (player1_id, player2_id, board, bag, status, current_turn) VALUES (?,?,?,?,\'playing\',?)'
-                );
-                $ins->execute([$uid, $p2id, json_encode((object)[]), json_encode($bag), $uid]);
-                $gid = (int)$pdo->lastInsertId();
-
-                $gp = $pdo->prepare('INSERT INTO lxk_game_players (game_id, user_id, rack, score) VALUES (?,?,?,0)');
-                $gp->execute([$gid, $uid, json_encode($p1Rack)]);
-                $gp->execute([$gid, $p2id, json_encode($p2Rack)]);
-
-                $pdo->commit();
-                header('Location: ' . BASE_URL . '/game.php?id=' . $gid);
-                exit;
-            } catch (Exception $e) {
-                $pdo->rollBack();
-            }
+            $ins = $pdo->prepare(
+                'INSERT INTO lxk_games (player1_id, player2_id, board, bag, status, current_turn) VALUES (?,?,?,?,\'invited\',?)'
+            );
+            $ins->execute([$uid, $p2id, json_encode((object)[]), json_encode([]), $uid]);
+            header('Location: ' . BASE_URL . '/index.php');
+            exit;
         }
     }
 }
@@ -112,6 +95,28 @@ $bestMove = $stBest->fetch();
 $stOpponents = $pdo->prepare('SELECT id, login, prenom FROM lxk_users WHERE id != ? ORDER BY prenom, login');
 $stOpponents->execute([$uid]);
 $opponents = $stOpponents->fetchAll();
+
+// ── Received invitations (I am player2) ──────────────────────────────────────
+$stRecv = $pdo->prepare(
+    'SELECT g.id, g.created_at, u1.prenom AS p1_prenom, u1.login AS p1_login
+     FROM lxk_games g
+     JOIN lxk_users u1 ON u1.id = g.player1_id
+     WHERE g.status = \'invited\' AND g.player2_id = ?
+     ORDER BY g.id DESC'
+);
+$stRecv->execute([$uid]);
+$receivedInvites = $stRecv->fetchAll();
+
+// ── Sent invitations (I am player1) ──────────────────────────────────────────
+$stSent = $pdo->prepare(
+    'SELECT g.id, g.created_at, u2.prenom AS p2_prenom, u2.login AS p2_login
+     FROM lxk_games g
+     JOIN lxk_users u2 ON u2.id = g.player2_id
+     WHERE g.status = \'invited\' AND g.player1_id = ?
+     ORDER BY g.id DESC'
+);
+$stSent->execute([$uid]);
+$sentInvites = $stSent->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -163,11 +168,55 @@ $opponents = $stOpponents->fetchAll();
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="submit" class="btn btn-primary">Jouer</button>
+                        <button type="submit" class="btn btn-primary">Inviter</button>
                     </div>
                 </form>
             <?php endif; ?>
         </section>
+
+        <!-- Received Invitations -->
+        <?php if (!empty($receivedInvites)): ?>
+        <section class="card">
+            <h2 class="card-title">Invitations reçues (<?= count($receivedInvites) ?>)</h2>
+            <div class="game-list">
+                <?php foreach ($receivedInvites as $g):
+                    $oppName = $g['p1_prenom'] ?: $g['p1_login'];
+                ?>
+                <div class="game-row invite-row">
+                    <div class="game-row-opponent"><?= htmlspecialchars($oppName) ?></div>
+                    <div class="game-row-status">
+                        <span class="badge badge-wait">Invitation en attente</span>
+                    </div>
+                    <div class="invite-actions">
+                        <button class="btn btn-sm btn-primary"
+                                onclick="handleInvite('accept_game', <?= $g['id'] ?>)">Accepter</button>
+                        <button class="btn btn-sm btn-danger"
+                                onclick="handleInvite('refuse_game', <?= $g['id'] ?>)">Refuser</button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <!-- Sent Invitations -->
+        <?php if (!empty($sentInvites)): ?>
+        <section class="card">
+            <h2 class="card-title">Invitations envoyées (<?= count($sentInvites) ?>)</h2>
+            <div class="game-list">
+                <?php foreach ($sentInvites as $g):
+                    $oppName = $g['p2_prenom'] ?: $g['p2_login'];
+                ?>
+                <div class="game-row invite-row">
+                    <div class="game-row-opponent"><?= htmlspecialchars($oppName) ?></div>
+                    <div class="game-row-status">
+                        <span class="badge badge-wait">En attente d'acceptation de <?= htmlspecialchars($oppName) ?></span>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php endif; ?>
 
         <!-- In-Progress Games -->
         <section class="card">
@@ -288,6 +337,21 @@ $opponents = $stOpponents->fetchAll();
         } else {
             content.style.display = 'none';
             icon.textContent = '▶';
+        }
+    }
+
+    async function handleInvite(action, gameId) {
+        var fd = new FormData();
+        fd.append('action', action);
+        fd.append('game_id', gameId);
+        var r = await fetch('api.php', { method: 'POST', body: fd });
+        var d = await r.json();
+        if (d.success) {
+            if (action === 'accept_game') {
+                window.location.href = 'game.php?id=' + gameId;
+            } else {
+                window.location.reload();
+            }
         }
     }
     </script>

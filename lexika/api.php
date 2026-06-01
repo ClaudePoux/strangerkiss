@@ -102,29 +102,65 @@ switch ($action) {
         $st->execute([$p2id]);
         if (!$st->fetch()) jsonErr('Adversaire introuvable', 404);
 
+        $ins = $pdo->prepare(
+            'INSERT INTO lxk_games (player1_id, player2_id, board, bag, status, current_turn) VALUES (?,?,?,?,\'invited\',?)'
+        );
+        $ins->execute([$uid, $p2id, json_encode((object)[]), json_encode([]), $uid]);
+        $gid = (int)$pdo->lastInsertId();
+
+        jsonOk(['game_id' => $gid]);
+    }
+
+    // ── accept_game ──────────────────────────────────────────────────────────
+    case 'accept_game': {
+        $gameId = (int)($_POST['game_id'] ?? 0);
+        if ($gameId <= 0) jsonErr('Partie invalide');
+
+        $st = $pdo->prepare('SELECT * FROM lxk_games WHERE id = ? AND status = \'invited\'');
+        $st->execute([$gameId]);
+        $game = $st->fetch();
+        if (!$game) jsonErr('Invitation introuvable', 404);
+        if ((int)$game['player2_id'] !== $uid) jsonErr('Accès refusé', 403);
+
+        $p1id   = (int)$game['player1_id'];
         $bag    = makeBag();
         $p1Rack = drawTiles($bag, 7);
         $p2Rack = drawTiles($bag, 7);
 
         $pdo->beginTransaction();
         try {
-            $ins = $pdo->prepare(
-                'INSERT INTO lxk_games (player1_id, player2_id, board, bag, status, current_turn) VALUES (?,?,?,?,\'playing\',?)'
+            $st = $pdo->prepare(
+                'UPDATE lxk_games SET status=\'playing\', bag=?, current_turn=? WHERE id=?'
             );
-            $ins->execute([$uid, $p2id, json_encode((object)[]), json_encode($bag), $uid]);
-            $gid = (int)$pdo->lastInsertId();
+            $st->execute([json_encode($bag), $p1id, $gameId]);
 
             $gp = $pdo->prepare('INSERT INTO lxk_game_players (game_id, user_id, rack, score) VALUES (?,?,?,0)');
-            $gp->execute([$gid, $uid, json_encode($p1Rack)]);
-            $gp->execute([$gid, $p2id, json_encode($p2Rack)]);
+            $gp->execute([$gameId, $p1id, json_encode($p1Rack)]);
+            $gp->execute([$gameId, $uid,  json_encode($p2Rack)]);
 
             $pdo->commit();
         } catch (Exception $e) {
             $pdo->rollBack();
-            jsonErr('Erreur lors de la création de la partie');
+            jsonErr('Erreur lors de l\'acceptation');
         }
 
-        jsonOk(['game_id' => $gid]);
+        jsonOk(['game_id' => $gameId]);
+    }
+
+    // ── refuse_game ──────────────────────────────────────────────────────────
+    case 'refuse_game': {
+        $gameId = (int)($_POST['game_id'] ?? 0);
+        if ($gameId <= 0) jsonErr('Partie invalide');
+
+        $st = $pdo->prepare('SELECT * FROM lxk_games WHERE id = ? AND status = \'invited\'');
+        $st->execute([$gameId]);
+        $game = $st->fetch();
+        if (!$game) jsonErr('Invitation introuvable', 404);
+        if ((int)$game['player2_id'] !== $uid) jsonErr('Accès refusé', 403);
+
+        $pdo->prepare('DELETE FROM lxk_games WHERE id = ?')->execute([$gameId]);
+
+        jsonOk([]);
     }
 
     // ── poll ─────────────────────────────────────────────────────────────────

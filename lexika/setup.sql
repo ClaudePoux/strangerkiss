@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS `lxk_games` (
   `player2_id`   INT UNSIGNED NOT NULL,
   `board`        JSON         NOT NULL,
   `bag`          JSON         NOT NULL,
-  `status`       ENUM('waiting','playing','finished') NOT NULL DEFAULT 'playing',
+  `status`       ENUM('waiting','invited','playing','finished') NOT NULL DEFAULT 'invited',
   `current_turn` INT UNSIGNED NOT NULL,
   `winner_id`    INT UNSIGNED NULL DEFAULT NULL,
   `created_at`   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
