@@ -268,15 +268,16 @@ switch ($action) {
         $rack     = json_decode($rackRow['rack'] ?? '[]', true) ?: [];
 
         // Remove played tiles from rack by content (is_joker + letter), not by index.
-        // This is safe after a client-side shuffle/reorder that the server doesn't know about.
-        $newRack = array_values($rack);
+        // Each splice removes the matched tile from $remainingRack immediately, so a second
+        // played tile with the same letter can only match the next distinct copy in the rack.
+        $remainingRack = array_values($rack);
         foreach ($tiles as $t) {
             $isJoker   = (bool)($t['is_joker'] ?? false);
             $srcLetter = $isJoker ? '' : ($t['source_letter'] ?? '');
-            foreach ($newRack as $i => $rackTile) {
+            foreach ($remainingRack as $i => $rackTile) {
                 if ((bool)($rackTile['is_joker'] ?? false) === $isJoker
                     && ($rackTile['letter'] ?? '') === $srcLetter) {
-                    array_splice($newRack, $i, 1);
+                    array_splice($remainingRack, $i, 1);
                     break;
                 }
             }
@@ -291,10 +292,10 @@ switch ($action) {
             ];
         }
 
-        // Draw new tiles
-        $bag      = json_decode($game['bag'], true) ?: [];
-        $drawn    = drawTiles($bag, min(7 - count($newRack), count($bag)));
-        $newRack  = array_merge($newRack, $drawn);
+        // Draw new tiles to refill to 7
+        $bag     = json_decode($game['bag'], true) ?: [];
+        $drawn   = drawTiles($bag, min(7 - count($remainingRack), count($bag)));
+        $newRack = array_merge($remainingRack, $drawn);
         $bagCount = count($bag);
 
         // Calculate score
