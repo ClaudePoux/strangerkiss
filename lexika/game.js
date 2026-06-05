@@ -15,13 +15,18 @@ let gameStatus   = '';
 let pollInterval = null;
 let jokerPending = null; // {rackIndex, row, col, value}
 let isFirstMove  = true;
+let lastMoveId        = null; // id du dernier coup connu, pour éviter de re-render si rien n'a changé
+let currentTurnUserId = 0;   // uid du joueur dont c'est le tour
+let lastOpponentMove  = null; // dernier coup adverse pour affichage dans la zone de score
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 function initGame(state) {
-    gameStatus  = state.status;
-    isMyTurn    = state.isMyTurn;
-    bagCount    = state.bagCount;
-    currentRack = state.myRack || [];
+    gameStatus        = state.status;
+    isMyTurn          = state.isMyTurn;
+    bagCount          = state.bagCount;
+    currentRack       = state.myRack || [];
+    currentTurnUserId = state.currentTurn || 0;
+    lastOpponentMove  = state.lastOpponentMove || null;
 
     // Load board from server state
     boardState = {};
@@ -41,6 +46,7 @@ function initGame(state) {
     renderScores(state);
     updateBagCount(bagCount);
     updateTurnUI();
+    showPreviewScore(); // affiche le dernier coup adverse si c'est notre tour
 
     if (gameStatus === 'finished') {
         showGameOver(state);
@@ -76,22 +82,28 @@ function pollGameState() {
         isMyTurn          = (newCurrent === MY_USER_ID);
         gameStatus        = data.status;
         bagCount          = data.bag_count;
-        currentRack       = data.rack || currentRack;
+        currentTurnUserId = newCurrent;
 
-        // Reload board
-        boardState = {};
-        const rawBoard = data.board || {};
-        for (const [key, tile] of Object.entries(rawBoard)) {
-            boardState[key] = {
-                letter:  tile.letter,
-                value:   tile.value,
-                isJoker: tile.is_joker || false,
-                isNew:   false,
-            };
+        const newMoveId = data.last_move ? data.last_move.id : null;
+        if (newMoveId !== lastMoveId) {
+            lastMoveId = newMoveId;
+
+            // Reload board uniquement si un nouveau coup a été joué
+            boardState = {};
+            const rawBoard = data.board || {};
+            for (const [key, tile] of Object.entries(rawBoard)) {
+                boardState[key] = {
+                    letter:  tile.letter,
+                    value:   tile.value,
+                    isJoker: tile.is_joker || false,
+                    isNew:   false,
+                };
+            }
+            isFirstMove = Object.keys(boardState).length === 0 && placedTiles.length === 0;
+
+            renderBoard();
         }
-        isFirstMove = Object.keys(boardState).length === 0 && placedTiles.length === 0;
 
-        renderBoard();
         renderScores(data);
         updateBagCount(bagCount);
 
@@ -102,18 +114,18 @@ function pollGameState() {
             return;
         }
 
-        if (!prevTurn && isMyTurn) {
-            // Tour changé : nettoyer l'état client et afficher le nouveau plateau
-            placedTiles = [];
-            const previewArea = document.getElementById('preview-area');
-            if (previewArea) previewArea.style.display = 'none';
-            const btnPlay   = document.getElementById('btn-play');
-            const btnRecall = document.getElementById('btn-recall');
-            if (btnPlay)   btnPlay.disabled   = true;
-            if (btnRecall) btnRecall.disabled = true;
+        if (data.last_opponent_move !== undefined) {
+            lastOpponentMove = data.last_opponent_move;
+        }
 
-            renderRack();   // nouveaux tiles d'abord
-            updateTurnUI(); // puis UI (cache bannière, active les boutons d'action)
+        if (!prevTurn && isMyTurn) {
+            // Tour changé : mettre à jour le rack et afficher le nouveau plateau
+            currentRack = data.rack || currentRack;
+            placedTiles = [];
+
+            if (!window.isRackDragging) renderRack();
+            updateTurnUI();
+            showPreviewScore(); // affiche le dernier coup adverse
             showNotification('C\'est ton tour !', 'success');
             stopPolling();
         } else {
@@ -147,7 +159,7 @@ function renderBoard() {
                 // Committed tile
                 const t = boardState[key];
                 if (bonusLabel) bonusLabel.style.display = 'none';
-                cell.appendChild(makeTileEl(t.letter, t.value, false, false));
+                cell.appendChild(makeTileEl(t.letter, t.value, false, t.isJoker));
             } else if (placedMap[key]) {
                 // Newly placed tile (not yet committed)
                 const pt = placedMap[key];
@@ -247,24 +259,24 @@ function updateBagCount(n) {
 }
 
 function updateTurnUI() {
-    const banner    = document.getElementById('wait-banner');
     const btnPlay   = document.getElementById('btn-play');
-    const btnRecall = document.getElementById('btn-recall');
-    const btnShuffle= document.getElementById('btn-shuffle');
     const btnBurger = document.getElementById('btn-burger');
 
-    if (banner) banner.style.display = isMyTurn ? 'none' : 'flex';
     if (!isMyTurn) {
-        if (btnPlay)   btnPlay.disabled   = true;
-        if (btnRecall) btnRecall.disabled = true;
+        if (btnPlay) btnPlay.disabled = true;
     }
-    if (btnShuffle) btnShuffle.disabled = !isMyTurn;
-    if (btnBurger)  btnBurger.disabled  = !isMyTurn;
+    if (btnBurger) btnBurger.disabled = false;
+
+    // Point clignotant : actif sur le joueur dont c'est le tour
+    const dotP1 = document.getElementById('dot-p1');
+    const dotP2 = document.getElementById('dot-p2');
+    const p1Uid = parseInt((document.getElementById('score-p1') || {}).dataset?.uid || 0, 10);
+    if (dotP1) dotP1.style.display = (currentTurnUserId === p1Uid) ? 'inline-block' : 'none';
+    if (dotP2) dotP2.style.display = (currentTurnUserId !== p1Uid) ? 'inline-block' : 'none';
 }
 
 // ── Shuffle rack ──────────────────────────────────────────────────────────────
 function shuffleRack() {
-    if (!isMyTurn) return;
     if (placedTiles.length > 0) recallTiles();
     for (let i = currentRack.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -461,7 +473,28 @@ function calculateScore(words) {
     return total;
 }
 
+// ── Opponent move formatting ──────────────────────────────────────────────────
+function formatOppMove(move) {
+    if (!move) return '';
+    const name = move.prenom || 'Adversaire';
+    if (move.type === 'play') {
+        const word  = (move.word  || '').toUpperCase();
+        const score = move.score || 0;
+        return name + ' a joué ' + word + ' pour ' + score + ' pts';
+    }
+    if (move.type === 'pass') {
+        return name + ' a passé son tour';
+    }
+    if (move.type === 'exchange') {
+        const count = move.count || 0;
+        return name + ' a changé ' + count + ' lettre' + (count > 1 ? 's' : '');
+    }
+    return '';
+}
+
 // ── Preview score ────────────────────────────────────────────────────────────
+let _previewDebounce = null;
+
 function showPreviewScore() {
     const previewArea  = document.getElementById('preview-area');
     const previewScore = document.getElementById('preview-score');
@@ -470,11 +503,42 @@ function showPreviewScore() {
     const btnRecall    = document.getElementById('btn-recall');
 
     if (placedTiles.length === 0) {
-        if (previewArea) previewArea.style.display = 'none';
+        clearTimeout(_previewDebounce);
+        if (isMyTurn && lastOpponentMove) {
+            // Afficher le dernier coup adverse
+            const msg = formatOppMove(lastOpponentMove);
+            if (previewArea) {
+                previewArea.style.display = 'flex';
+                // Hide normal score elements, show opp message
+                const lbl = previewArea.querySelector('.preview-label');
+                if (lbl) lbl.style.display = 'none';
+                if (previewScore) previewScore.style.display = 'none';
+                if (previewWords) { previewWords.style.display = 'none'; }
+                let oppMsg = document.getElementById('opp-move-msg');
+                if (!oppMsg) {
+                    oppMsg = document.createElement('span');
+                    oppMsg.id = 'opp-move-msg';
+                    oppMsg.className = 'opp-move-msg';
+                    previewArea.appendChild(oppMsg);
+                }
+                oppMsg.textContent = msg;
+                oppMsg.style.display = '';
+            }
+        } else {
+            if (previewArea) previewArea.style.display = 'none';
+        }
         if (btnPlay)   btnPlay.disabled   = true;
         if (btnRecall) btnRecall.disabled = true;
         return;
     }
+
+    // Tuiles posées : cacher le message adverse, montrer le score normal
+    const lbl = previewArea ? previewArea.querySelector('.preview-label') : null;
+    if (lbl) lbl.style.display = '';
+    if (previewScore) previewScore.style.display = '';
+    if (previewWords) previewWords.style.display = '';
+    const oppMsgEl = document.getElementById('opp-move-msg');
+    if (oppMsgEl) oppMsgEl.style.display = 'none';
 
     if (previewArea)  previewArea.style.display = 'flex';
     if (btnRecall) btnRecall.disabled = false;
@@ -486,21 +550,58 @@ function showPreviewScore() {
             previewScore.classList.add('invalid');
         }
         if (previewWords) previewWords.textContent = placement.error;
-        if (btnPlay)   btnPlay.disabled = true;
+        if (btnPlay) btnPlay.disabled = true;
+        document.querySelectorAll('.tile-valid').forEach(el => {
+            el.classList.remove('tile-valid');
+            el.classList.add('tile-new');
+        });
+        clearTimeout(_previewDebounce);
         return;
     }
 
-    const words = getFormedWords(placement.horizontal);
-    const score = calculateScore(words);
+    // Geometry OK — call server for full dictionary validation
+    clearTimeout(_previewDebounce);
+    _previewDebounce = setTimeout(function() {
+        const tiles = placedTiles.map(pt => ({
+            row:      pt.row,
+            col:      pt.col,
+            letter:   pt.displayLetter || pt.letter,
+            value:    pt.value,
+            is_joker: pt.isJoker || false,
+        }));
 
-    if (previewScore) {
-        previewScore.textContent = score + ' pts';
-        previewScore.classList.remove('invalid');
-    }
-    if (previewWords) {
-        previewWords.textContent = words.map(w => w.word.toUpperCase()).join(', ');
-    }
-    if (btnPlay) btnPlay.disabled = !isMyTurn;
+        ajaxPost('api.php?action=validate', {
+            game_id: GAME_ID,
+            tiles:   JSON.stringify(tiles),
+        }, function(data) {
+            if (!data.success) return;
+
+            if (previewScore) {
+                previewScore.textContent = data.valid ? (data.score + ' pts') : '?';
+                previewScore.classList.toggle('invalid', !data.valid);
+            }
+            if (previewWords) {
+                if (data.valid) {
+                    previewWords.textContent = (data.words || []).map(w => w.toUpperCase()).join(', ');
+                } else {
+                    previewWords.textContent = data.error || '';
+                }
+            }
+            if (btnPlay) btnPlay.disabled = !(isMyTurn && data.valid);
+
+            if (data.valid) {
+                document.querySelectorAll('.tile-new').forEach(el => {
+                    el.classList.remove('tile-new');
+                    el.classList.add('tile-valid');
+                });
+            } else {
+                document.querySelectorAll('.tile-valid').forEach(el => {
+                    el.classList.remove('tile-valid');
+                    el.classList.add('tile-new');
+                });
+            }
+        });
+    }, 300);
 }
 
 // ── Send play ────────────────────────────────────────────────────────────────
@@ -514,26 +615,17 @@ function sendPlay() {
     }
 
     const tiles = placedTiles.map(pt => ({
-        row:        pt.row,
-        col:        pt.col,
-        letter:     pt.displayLetter || pt.letter,
-        value:      pt.value,
-        is_joker:   pt.isJoker || false,
-        rack_index: pt.rackIndex,
+        row:           pt.row,
+        col:           pt.col,
+        letter:        pt.displayLetter || pt.letter,
+        value:         pt.value,
+        is_joker:      pt.isJoker || false,
+        source_letter: pt.isJoker ? '' : pt.letter,
     }));
 
-    // Build joker assignments
-    const jokerAssign = {};
-    for (const pt of placedTiles) {
-        if (pt.isJoker && pt.displayLetter) {
-            jokerAssign[pt.rackIndex] = pt.displayLetter;
-        }
-    }
-
     ajaxPost('api.php?action=play', {
-        game_id:          GAME_ID,
-        tiles:            JSON.stringify(tiles),
-        joker_assignments: JSON.stringify(jokerAssign),
+        game_id: GAME_ID,
+        tiles:   JSON.stringify(tiles),
     }, function(data) {
         if (!data.success) {
             showNotification(data.error || 'Coup invalide', 'error');
@@ -568,6 +660,10 @@ function sendPlay() {
 
         showNotification('+' + data.score + ' pts ! (' + (data.words || []).join(', ') + ')', 'success');
 
+        if (data.is_bingo) {
+            showLexikaModal();
+        }
+
         if (data.game_over) {
             setTimeout(() => pollGameState(), 600);
         } else {
@@ -586,7 +682,6 @@ function recallTiles() {
 
 // ── Exchange ──────────────────────────────────────────────────────────────────
 function openExchangeModal() {
-    if (!isMyTurn) return;
     const container = document.getElementById('exchange-rack');
     if (!container) return;
     container.innerHTML = '';
@@ -647,7 +742,6 @@ function sendExchange() {
 
 // ── Pass ──────────────────────────────────────────────────────────────────────
 function sendPass() {
-    if (!isMyTurn) return;
     if (!confirm('Passer votre tour ?')) return;
 
     ajaxPost('api.php?action=pass', { game_id: GAME_ID }, function(data) {
@@ -716,6 +810,23 @@ function cancelJoker() {
     jokerPending = null;
 }
 
+// ── Lexika modal ─────────────────────────────────────────────────────────────
+let _lexikaAutoClose = null;
+
+function showLexikaModal() {
+    const modal = document.getElementById('lexika-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    clearTimeout(_lexikaAutoClose);
+    _lexikaAutoClose = setTimeout(closeLexikaModal, 3000);
+}
+
+function closeLexikaModal() {
+    clearTimeout(_lexikaAutoClose);
+    const modal = document.getElementById('lexika-modal');
+    if (modal) modal.style.display = 'none';
+}
+
 // ── Game over modal ──────────────────────────────────────────────────────────
 function showGameOver(state) {
     stopPolling();
@@ -727,7 +838,12 @@ function showGameOver(state) {
     const winnerId = parseInt(state.winner_id, 10);
     if (winnerId === MY_USER_ID) {
         title.textContent = 'Victoire !';
-        body.textContent  = 'Félicitations, vous avez gagné la partie.';
+        if (lastOpponentMove && lastOpponentMove.type === 'abandon') {
+            const oppName = lastOpponentMove.prenom || 'Votre adversaire';
+            body.textContent = oppName + ' a abandonné la partie.';
+        } else {
+            body.textContent = 'Félicitations, vous avez gagné la partie.';
+        }
     } else if (winnerId) {
         title.textContent = 'Défaite';
         body.textContent  = 'Votre adversaire a remporté la partie.';
@@ -737,8 +853,6 @@ function showGameOver(state) {
     }
     modal.style.display = 'flex';
 
-    const banner = document.getElementById('wait-banner');
-    if (banner) banner.style.display = 'none';
 }
 
 // ── Toast notifications ──────────────────────────────────────────────────────

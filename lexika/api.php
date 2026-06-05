@@ -188,18 +188,40 @@ switch ($action) {
         $stLast->execute([$gameId]);
         $lastMove = $stLast->fetch() ?: null;
 
+        $stOpp = $pdo->prepare(
+            'SELECT m.move_type, m.word, m.score, m.tiles, u.prenom
+             FROM lxk_game_moves m
+             JOIN lxk_users u ON u.id = m.user_id
+             WHERE m.game_id = ? AND m.user_id != ?
+             ORDER BY m.id DESC LIMIT 1'
+        );
+        $stOpp->execute([$gameId, $uid]);
+        $oppRow = $stOpp->fetch() ?: null;
+        $lastOppMove = null;
+        if ($oppRow) {
+            $lastOppMove = ['type' => $oppRow['move_type'], 'prenom' => $oppRow['prenom']];
+            if ($oppRow['move_type'] === 'play') {
+                $lastOppMove['word']  = $oppRow['word'];
+                $lastOppMove['score'] = (int)$oppRow['score'];
+            } elseif ($oppRow['move_type'] === 'exchange') {
+                $td = json_decode($oppRow['tiles'] ?? '{}', true);
+                $lastOppMove['count'] = (int)($td['count'] ?? 0);
+            }
+        }
+
         $bag      = json_decode($game['bag'], true) ?: [];
         $bagCount = count($bag);
 
         jsonOk([
-            'board'        => json_decode($game['board'], true) ?: (object)[],
-            'rack'         => $myRack,
-            'scores'       => $scores,
-            'current_turn' => (int)$game['current_turn'],
-            'bag_count'    => $bagCount,
-            'status'       => $game['status'],
-            'winner_id'    => $game['winner_id'],
-            'last_move'    => $lastMove,
+            'board'               => json_decode($game['board'], true) ?: (object)[],
+            'rack'                => $myRack,
+            'scores'              => $scores,
+            'current_turn'        => (int)$game['current_turn'],
+            'bag_count'           => $bagCount,
+            'status'              => $game['status'],
+            'winner_id'           => $game['winner_id'],
+            'last_move'           => $lastMove,
+            'last_opponent_move'  => $lastOppMove,
         ]);
     }
 
@@ -227,19 +249,9 @@ switch ($action) {
 
         if ($game['status'] !== 'playing') jsonErr('La partie est terminée');
 
-        $tilesRaw          = $_POST['tiles']            ?? '[]';
-        $jokerAssignRaw    = $_POST['joker_assignments'] ?? '{}';
-        $tiles             = json_decode($tilesRaw, true);
-        $jokerAssignments  = json_decode($jokerAssignRaw, true) ?: [];
+        $tilesRaw = $_POST['tiles'] ?? '[]';
+        $tiles    = json_decode($tilesRaw, true);
         if (!is_array($tiles)) jsonErr('Tuiles invalides');
-
-        // Apply joker assignments to tiles
-        foreach ($tiles as &$t) {
-            if ($t['is_joker'] && isset($jokerAssignments[$t['rack_index'] ?? -1])) {
-                $t['letter'] = strtoupper($jokerAssignments[$t['rack_index']]);
-            }
-        }
-        unset($t);
 
         $board       = json_decode($game['board'], true) ?: [];
         $isFirstMove = empty($board);
@@ -255,17 +267,18 @@ switch ($action) {
         $rackRow  = $stRack->fetch();
         $rack     = json_decode($rackRow['rack'] ?? '[]', true) ?: [];
 
-        // Remove placed tiles from rack (match by rack_index if provided, else by letter)
-        $usedIndices = [];
+        // Remove played tiles from rack by content (is_joker + letter), not by index.
+        // This is safe after a client-side shuffle/reorder that the server doesn't know about.
+        $newRack = array_values($rack);
         foreach ($tiles as $t) {
-            if (isset($t['rack_index'])) {
-                $usedIndices[] = (int)$t['rack_index'];
-            }
-        }
-        $newRack = [];
-        foreach ($rack as $i => $tile) {
-            if (!in_array($i, $usedIndices, true)) {
-                $newRack[] = $tile;
+            $isJoker   = (bool)($t['is_joker'] ?? false);
+            $srcLetter = $isJoker ? '' : ($t['source_letter'] ?? '');
+            foreach ($newRack as $i => $rackTile) {
+                if ((bool)($rackTile['is_joker'] ?? false) === $isJoker
+                    && ($rackTile['letter'] ?? '') === $srcLetter) {
+                    array_splice($newRack, $i, 1);
+                    break;
+                }
             }
         }
 
@@ -329,6 +342,7 @@ switch ($action) {
             'new_rack'  => $newRack,
             'bag_count' => $bagCount,
             'game_over' => $gameOver,
+            'is_bingo'  => count($tiles) === 7,
         ]);
     }
 
@@ -379,9 +393,9 @@ switch ($action) {
             $st->execute([json_encode($newRack), $gameId, $uid]);
 
             $st = $pdo->prepare(
-                'INSERT INTO lxk_game_moves (game_id, user_id, move_type, score) VALUES (?,?,\'exchange\',0)'
+                'INSERT INTO lxk_game_moves (game_id, user_id, move_type, tiles, score) VALUES (?,?,\'exchange\',?,0)'
             );
-            $st->execute([$gameId, $uid]);
+            $st->execute([$gameId, $uid, json_encode(['count' => count($toExchange)])]);
 
             $pdo->commit();
         } catch (Exception $e) {
