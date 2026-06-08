@@ -236,31 +236,6 @@ $initialStateJson = json_encode($initialState);
         </div>
     </div>
 
-    <!-- History modal -->
-    <div id="history-modal" class="modal" style="display:none" onclick="closeHistoryModal()">
-        <div class="modal-content history-modal-content" onclick="event.stopPropagation()">
-            <h3>Historique de la partie</h3>
-            <div class="history-table-wrapper">
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Joueur</th>
-                            <th>Mot</th>
-                            <th>Pts</th>
-                            <th><?= htmlspecialchars($p1Prenom) ?></th>
-                            <th><?= htmlspecialchars($p2Prenom) ?></th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-tbody"></tbody>
-                </table>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeHistoryModal()">Fermer</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Joker modal -->
     <div id="joker-modal" class="modal" style="display:none">
         <div class="modal-content">
@@ -316,5 +291,30 @@ $initialStateJson = json_encode($initialState);
 
     <script src="drag.js"></script>
     <script src="game.js"></script>
+
+    <!-- History modal (en dernier pour échapper aux overflow/stacking des parents) -->
+    <div id="history-modal" class="modal" style="display:none" onclick="closeHistoryModal()">
+        <div class="modal-content history-modal-content" onclick="event.stopPropagation()">
+            <h3>Historique de la partie</h3>
+            <div class="history-table-wrapper">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Joueur</th>
+                            <th>Mot</th>
+                            <th>Pts</th>
+                            <th><?= htmlspecialchars($p1Prenom) ?></th>
+                            <th><?= htmlspecialchars($p2Prenom) ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody"></tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeHistoryModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

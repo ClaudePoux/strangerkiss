@@ -754,7 +754,7 @@ h3 { font-size: 1rem; }
 .burger-menu {
     position: fixed;
     inset: 0;
-    z-index: 200;
+    z-index: 500;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -910,7 +910,7 @@ h3 { font-size: 1rem; }
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.5);
-    z-index: 200;
+    z-index: 9000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -994,7 +994,8 @@ h3 { font-size: 1rem; }
 /* History modal */
 #history-modal .modal-content.history-modal-content {
     max-width: 600px;
-    max-height: 80vh;
+    width: 95vw;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
 }
