@@ -62,21 +62,44 @@ $stLast = $pdo->prepare(
 $stLast->execute([$gameId]);
 $lastMove = $stLast->fetch();
 
+// Last opponent move (for initial display)
+$stOpp = $pdo->prepare(
+    'SELECT m.move_type, m.word, m.score, m.tiles, u.prenom
+     FROM lxk_game_moves m
+     JOIN lxk_users u ON u.id = m.user_id
+     WHERE m.game_id = ? AND m.user_id != ?
+     ORDER BY m.id DESC LIMIT 1'
+);
+$stOpp->execute([$gameId, $uid]);
+$oppRow = $stOpp->fetch() ?: null;
+$lastOppMove = null;
+if ($oppRow) {
+    $lastOppMove = ['type' => $oppRow['move_type'], 'prenom' => $oppRow['prenom']];
+    if ($oppRow['move_type'] === 'play') {
+        $lastOppMove['word']  = $oppRow['word'];
+        $lastOppMove['score'] = (int)$oppRow['score'];
+    } elseif ($oppRow['move_type'] === 'exchange') {
+        $td = json_decode($oppRow['tiles'] ?? '{}', true);
+        $lastOppMove['count'] = (int)($td['count'] ?? 0);
+    }
+}
+
 $isMyTurn = ((int)$game['current_turn'] === $uid);
 
 $initialState = [
-    'gameId'      => $gameId,
-    'myUserId'    => $uid,
-    'p1'          => ['id' => $p1Id, 'prenom' => $p1Prenom, 'score' => $p1Score],
-    'p2'          => ['id' => $p2Id, 'prenom' => $p2Prenom, 'score' => $p2Score],
-    'board'       => $board,
-    'myRack'      => $myRack,
-    'bagCount'    => $bagCount,
-    'currentTurn' => (int)$game['current_turn'],
-    'status'      => $game['status'],
-    'winnerId'    => $game['winner_id'],
-    'lastMove'    => $lastMove ?: null,
-    'isMyTurn'    => $isMyTurn,
+    'gameId'           => $gameId,
+    'myUserId'         => $uid,
+    'p1'               => ['id' => $p1Id, 'prenom' => $p1Prenom, 'score' => $p1Score],
+    'p2'               => ['id' => $p2Id, 'prenom' => $p2Prenom, 'score' => $p2Score],
+    'board'            => $board,
+    'myRack'           => $myRack,
+    'bagCount'         => $bagCount,
+    'currentTurn'      => (int)$game['current_turn'],
+    'status'           => $game['status'],
+    'winnerId'         => $game['winner_id'],
+    'lastMove'         => $lastMove ?: null,
+    'isMyTurn'         => $isMyTurn,
+    'lastOpponentMove' => $lastOppMove,
 ];
 
 $bonusSquaresJson = json_encode(BONUS_SQUARES);
@@ -89,20 +112,33 @@ $initialStateJson = json_encode($initialState);
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Lexika – Partie #<?= $gameId ?></title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/lexika/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Lexika">
+    <link rel="apple-touch-icon" href="/lexika/icons/icon-180.png">
+    <meta name="theme-color" content="#1a3a5c">
+    <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body class="game-body">
 
     <!-- Score Header -->
     <header class="game-header">
-        <a href="index.php" class="home-link" title="Accueil">&#8962;</a>
+        <a href="index.php" class="home-link" title="Accueil"><img src="/lexika/icons/icon-192.png" alt="Accueil" height="36"></a>
         <div class="game-scores">
-            <div class="player-score <?= ($uid === $p1Id) ? 'player-score-me' : '' ?>" id="score-p1">
-                <span class="player-name"><?= htmlspecialchars($p1Prenom) ?></span>
+            <div class="player-score <?= ($uid === $p1Id) ? 'player-score-me' : '' ?>" id="score-p1" data-uid="<?= $p1Id ?>">
+                <div class="player-name-row">
+                    <span class="player-name"><?= htmlspecialchars($p1Prenom) ?></span>
+                    <span class="turn-dot" id="dot-p1" style="display:<?= ((int)$game['current_turn'] === $p1Id) ? 'inline' : 'none' ?>">●</span>
+                </div>
                 <span class="player-pts" id="pts-p1"><?= $p1Score ?></span>
             </div>
             <div class="score-divider">vs</div>
-            <div class="player-score <?= ($uid === $p2Id) ? 'player-score-me' : '' ?>" id="score-p2">
-                <span class="player-name"><?= htmlspecialchars($p2Prenom) ?></span>
+            <div class="player-score <?= ($uid === $p2Id) ? 'player-score-me' : '' ?>" id="score-p2" data-uid="<?= $p2Id ?>">
+                <div class="player-name-row">
+                    <span class="player-name"><?= htmlspecialchars($p2Prenom) ?></span>
+                    <span class="turn-dot" id="dot-p2" style="display:<?= ((int)$game['current_turn'] === $p2Id) ? 'inline' : 'none' ?>">●</span>
+                </div>
                 <span class="player-pts" id="pts-p2"><?= $p2Score ?></span>
             </div>
         </div>
@@ -112,12 +148,6 @@ $initialStateJson = json_encode($initialState);
         </div>
     </header>
 
-    <!-- Not my turn banner -->
-    <?php $oppPrenom = ($uid === $p1Id) ? $p2Prenom : $p1Prenom; ?>
-    <div id="wait-banner" class="wait-banner" style="display:<?= $isMyTurn ? 'none' : 'flex' ?>">
-        <div class="wait-spinner-sm"></div>
-        <span>En attente de <?= htmlspecialchars($oppPrenom) ?>…</span>
-    </div>
 
     <!-- Board -->
     <div class="board-wrapper">
@@ -142,7 +172,7 @@ $initialStateJson = json_encode($initialState);
                          data-row="<?= $r ?>"
                          data-col="<?= $c ?>">
                         <?php if ($tileData): ?>
-                            <div class="tile tile-placed" data-row="<?= $r ?>" data-col="<?= $c ?>">
+                            <div class="tile tile-placed<?= !empty($tileData['is_joker']) ? ' tile-joker' : '' ?>" data-row="<?= $r ?>" data-col="<?= $c ?>">
                                 <span class="tile-letter"><?= htmlspecialchars($tileData['letter']) ?></span>
                                 <span class="tile-value"><?= (int)$tileData['value'] ?></span>
                             </div>
@@ -177,6 +207,7 @@ $initialStateJson = json_encode($initialState);
         <div class="rack-controls">
             <button class="btn-rack-ctrl" id="btn-recall" onclick="recallTiles()">Rappeler</button>
             <button class="btn-rack-ctrl" id="btn-shuffle" onclick="shuffleRack()">Mélanger</button>
+            <button class="btn-history" id="btn-history" onclick="openHistoryModal()" title="Historique">📋</button>
         </div>
     </div>
 
@@ -205,6 +236,31 @@ $initialStateJson = json_encode($initialState);
         </div>
     </div>
 
+    <!-- History modal -->
+    <div id="history-modal" class="modal" style="display:none" onclick="closeHistoryModal()">
+        <div class="modal-content history-modal-content" onclick="event.stopPropagation()">
+            <h3>Historique de la partie</h3>
+            <div class="history-table-wrapper">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Joueur</th>
+                            <th>Mot</th>
+                            <th>Pts</th>
+                            <th><?= htmlspecialchars($p1Prenom) ?></th>
+                            <th><?= htmlspecialchars($p2Prenom) ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody"></tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeHistoryModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Joker modal -->
     <div id="joker-modal" class="modal" style="display:none">
         <div class="modal-content">
@@ -227,6 +283,14 @@ $initialStateJson = json_encode($initialState);
                 <button class="btn btn-primary" id="btn-exchange-confirm" onclick="sendExchange()">Échanger</button>
                 <button class="btn btn-secondary" onclick="closeExchangeModal()">Annuler</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Lexika modal -->
+    <div id="lexika-modal" class="modal" style="display:none">
+        <div class="modal-content">
+            <h3>Bravo, vous avez réussi un Lexika&nbsp;!</h3>
+            <button class="btn btn-primary" onclick="closeLexikaModal()">Fermer</button>
         </div>
     </div>
 

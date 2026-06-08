@@ -212,6 +212,37 @@ switch ($action) {
         $bag      = json_decode($game['bag'], true) ?: [];
         $bagCount = count($bag);
 
+        // Build moves history with cumulative scores per player
+        $p1Id = (int)$game['player1_id'];
+        $p2Id = (int)$game['player2_id'];
+        $stMoves = $pdo->prepare(
+            'SELECT m.user_id, m.move_type, m.word, m.score, m.tiles, u.prenom
+             FROM lxk_game_moves m
+             JOIN lxk_users u ON u.id = m.user_id
+             WHERE m.game_id = ?
+             ORDER BY m.id ASC'
+        );
+        $stMoves->execute([$gameId]);
+        $movesHistory = [];
+        $runningScores = [$p1Id => 0, $p2Id => 0];
+        $moveNum = 0;
+        foreach ($stMoves->fetchAll() as $mv) {
+            $moveNum++;
+            $pid = (int)$mv['user_id'];
+            $runningScores[$pid] += (int)$mv['score'];
+            $tileData = json_decode($mv['tiles'] ?? '{}', true);
+            $movesHistory[] = [
+                'move_number'    => $moveNum,
+                'prenom'         => $mv['prenom'],
+                'move_type'      => $mv['move_type'],
+                'word'           => $mv['word'],
+                'score'          => (int)$mv['score'],
+                'score_p1_after' => $runningScores[$p1Id],
+                'score_p2_after' => $runningScores[$p2Id],
+                'exchange_count' => $mv['move_type'] === 'exchange' ? (int)($tileData['count'] ?? 0) : null,
+            ];
+        }
+
         jsonOk([
             'board'               => json_decode($game['board'], true) ?: (object)[],
             'rack'                => $myRack,
@@ -222,6 +253,7 @@ switch ($action) {
             'winner_id'           => $game['winner_id'],
             'last_move'           => $lastMove,
             'last_opponent_move'  => $lastOppMove,
+            'moves_history'       => $movesHistory,
         ]);
     }
 

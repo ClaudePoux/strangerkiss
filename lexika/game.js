@@ -18,6 +18,7 @@ let isFirstMove  = true;
 let lastMoveId        = null; // id du dernier coup connu, pour éviter de re-render si rien n'a changé
 let currentTurnUserId = 0;   // uid du joueur dont c'est le tour
 let lastOpponentMove  = null; // dernier coup adverse pour affichage dans la zone de score
+let movesHistory      = [];  // historique complet des coups (mis à jour au poll)
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 function initGame(state) {
@@ -116,6 +117,9 @@ function pollGameState() {
 
         if (data.last_opponent_move !== undefined) {
             lastOpponentMove = data.last_opponent_move;
+        }
+        if (data.moves_history !== undefined) {
+            movesHistory = data.moves_history;
         }
 
         if (!prevTurn && isMyTurn) {
@@ -890,6 +894,50 @@ function ajaxPost(url, data, callback) {
     .catch(function(err) {
         console.error('AJAX error:', err);
     });
+}
+
+// ── History modal ────────────────────────────────────────────────────────────
+function openHistoryModal() {
+    const tbody = document.getElementById('history-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!movesHistory || movesHistory.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.textContent = 'Aucun coup joué.';
+        td.style.textAlign = 'center';
+        td.style.color = '#888';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+    } else {
+        movesHistory.forEach(function(mv, i) {
+            const tr = document.createElement('tr');
+            if (i % 2 === 1) tr.className = 'history-row-odd';
+
+            let moveText = '';
+            if      (mv.move_type === 'play')     moveText = (mv.word || '').toUpperCase();
+            else if (mv.move_type === 'pass')     moveText = 'Passe';
+            else if (mv.move_type === 'exchange') moveText = 'Échange ' + (mv.exchange_count || '?') + ' lettre' + ((mv.exchange_count || 0) > 1 ? 's' : '');
+            else if (mv.move_type === 'abandon')  moveText = 'Abandon';
+
+            const pts = mv.move_type === 'play' ? '+' + mv.score : '—';
+
+            [mv.move_number, mv.prenom, moveText, pts, mv.score_p1_after, mv.score_p2_after].forEach(function(val) {
+                const td = document.createElement('td');
+                td.textContent = val;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('history-modal').style.display = 'flex';
+}
+
+function closeHistoryModal() {
+    document.getElementById('history-modal').style.display = 'none';
 }
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
