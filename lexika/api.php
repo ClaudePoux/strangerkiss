@@ -267,6 +267,10 @@ switch ($action) {
         $rackRow  = $stRack->fetch();
         $rack     = json_decode($rackRow['rack'] ?? '[]', true) ?: [];
 
+        $logFile = __DIR__ . '/debug_play.log';
+        file_put_contents($logFile, date('H:i:s') . ' RACK AVANT : ' . json_encode($rack) . "\n", FILE_APPEND);
+        file_put_contents($logFile, date('H:i:s') . ' TUILES JOUEES : ' . json_encode($tiles) . "\n", FILE_APPEND);
+
         // Remove played tiles from rack by content (is_joker + letter), not by index.
         // Each splice removes the matched tile from $remainingRack immediately, so a second
         // played tile with the same letter can only match the next distinct copy in the rack.
@@ -283,6 +287,8 @@ switch ($action) {
             }
         }
 
+        file_put_contents($logFile, date('H:i:s') . ' REMAINING RACK : ' . json_encode($remainingRack) . "\n", FILE_APPEND);
+
         // Update board
         foreach ($tiles as $t) {
             $board[$t['row'] . ',' . $t['col']] = [
@@ -298,6 +304,8 @@ switch ($action) {
         $newRack = array_merge($remainingRack, $drawn);
         $bagCount = count($bag);
 
+        file_put_contents($logFile, date('H:i:s') . ' DRAWN : ' . json_encode($drawn) . "\n", FILE_APPEND);
+        file_put_contents($logFile, date('H:i:s') . ' NEW RACK : ' . json_encode($newRack) . "\n---\n", FILE_APPEND);
 
         // Calculate score
         $score      = $result['score'];
