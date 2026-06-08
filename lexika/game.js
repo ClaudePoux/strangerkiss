@@ -119,8 +119,8 @@ function pollGameState() {
         }
 
         if (!prevTurn && isMyTurn) {
-            // Tour changé : mettre à jour le rack et afficher le nouveau plateau
-            currentRack = data.rack || currentRack;
+            // Tour changé : currentRack est déjà à jour via sendPlay (data.new_rack).
+            // Ne pas l'écraser depuis le poll pour ne pas perdre l'ordre local.
             placedTiles = [];
 
             if (!window.isRackDragging) renderRack();
