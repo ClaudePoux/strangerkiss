@@ -267,10 +267,6 @@ switch ($action) {
         $rackRow  = $stRack->fetch();
         $rack     = json_decode($rackRow['rack'] ?? '[]', true) ?: [];
 
-        $logFile = __DIR__ . '/debug_play.log';
-        file_put_contents($logFile, date('H:i:s') . ' RACK AVANT : ' . json_encode($rack) . "\n", FILE_APPEND);
-        file_put_contents($logFile, date('H:i:s') . ' TUILES JOUEES : ' . json_encode($tiles) . "\n", FILE_APPEND);
-
         // Remove played tiles from rack by content (is_joker + letter), not by index.
         // Each splice removes the matched tile from $remainingRack immediately, so a second
         // played tile with the same letter can only match the next distinct copy in the rack.
@@ -278,8 +274,6 @@ switch ($action) {
         foreach ($tiles as $t) {
             $isJoker   = (bool)($t['is_joker'] ?? false);
             $srcLetter = $isJoker ? '' : ($t['source_letter'] ?? $t['letter'] ?? '');
-            file_put_contents($logFile, 'MATCH CHERCHE : letter=' . $srcLetter . ' is_joker=' . ($isJoker ? 'true' : 'false') . "\n", FILE_APPEND);
-            file_put_contents($logFile, 'RACK DISPONIBLE : ' . json_encode($remainingRack) . "\n", FILE_APPEND);
             foreach ($remainingRack as $i => $rackTile) {
                 if ((bool)($rackTile['is_joker'] ?? false) === $isJoker
                     && ($rackTile['letter'] ?? '') === $srcLetter) {
@@ -288,8 +282,6 @@ switch ($action) {
                 }
             }
         }
-
-        file_put_contents($logFile, date('H:i:s') . ' REMAINING RACK : ' . json_encode($remainingRack) . "\n", FILE_APPEND);
 
         // Update board
         foreach ($tiles as $t) {
@@ -305,9 +297,6 @@ switch ($action) {
         $drawn   = drawTiles($bag, min(7 - count($remainingRack), count($bag)));
         $newRack = array_merge($remainingRack, $drawn);
         $bagCount = count($bag);
-
-        file_put_contents($logFile, date('H:i:s') . ' DRAWN : ' . json_encode($drawn) . "\n", FILE_APPEND);
-        file_put_contents($logFile, date('H:i:s') . ' NEW RACK : ' . json_encode($newRack) . "\n---\n", FILE_APPEND);
 
         // Calculate score
         $score      = $result['score'];
