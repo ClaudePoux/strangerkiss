@@ -333,6 +333,23 @@ switch ($action) {
         $gameOver    = checkEndGame($pdo, $updatedGame, $gameId);
 
         if ($gameOver) {
+            // Règle officielle : la somme des tuiles restantes sur chaque chevalet
+            // est retranchée au joueur concerné ET ajoutée au joueur qui a le rack vide.
+            $stRacks = $pdo->prepare('SELECT user_id, rack FROM lxk_game_players WHERE game_id = ?');
+            $stRacks->execute([$gameId]);
+            $rackSums = [];
+            foreach ($stRacks->fetchAll() as $row) {
+                $r = json_decode($row['rack'], true) ?: [];
+                $rackSums[(int)$row['user_id']] = array_sum(array_column($r, 'value'));
+            }
+            foreach ($rackSums as $pid => $sum) {
+                if ($sum === 0) continue;
+                $pdo->prepare('UPDATE lxk_game_players SET score=score-? WHERE game_id=? AND user_id=?')
+                    ->execute([$sum, $gameId, $pid]);
+                $pdo->prepare('UPDATE lxk_game_players SET score=score+? WHERE game_id=? AND user_id!=?')
+                    ->execute([$sum, $gameId, $pid]);
+            }
+
             $winnerId = determineWinner($pdo, $gameId, (int)$game['player1_id'], (int)$game['player2_id']);
             finishGame($pdo, $gameId, $winnerId);
         }
