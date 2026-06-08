@@ -394,11 +394,12 @@ switch ($action) {
             }
         }
 
-        // Put back in bag, shuffle, draw
-        $bag = array_merge($bag, $toExchange);
-        shuffle($bag);
+        // Piocher d'abord, puis remettre les tuiles échangées dans le sac :
+        // ainsi le joueur ne peut jamais récupérer une lettre qu'il vient d'échanger.
         $drawn   = drawTiles($bag, count($toExchange));
         $newRack = array_merge($remaining, $drawn);
+        $bag     = array_merge($bag, $toExchange);
+        shuffle($bag);
 
         $oppId = getOpponentId($game, $uid);
 
