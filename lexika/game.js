@@ -898,6 +898,7 @@ function ajaxPost(url, data, callback) {
 
 // ── History modal ────────────────────────────────────────────────────────────
 function openHistoryModal() {
+    console.log('openHistoryModal called', document.getElementById('history-modal'), document.getElementById('history-tbody'));
     const tbody = document.getElementById('history-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
