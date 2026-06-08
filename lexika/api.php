@@ -278,6 +278,8 @@ switch ($action) {
         foreach ($tiles as $t) {
             $isJoker   = (bool)($t['is_joker'] ?? false);
             $srcLetter = $isJoker ? '' : ($t['source_letter'] ?? '');
+            file_put_contents($logFile, 'MATCH CHERCHE : letter=' . $srcLetter . ' is_joker=' . ($isJoker ? 'true' : 'false') . "\n", FILE_APPEND);
+            file_put_contents($logFile, 'RACK DISPONIBLE : ' . json_encode($remainingRack) . "\n", FILE_APPEND);
             foreach ($remainingRack as $i => $rackTile) {
                 if ((bool)($rackTile['is_joker'] ?? false) === $isJoker
                     && ($rackTile['letter'] ?? '') === $srcLetter) {
