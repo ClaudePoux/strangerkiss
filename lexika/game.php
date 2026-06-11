@@ -78,6 +78,14 @@ if ($oppRow) {
     if ($oppRow['move_type'] === 'play') {
         $lastOppMove['word']  = $oppRow['word'];
         $lastOppMove['score'] = (int)$oppRow['score'];
+        $tileArr = json_decode($oppRow['tiles'] ?? '[]', true) ?: [];
+        $positions = [];
+        foreach ($tileArr as $t) {
+            if (isset($t['row']) && isset($t['col'])) {
+                $positions[] = [(int)$t['row'], (int)$t['col']];
+            }
+        }
+        $lastOppMove['positions'] = $positions;
     } elseif ($oppRow['move_type'] === 'exchange') {
         $td = json_decode($oppRow['tiles'] ?? '{}', true);
         $lastOppMove['count'] = (int)($td['count'] ?? 0);
@@ -102,16 +110,66 @@ $initialState = [
     'lastOpponentMove' => $lastOppMove,
 ];
 
+function getBoardDefinitions(array $board): array {
+    static $defs = null;
+    if ($defs === null) {
+        $path = __DIR__ . '/definitions_ods9.json';
+        $defs = file_exists($path) ? (json_decode(file_get_contents($path), true) ?: []) : [];
+    }
+    $markers = [];
+    for ($r = 0; $r < 15; $r++) {
+        $c = 0;
+        while ($c < 15) {
+            if (!isset($board["$r,$c"])) { $c++; continue; }
+            $s = $c; $w = '';
+            while ($c < 15 && isset($board["$r,$c"])) { $w .= $board["$r,$c"]['letter']; $c++; }
+            if (strlen($w) >= 2) { $u = strtoupper($w); if (isset($defs[$u])) $markers["$r,$s"][] = ['word' => $u, 'definition' => $defs[$u]]; }
+        }
+    }
+    for ($c = 0; $c < 15; $c++) {
+        $r = 0;
+        while ($r < 15) {
+            if (!isset($board["$r,$c"])) { $r++; continue; }
+            $s = $r; $w = '';
+            while ($r < 15 && isset($board["$r,$c"])) { $w .= $board["$r,$c"]['letter']; $r++; }
+            if (strlen($w) >= 2) { $u = strtoupper($w); if (isset($defs[$u])) $markers["$s,$c"][] = ['word' => $u, 'definition' => $defs[$u]]; }
+        }
+    }
+    return $markers;
+}
+
 $bonusSquaresJson = json_encode(BONUS_SQUARES);
+$initialState['definitionMarkers'] = getBoardDefinitions($board);
 $initialStateJson = json_encode($initialState);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Lexika – Partie #<?= $gameId ?></title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .def-dot {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 8px;
+            height: 8px;
+            background: #e53935;
+            border-radius: 50%;
+            pointer-events: none;
+            flex-shrink: 0;
+        }
+        #definition-modal .modal-content { max-width: 320px; }
+        .def-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+        .def-modal-word { font-size: 1.1rem; font-weight: 700; color: #1a3a5c; letter-spacing: 0.04em; }
+        .def-modal-body { font-size: 0.9rem; color: #444; line-height: 1.5; }
+        .def-modal-body p { margin-top: 0.5rem; }
+        .def-modal-close { background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #888; padding: 0; line-height: 1; }
+        .def-modal-close:hover { color: #333; }
+        .last-move { box-shadow: inset 0 0 0 2px #e53935; }
+    </style>
     <link rel="manifest" href="/lexika/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -291,6 +349,17 @@ $initialStateJson = json_encode($initialState);
 
     <script src="drag.js"></script>
     <script src="game.js"></script>
+
+    <!-- Definition modal -->
+    <div id="definition-modal" class="modal" style="display:none" onclick="closeDefinitionModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="def-modal-header">
+                <span class="def-modal-word" id="def-modal-word"></span>
+                <button class="def-modal-close" onclick="closeDefinitionModal()">✕</button>
+            </div>
+            <div class="def-modal-body" id="def-modal-body"></div>
+        </div>
+    </div>
 
     <!-- History modal (en dernier pour échapper aux overflow/stacking des parents) -->
     <div id="history-modal" class="modal" style="display:none" onclick="closeHistoryModal()">

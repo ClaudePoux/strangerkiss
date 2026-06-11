@@ -19,6 +19,8 @@ let lastMoveId        = null; // id du dernier coup connu, pour éviter de re-re
 let currentTurnUserId = 0;   // uid du joueur dont c'est le tour
 let lastOpponentMove  = null; // dernier coup adverse pour affichage dans la zone de score
 let movesHistory      = [];  // historique complet des coups (mis à jour au poll)
+let boardDefinitions  = {};  // "row,col" -> [{word, definition}] pour les tuiles avec définition
+let lastMovePositions = [];  // [[row, col], ...] dernier coup adverse, pour surbrillance
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 function initGame(state) {
@@ -28,6 +30,8 @@ function initGame(state) {
     currentRack       = state.myRack || [];
     currentTurnUserId = state.currentTurn || 0;
     lastOpponentMove  = state.lastOpponentMove || null;
+    boardDefinitions  = state.definitionMarkers || {};
+    lastMovePositions = (state.isMyTurn && state.lastOpponentMove && state.lastOpponentMove.positions) ? state.lastOpponentMove.positions : [];
 
     // Load board from server state
     boardState = {};
@@ -101,6 +105,7 @@ function pollGameState() {
                 };
             }
             isFirstMove = Object.keys(boardState).length === 0 && placedTiles.length === 0;
+            if (data.definition_markers !== undefined) boardDefinitions = data.definition_markers;
 
             renderBoard();
         }
@@ -126,6 +131,7 @@ function pollGameState() {
             // Tour changé : currentRack est déjà à jour via sendPlay (data.new_rack).
             // Ne pas l'écraser depuis le poll pour ne pas perdre l'ordre local.
             placedTiles = [];
+            lastMovePositions = (data.last_opponent_move && data.last_opponent_move.positions) ? data.last_opponent_move.positions : [];
 
             if (!window.isRackDragging) renderRack();
             updateTurnUI();
@@ -145,6 +151,7 @@ function renderBoard() {
     for (const pt of placedTiles) {
         placedMap[pt.row + ',' + pt.col] = pt;
     }
+    const lastMoveSet = new Set(lastMovePositions.map(function(p) { return p[0] + ',' + p[1]; }));
 
     for (let r = 0; r < 15; r++) {
         for (let c = 0; c < 15; c++) {
@@ -163,7 +170,17 @@ function renderBoard() {
                 // Committed tile
                 const t = boardState[key];
                 if (bonusLabel) bonusLabel.style.display = 'none';
-                cell.appendChild(makeTileEl(t.letter, t.value, false, t.isJoker));
+                const tEl = makeTileEl(t.letter, t.value, false, t.isJoker);
+                if (lastMoveSet.has(key)) tEl.classList.add('last-move');
+                const defs = boardDefinitions[key];
+                if (defs && defs.length > 0) {
+                    const dot = document.createElement('span');
+                    dot.className = 'def-dot';
+                    tEl.appendChild(dot);
+                    tEl.style.cursor = 'pointer';
+                    tEl.addEventListener('click', function() { openDefinitionModal(defs); });
+                }
+                cell.appendChild(tEl);
             } else if (placedMap[key]) {
                 // Newly placed tile (not yet committed)
                 const pt = placedMap[key];
@@ -642,6 +659,7 @@ function sendPlay() {
         isMyTurn    = false;
         placedTiles = [];
         isFirstMove = false;
+        lastMovePositions = [];
 
         // Apply played tiles to boardState
         for (const t of tiles) {
@@ -896,6 +914,30 @@ function ajaxPost(url, data, callback) {
     });
 }
 
+// ── Definition modal ─────────────────────────────────────────────────────────
+function openDefinitionModal(entries) {
+    const modal  = document.getElementById('definition-modal');
+    const wordEl = document.getElementById('def-modal-word');
+    const bodyEl = document.getElementById('def-modal-body');
+    if (!modal) return;
+
+    if (entries.length === 1) {
+        wordEl.textContent = entries[0].word;
+        bodyEl.textContent = entries[0].definition;
+    } else {
+        wordEl.textContent = entries.map(function(e) { return e.word; }).join(' / ');
+        bodyEl.innerHTML   = entries.map(function(e) {
+            return '<p><strong>' + e.word + '</strong> — ' + e.definition + '</p>';
+        }).join('');
+    }
+    modal.style.display = 'flex';
+}
+
+function closeDefinitionModal() {
+    const modal = document.getElementById('definition-modal');
+    if (modal) modal.style.display = 'none';
+}
+
 // ── History modal ────────────────────────────────────────────────────────────
 window.openHistoryModal = function openHistoryModal() {
     const tbody = document.getElementById('history-tbody');
@@ -940,7 +982,97 @@ window.closeHistoryModal = function closeHistoryModal() {
     document.getElementById('history-modal').style.display = 'none';
 }
 
+// ── Pinch-to-zoom (Safari gesturestart/gesturechange) ────────────────────────
+// Zoom via CSS transform: scale() sur #board uniquement.
+// Le chevalet, la ligne de score et le bouton Jouer ne sont pas affectés.
+// Le pinch est ignoré si les doigts sont sur le chevalet (#rack / .tile-rack).
+window.isPinching = false;
+
+(function() {
+    var currentScale = 1;  // scale courant appliqué au plateau
+    var startScale   = 1;  // scale au moment du gesturestart
+    var onRack       = false;
+
+    document.addEventListener('gesturestart', function(e) {
+        var rack = document.getElementById('rack');
+        onRack = e.target.classList.contains('tile-rack') ||
+                 (rack && rack.contains(e.target));
+
+        if (onRack) {
+            window.isPinching = false;
+            return;
+        }
+
+        window.isPinching = true;
+        // Lire le scale actuel depuis le transform inline du plateau
+        var board = document.getElementById('board');
+        if (board) {
+            var m = (board.style.transform || '').match(/scale\(([\d.]+)\)/);
+            startScale = m ? parseFloat(m[1]) : 1;
+        }
+    }, { passive: true });
+
+    document.addEventListener('gesturechange', function(e) {
+        if (onRack) return;
+        var board = document.getElementById('board');
+        if (!board) return;
+        // e.scale est relatif au gesturestart ; on le compose avec startScale
+        var newScale = Math.min(2.5, Math.max(0.5, startScale * e.scale));
+        currentScale = newScale;
+        board.style.transform = 'scale(' + newScale + ')';
+    }, { passive: true });
+
+    document.addEventListener('gestureend', function() {
+        window.isPinching = false;
+        onRack = false;
+    }, { passive: true });
+}());
+
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
     initGame(INITIAL_STATE);
+
+    // Fallback pinch-to-zoom via touch events (iPhone / navigateurs sans gesture*)
+    // Coexiste avec les gesture* Safari (iPad) : les deux peuvent être actifs mais
+    // gesture* court-circuite en pratique sur iPad, touch* prend le relais sur iPhone.
+    var board = document.getElementById('board');
+    if (board) {
+        var touchStartDist = 0;
+        var touchStartScale = 1;
+
+        board.addEventListener('touchstart', function(e) {
+            if (e.touches.length !== 2) return;
+            console.log('pinch start');
+            // Vérifier que les deux doigts ne sont pas sur le chevalet
+            var rack = document.getElementById('rack');
+            if (rack) {
+                if (rack.contains(e.touches[0].target) ||
+                    rack.contains(e.touches[1].target)) return;
+            }
+            touchStartDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            var m = (board.style.transform || '').match(/scale\(([\d.]+)\)/);
+            touchStartScale = m ? parseFloat(m[1]) : 1;
+            window.isPinching = true;
+        }, { passive: true });
+
+        board.addEventListener('touchmove', function(e) {
+            if (!window.isPinching || e.touches.length !== 2) return;
+            e.preventDefault();
+            var dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            var newScale = Math.min(2.5, Math.max(0.5, touchStartScale * (dist / touchStartDist)));
+            board.style.transform = 'scale(' + newScale + ')';
+        }, { passive: false });
+
+        board.addEventListener('touchend', function(e) {
+            if (e.touches.length < 2) {
+                window.isPinching = false;
+            }
+        }, { passive: true });
+    }
 });

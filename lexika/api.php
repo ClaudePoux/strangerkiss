@@ -5,6 +5,86 @@ require_once __DIR__ . '/lexika-config.php';
 sessionStart();
 header('Content-Type: application/json; charset=utf-8');
 
+// ── Debug scan (temporaire) ───────────────────────────────────────────────────
+if (($_GET['action'] ?? '') === 'debug_scan' && ($_GET['secret'] ?? '') === 'lexdbg15') {
+    $gameId = (int)($_GET['game_id'] ?? 0);
+    $pdo    = getDB();
+    $st     = $pdo->prepare('SELECT board FROM lxk_games WHERE id = ?');
+    $st->execute([$gameId]);
+    $row    = $st->fetch();
+    $board  = $row ? (json_decode($row['board'], true) ?: []) : [];
+
+    $defsPath         = __DIR__ . '/definitions_ods9.json';
+    $defsPathResolved = realpath($defsPath);
+    $defsExists       = file_exists($defsPath);
+    $defsSize         = $defsExists ? filesize($defsPath) : null;
+    $defs             = $defsExists ? (json_decode(file_get_contents($defsPath), true) ?: []) : [];
+
+    $out = [
+        'game_id'      => $gameId,
+        'tile_count'   => count($board),
+        'path_info'    => [
+            '__DIR__'       => __DIR__,
+            'defs_path_raw' => $defsPath,
+            'defs_resolved' => $defsPathResolved ?: '(realpath failed — fichier introuvable)',
+            'defs_exists'   => $defsExists,
+            'defs_size'     => $defsSize,
+        ],
+        'defs_loaded'  => count($defs),
+        'tiles'        => [], 'warnings' => [], 'h_words' => [], 'v_words' => [], 'markers' => [],
+    ];
+
+    ksort($board);
+    foreach ($board as $key => $tile) {
+        $letter = $tile['letter'] ?? '';
+        $isJoker = !empty($tile['is_joker']);
+        $warn = ($letter === '' && $isJoker) ? 'LETTRE VIDE SUR JOKER' : null;
+        if ($warn) $out['warnings'][] = "$key: $warn";
+        $out['tiles'][$key] = ['letter' => $letter, 'value' => $tile['value'], 'is_joker' => $isJoker];
+    }
+
+    $markers = [];
+    // H
+    for ($r = 0; $r < 15; $r++) {
+        $c = 0;
+        while ($c < 15) {
+            if (!isset($board["$r,$c"])) { $c++; continue; }
+            $s = $c; $w = '';
+            while ($c < 15 && isset($board["$r,$c"])) {
+                $l = $board["$r,$c"]['letter'] ?? '';
+                if ($l === '' && !empty($board["$r,$c"]['is_joker'])) { $l = '?'; }
+                $w .= $l; $c++;
+            }
+            if (strlen($w) >= 2) {
+                $u = strtoupper($w);
+                $out['h_words'][] = ['pos' => "$r,$s", 'word' => $u, 'has_def' => isset($defs[$u])];
+                if (isset($defs[$u])) $markers["$r,$s"][] = ['word' => $u, 'definition' => $defs[$u]];
+            }
+        }
+    }
+    // V
+    for ($c = 0; $c < 15; $c++) {
+        $r = 0;
+        while ($r < 15) {
+            if (!isset($board["$r,$c"])) { $r++; continue; }
+            $s = $r; $w = '';
+            while ($r < 15 && isset($board["$r,$c"])) {
+                $l = $board["$r,$c"]['letter'] ?? '';
+                if ($l === '' && !empty($board["$r,$c"]['is_joker'])) { $l = '?'; }
+                $w .= $l; $r++;
+            }
+            if (strlen($w) >= 2) {
+                $u = strtoupper($w);
+                $out['v_words'][] = ['pos' => "$s,$c", 'word' => $u, 'has_def' => isset($defs[$u])];
+                if (isset($defs[$u])) $markers["$s,$c"][] = ['word' => $u, 'definition' => $defs[$u]];
+            }
+        }
+    }
+    $out['markers'] = $markers;
+    echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // Auth check
 if (empty($_SESSION['user_id'])) {
     http_response_code(401);
@@ -88,6 +168,34 @@ function determineWinner(PDO $pdo, int $gameId, int $p1Id, int $p2Id): int {
     $s2 = $scores[$p2Id] ?? 0;
     if ($s1 >= $s2) return $p1Id;
     return $p2Id;
+}
+
+function getBoardDefinitions(array $board): array {
+    static $defs = null;
+    if ($defs === null) {
+        $path = __DIR__ . '/definitions_ods9.json';
+        $defs = file_exists($path) ? (json_decode(file_get_contents($path), true) ?: []) : [];
+    }
+    $markers = [];
+    for ($r = 0; $r < 15; $r++) {
+        $c = 0;
+        while ($c < 15) {
+            if (!isset($board["$r,$c"])) { $c++; continue; }
+            $s = $c; $w = '';
+            while ($c < 15 && isset($board["$r,$c"])) { $w .= $board["$r,$c"]['letter']; $c++; }
+            if (strlen($w) >= 2) { $u = strtoupper($w); if (isset($defs[$u])) $markers["$r,$s"][] = ['word' => $u, 'definition' => $defs[$u]]; }
+        }
+    }
+    for ($c = 0; $c < 15; $c++) {
+        $r = 0;
+        while ($r < 15) {
+            if (!isset($board["$r,$c"])) { $r++; continue; }
+            $s = $r; $w = '';
+            while ($r < 15 && isset($board["$r,$c"])) { $w .= $board["$r,$c"]['letter']; $r++; }
+            if (strlen($w) >= 2) { $u = strtoupper($w); if (isset($defs[$u])) $markers["$s,$c"][] = ['word' => $u, 'definition' => $defs[$u]]; }
+        }
+    }
+    return $markers;
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -203,6 +311,14 @@ switch ($action) {
             if ($oppRow['move_type'] === 'play') {
                 $lastOppMove['word']  = $oppRow['word'];
                 $lastOppMove['score'] = (int)$oppRow['score'];
+                $tileArr = json_decode($oppRow['tiles'] ?? '[]', true) ?: [];
+                $positions = [];
+                foreach ($tileArr as $t) {
+                    if (isset($t['row']) && isset($t['col'])) {
+                        $positions[] = [(int)$t['row'], (int)$t['col']];
+                    }
+                }
+                $lastOppMove['positions'] = $positions;
             } elseif ($oppRow['move_type'] === 'exchange') {
                 $td = json_decode($oppRow['tiles'] ?? '{}', true);
                 $lastOppMove['count'] = (int)($td['count'] ?? 0);
@@ -243,8 +359,9 @@ switch ($action) {
             ];
         }
 
+        $rawBoard = json_decode($game['board'], true) ?: [];
         jsonOk([
-            'board'               => json_decode($game['board'], true) ?: (object)[],
+            'board'               => $rawBoard ?: (object)[],
             'rack'                => $myRack,
             'scores'              => $scores,
             'current_turn'        => (int)$game['current_turn'],
@@ -254,6 +371,7 @@ switch ($action) {
             'last_move'           => $lastMove,
             'last_opponent_move'  => $lastOppMove,
             'moves_history'       => $movesHistory,
+            'definition_markers'  => getBoardDefinitions($rawBoard),
         ]);
     }
 
