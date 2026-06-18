@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['login']   = $user['login'];
                 $_SESSION['prenom']  = $user['prenom'];
                 $_SESSION['role']    = $user['role'];
+                setRememberToken((int)$user['id']);
                 if ($_SESSION['role'] === 'admin') {
                     header('Location: ' . BASE_URL . '/admin.php');
                 } else {
@@ -51,18 +52,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lexika – Connexion</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+    .lx-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        margin-bottom: 24px;
+    }
+    .lx-tile {
+        position: relative;
+        width: 46px;
+        height: 50px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1;
+        flex-shrink: 0;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.28);
+    }
+    .lx-pts {
+        position: absolute;
+        bottom: 3px;
+        right: 4px;
+        font-family: system-ui, sans-serif;
+        font-size: 8px;
+        font-weight: 700;
+        opacity: 0.55;
+        line-height: 1;
+    }
+    .lx-L { background: #f5ead8; color: #2b1f10; transform: rotate(-4deg); }
+    .lx-E { background: #cc2200; color: #fff;    transform: rotate( 3deg); }
+    .lx-X { background: #f5ead8; color: #2b1f10; transform: rotate(-5deg); }
+    .lx-I { background: #1a3a6b; color: #fff;    transform: rotate( 4deg); }
+    .lx-K { background: #cc2200; color: #fff;    transform: rotate(-3deg); }
+    .lx-A { background: #e8770d; color: #fff;    transform: rotate( 5deg); }
+    .lx-L .lx-pts, .lx-X .lx-pts { color: #2b1f10; }
+    </style>
+    <link rel="manifest" href="/lexika/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Lexika">
+    <link rel="apple-touch-icon" href="/lexika/icons/icon-180.png">
+    <meta name="theme-color" content="#1a3a5c">
+    <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body class="login-body">
     <div class="login-container">
         <div class="login-card">
-            <div class="login-logo">
-                <span class="logo-tile">L</span>
-                <span class="logo-tile">E</span>
-                <span class="logo-tile">X</span>
-                <span class="logo-tile">I</span>
-                <span class="logo-tile">K</span>
-                <span class="logo-tile">A</span>
+            <div class="lx-logo">
+                <div class="lx-tile lx-L">L<span class="lx-pts">1</span></div>
+                <div class="lx-tile lx-E">E<span class="lx-pts">1</span></div>
+                <div class="lx-tile lx-X">X<span class="lx-pts">10</span></div>
+                <div class="lx-tile lx-I">I<span class="lx-pts">1</span></div>
+                <div class="lx-tile lx-K">K<span class="lx-pts">10</span></div>
+                <div class="lx-tile lx-A">A<span class="lx-pts">1</span></div>
             </div>
             <h1 class="login-title">Connexion</h1>
 

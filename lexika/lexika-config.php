@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-ini_set('display_errors', '1');
-error_reporting(E_ALL);
+// ini_set('display_errors', '1');
+// error_reporting(E_ALL);
 
 // ── Base URL ─────────────────────────────────────────────────────────────────
 define('BASE_URL', '/lexika');
@@ -35,6 +35,9 @@ define('ADMIN_PASSWORD_HASH', '$2y$12$BqmHiYrbaB5bkhch3AZHHe63fIUHvQyUnu918IAyVP
 // Mot de passe par défaut : lexika2026!  — à changer via makehash.php
 
 // ── Session helpers — joueurs ─────────────────────────────────────────────────
+define('REMEMBER_COOKIE', 'lxk_remember');
+define('REMEMBER_DAYS',   90);
+
 function sessionStart(): void {
     if (session_status() === PHP_SESSION_NONE) {
         session_name('lexika_session');
@@ -42,9 +45,54 @@ function sessionStart(): void {
     }
 }
 
+function setRememberToken(int $userId): void {
+    $token   = bin2hex(random_bytes(32)); // 64 hex chars, raw value stored in cookie
+    $hashed  = hash('sha256', $token);    // only the hash goes in the DB
+    $expires = date('Y-m-d H:i:s', time() + REMEMBER_DAYS * 86400);
+
+    getDB()->prepare('UPDATE lxk_users SET remember_token = ?, remember_expires = ? WHERE id = ?')
+           ->execute([$hashed, $expires, $userId]);
+
+    setcookie(REMEMBER_COOKIE, $token, [
+        'expires'  => time() + REMEMBER_DAYS * 86400,
+        'path'     => BASE_URL . '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+function checkRememberToken(): bool {
+    $token = $_COOKIE[REMEMBER_COOKIE] ?? '';
+    if ($token === '') return false;
+
+    $hashed = hash('sha256', $token);
+    $stmt   = getDB()->prepare(
+        'SELECT id, login, prenom, role FROM lxk_users
+          WHERE remember_token = ? AND remember_expires > NOW() LIMIT 1'
+    );
+    $stmt->execute([$hashed]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        // Cookie invalide ou expiré — on le supprime
+        setcookie(REMEMBER_COOKIE, '', ['expires' => 1, 'path' => BASE_URL . '/', 'httponly' => true, 'samesite' => 'Lax']);
+        return false;
+    }
+
+    session_regenerate_id(true);
+    $_SESSION['user_id'] = $user['id'];
+    $_SESSION['login']   = $user['login'];
+    $_SESSION['prenom']  = $user['prenom'];
+    $_SESSION['role']    = $user['role'];
+
+    // Rotation du token à chaque reconnexion automatique
+    setRememberToken((int)$user['id']);
+    return true;
+}
+
 function requireLogin(): void {
     sessionStart();
-    if (empty($_SESSION['user_id'])) {
+    if (empty($_SESSION['user_id']) && !checkRememberToken()) {
         header('Location: ' . BASE_URL . '/login.php');
         exit;
     }
@@ -52,10 +100,11 @@ function requireLogin(): void {
 
 // ── Session helpers — admin (session séparée, indépendante) ──────────────────
 function adminSessionStart(): void {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_name('lexika_admin_session');
-        session_start();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
     }
+    session_name('lexika_admin_session');
+    session_start();
 }
 
 function requireAdminSession(): void {
@@ -367,10 +416,17 @@ function validateMove(array $board, array $newTiles, bool $isFirstMove): array {
     // Validate all formed words against dictionary
     $dict = loadDictionary();
     if (!empty($dict)) { // only validate if dictionary is loaded
+        $invalidWords = [];
         foreach ($formedWords as $w) {
             if (!isset($dict[strtoupper($w)])) {
-                return $err('"' . $w . '" n\'est pas dans le dictionnaire ODS.');
+                $invalidWords[] = strtoupper($w);
             }
+        }
+        if (!empty($invalidWords)) {
+            return array_merge(
+                $err('Mot(s) invalide(s) : ' . implode(', ', $invalidWords)),
+                ['invalid_words' => $invalidWords]
+            );
         }
     }
 
