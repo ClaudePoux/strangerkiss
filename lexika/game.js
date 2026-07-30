@@ -30,8 +30,9 @@ function initGame(state) {
     currentRack       = state.myRack || [];
     currentTurnUserId = state.currentTurn || 0;
     lastOpponentMove  = state.lastOpponentMove || null;
+    movesHistory      = state.moves_history || [];
     boardDefinitions  = state.definitionMarkers || {};
-    lastMovePositions = (state.isMyTurn && state.lastOpponentMove && state.lastOpponentMove.positions) ? state.lastOpponentMove.positions : [];
+    lastMovePositions = (state.lastOpponentMove && state.lastOpponentMove.positions && state.lastOpponentMove.positions.length > 0) ? state.lastOpponentMove.positions : [];
 
     // Load board from server state
     boardState = {};
@@ -93,6 +94,9 @@ function pollGameState() {
         if (newMoveId !== lastMoveId) {
             lastMoveId = newMoveId;
 
+            // Remettre les tuiles temporaires sur le chevalet avant de mettre à jour le plateau
+            placedTiles = [];
+
             // Reload board uniquement si un nouveau coup a été joué
             boardState = {};
             const rawBoard = data.board || {};
@@ -133,6 +137,7 @@ function pollGameState() {
             placedTiles = [];
             lastMovePositions = (data.last_opponent_move && data.last_opponent_move.positions) ? data.last_opponent_move.positions : [];
 
+            renderBoard(); // re-render avec les lastMovePositions à jour
             if (!window.isRackDragging) renderRack();
             updateTurnUI();
             showPreviewScore(); // affiche le dernier coup adverse
@@ -262,21 +267,41 @@ function renderScores(state) {
         const p = (uid == state.p1?.id || uid == INITIAL_STATE.p1?.id) ? 'p1' : 'p2';
         const el = document.getElementById('pts-' + p);
         if (el) el.textContent = info.score;
+        const lx = document.getElementById('lexika-' + p);
+        if (lx) lx.textContent = info.lexika_count > 0 ? '⭐' + info.lexika_count : '';
     }
     // Also try direct p1/p2 objects
     if (state.p1) {
         const el = document.getElementById('pts-p1');
         if (el) el.textContent = state.p1.score;
+        const lx = document.getElementById('lexika-p1');
+        if (lx && state.p1.lexika_count !== undefined) lx.textContent = state.p1.lexika_count > 0 ? '⭐' + state.p1.lexika_count : '';
     }
     if (state.p2) {
         const el = document.getElementById('pts-p2');
         if (el) el.textContent = state.p2.score;
+        const lx = document.getElementById('lexika-p2');
+        if (lx && state.p2.lexika_count !== undefined) lx.textContent = state.p2.lexika_count > 0 ? '⭐' + state.p2.lexika_count : '';
+    }
+
+    const oppRackCount = state.opp_rack_count !== undefined ? state.opp_rack_count : null;
+    const oppP = (MY_USER_ID === INITIAL_STATE.p1?.id) ? 'p2' : 'p1';
+    const rcEl = document.getElementById('rack-count-' + oppP);
+    if (rcEl) {
+        if (oppRackCount !== null) {
+            const n = parseInt(oppRackCount, 10);
+            rcEl.textContent = '(' + n + ' lettre' + (n > 1 ? 's' : '') + ' restante' + (n > 1 ? 's' : '') + ')';
+        } else {
+            rcEl.textContent = '';
+        }
     }
 }
 
 function updateBagCount(n) {
     const el = document.getElementById('bag-count-display');
     if (el) el.textContent = n;
+    const btnEx = document.getElementById('btn-burger-exchange');
+    if (btnEx) btnEx.disabled = (n < 7);
 }
 
 function updateTurnUI() {
@@ -687,8 +712,12 @@ function sendPlay() {
         }
 
         if (data.game_over) {
-            setTimeout(() => pollGameState(), 600);
+            stopPolling();
+            updateTurnUI();
+            showGameOver(data);
         } else {
+            // Premier poll immédiat pour mettre à jour opp_rack_count si le sac vient de se vider
+            if (data.bag_count === 0) pollGameState();
             startPolling();
         }
     });
@@ -704,6 +733,10 @@ function recallTiles() {
 
 // ── Exchange ──────────────────────────────────────────────────────────────────
 function openExchangeModal() {
+    if (bagCount < 7) {
+        showNotification('Pas assez de lettres dans le sac (minimum 7)', 'error');
+        return;
+    }
     const container = document.getElementById('exchange-rack');
     if (!container) return;
     container.innerHTML = '';
@@ -730,20 +763,24 @@ function closeExchangeModal() {
 }
 
 function sendExchange() {
-    const selected = Array.from(
+    const selectedElements = Array.from(
         document.querySelectorAll('.exchange-tile.selected')
-    ).map(el => parseInt(el.dataset.index, 10));
+    );
 
-    if (selected.length === 0) {
+    if (selectedElements.length === 0) {
         showNotification('Sélectionnez au moins une tuile.', 'error');
         return;
     }
 
+    const tilesToExchange = selectedElements.map(
+        el => currentRack[parseInt(el.dataset.index, 10)]
+    );
+
     closeExchangeModal();
 
     ajaxPost('api.php?action=exchange', {
-        game_id:      GAME_ID,
-        tile_indices: JSON.stringify(selected),
+        game_id:           GAME_ID,
+        tiles_to_exchange: JSON.stringify(tilesToExchange),
     }, function(data) {
         if (!data.success) {
             showNotification(data.error || 'Erreur', 'error');
@@ -956,7 +993,8 @@ window.openHistoryModal = function openHistoryModal() {
     } else {
         movesHistory.forEach(function(mv, i) {
             const tr = document.createElement('tr');
-            if (i % 2 === 1) tr.className = 'history-row-odd';
+            if (mv.is_lexika) tr.classList.add('lexika-row');
+            else if (i % 2 === 1) tr.classList.add('history-row-odd');
 
             let moveText = '';
             if      (mv.move_type === 'play')     moveText = (mv.word || '').toUpperCase();

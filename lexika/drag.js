@@ -57,6 +57,7 @@ function onRackMouseDown(e) {
 }
 
 function onRackTouchStart(e) {
+    if (window.isPinching) return;
     if (e.touches.length !== 1) return;
     e.preventDefault();
     const el = e.currentTarget;
@@ -93,6 +94,7 @@ function startDragFromRack(el, x, y) {
         sourceEl:  el,
     };
 
+    window.isRackDragging = true;
     attachDragListeners();
 }
 
@@ -105,6 +107,7 @@ function onBoardTileMouseDown(e) {
 }
 
 function onBoardTileTouchStart(e) {
+    if (window.isPinching) return;
     if (e.touches.length !== 1) return;
     e.preventDefault();
     const el = e.currentTarget;
@@ -141,6 +144,7 @@ function startDragFromBoard(el, x, y) {
         sourceEl:  el,
     };
 
+    window.isRackDragging = true;
     attachDragListeners();
 }
 
@@ -320,6 +324,7 @@ function cleanupDrag() {
     }
     clearDropHighlights();
     detachDragListeners();
+    window.isRackDragging = false;
     dragState = null;
     // Rebind new board tiles after any drop
     setTimeout(rebindBoardNewTiles, 50);

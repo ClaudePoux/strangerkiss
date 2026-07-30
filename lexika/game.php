@@ -44,6 +44,15 @@ foreach ($gpRows as $gp) {
     $gpMap[$gp['user_id']] = $gp;
 }
 
+$stLxk = $pdo->prepare(
+    'SELECT user_id, COUNT(*) AS cnt FROM lxk_lexika WHERE game_id = ? GROUP BY user_id'
+);
+$stLxk->execute([$gameId]);
+$initLexikaCounts = [];
+foreach ($stLxk->fetchAll() as $lx) {
+    $initLexikaCounts[(int)$lx['user_id']] = (int)$lx['cnt'];
+}
+
 $p1Id     = (int)$game['player1_id'];
 $p2Id     = (int)$game['player2_id'];
 $p1Prenom = $game['p1_prenom'];
@@ -94,11 +103,53 @@ if ($oppRow) {
 
 $isMyTurn = ((int)$game['current_turn'] === $uid);
 
+$oppId = ($uid === $p1Id) ? $p2Id : $p1Id;
+$oppRackCount = null;
+if ($bagCount === 0 && isset($gpMap[$oppId])) {
+    $oppRackCount = count(json_decode($gpMap[$oppId]['rack'] ?? '[]', true) ?: []);
+}
+
+// Build moves history for initial page load (same logic as api.php poll)
+$stMovesInit = $pdo->prepare(
+    'SELECT m.user_id, m.move_type, m.word, m.score, m.tiles, u.prenom,
+            (lx.id IS NOT NULL) AS is_lexika
+     FROM lxk_game_moves m
+     JOIN lxk_users u ON u.id = m.user_id
+     LEFT JOIN lxk_lexika lx
+            ON lx.game_id = m.game_id
+           AND lx.user_id = m.user_id
+           AND lx.word COLLATE utf8mb4_unicode_ci <=> m.word
+           AND lx.score   = m.score
+     WHERE m.game_id = ?
+     ORDER BY m.id ASC'
+);
+$stMovesInit->execute([$gameId]);
+$initMovesHistory  = [];
+$initRunningScores = [$p1Id => 0, $p2Id => 0];
+$initMoveNum       = 0;
+foreach ($stMovesInit->fetchAll() as $mv) {
+    $initMoveNum++;
+    $pid = (int)$mv['user_id'];
+    $initRunningScores[$pid] += (int)$mv['score'];
+    $tileData = json_decode($mv['tiles'] ?? '{}', true);
+    $initMovesHistory[] = [
+        'move_number'    => $initMoveNum,
+        'prenom'         => $mv['prenom'],
+        'move_type'      => $mv['move_type'],
+        'word'           => $mv['word'],
+        'score'          => (int)$mv['score'],
+        'score_p1_after' => $initRunningScores[$p1Id],
+        'score_p2_after' => $initRunningScores[$p2Id],
+        'exchange_count' => $mv['move_type'] === 'exchange' ? (int)($tileData['count'] ?? 0) : null,
+        'is_lexika'      => (bool)$mv['is_lexika'],
+    ];
+}
+
 $initialState = [
     'gameId'           => $gameId,
     'myUserId'         => $uid,
-    'p1'               => ['id' => $p1Id, 'prenom' => $p1Prenom, 'score' => $p1Score],
-    'p2'               => ['id' => $p2Id, 'prenom' => $p2Prenom, 'score' => $p2Score],
+    'p1'               => ['id' => $p1Id, 'prenom' => $p1Prenom, 'score' => $p1Score, 'lexika_count' => $initLexikaCounts[$p1Id] ?? 0],
+    'p2'               => ['id' => $p2Id, 'prenom' => $p2Prenom, 'score' => $p2Score, 'lexika_count' => $initLexikaCounts[$p2Id] ?? 0],
     'board'            => $board,
     'myRack'           => $myRack,
     'bagCount'         => $bagCount,
@@ -108,6 +159,8 @@ $initialState = [
     'lastMove'         => $lastMove ?: null,
     'isMyTurn'         => $isMyTurn,
     'lastOpponentMove' => $lastOppMove,
+    'moves_history'    => $initMovesHistory,
+    'opp_rack_count'   => $oppRackCount,
 ];
 
 function getBoardDefinitions(array $board): array {
@@ -168,7 +221,9 @@ $initialStateJson = json_encode($initialState);
         .def-modal-body p { margin-top: 0.5rem; }
         .def-modal-close { background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #888; padding: 0; line-height: 1; }
         .def-modal-close:hover { color: #333; }
-        .last-move { box-shadow: inset 0 0 0 2px #e53935; }
+        .last-move { box-shadow: inset 0 0 0 3px #e53935; }
+        .lexika-row td { color: #e53935; font-weight: bold; }
+        .player-lexika { font-size: 0.65rem; color: #f9a825; min-height: 1em; display: block; line-height: 1; margin-top: 1px; }
     </style>
     <link rel="manifest" href="/lexika/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -186,18 +241,20 @@ $initialStateJson = json_encode($initialState);
         <div class="game-scores">
             <div class="player-score <?= ($uid === $p1Id) ? 'player-score-me' : '' ?>" id="score-p1" data-uid="<?= $p1Id ?>">
                 <div class="player-name-row">
-                    <span class="player-name"><?= htmlspecialchars($p1Prenom) ?></span>
+                    <span class="player-name" style="position:relative;display:inline-block"><?= htmlspecialchars($p1Prenom) ?><span class="player-si" id="rack-count-p1" style="position:absolute;right:calc(100% + 12px);left:auto;top:50%;transform:translateY(-50%);white-space:nowrap;padding-right:4px"></span></span>
                     <span class="turn-dot" id="dot-p1" style="display:<?= ((int)$game['current_turn'] === $p1Id) ? 'inline' : 'none' ?>">●</span>
                 </div>
                 <span class="player-pts" id="pts-p1"><?= $p1Score ?></span>
+                <span class="player-lexika" id="lexika-p1"><?= ($initLexikaCounts[$p1Id] ?? 0) > 0 ? '⭐' . ($initLexikaCounts[$p1Id] ?? 0) : '' ?></span>
             </div>
             <div class="score-divider">vs</div>
             <div class="player-score <?= ($uid === $p2Id) ? 'player-score-me' : '' ?>" id="score-p2" data-uid="<?= $p2Id ?>">
                 <div class="player-name-row">
-                    <span class="player-name"><?= htmlspecialchars($p2Prenom) ?></span>
+                    <span class="player-name" style="position:relative;display:inline-block"><?= htmlspecialchars($p2Prenom) ?><span class="player-si" id="rack-count-p2" style="position:absolute;left:calc(100% + 12px);top:50%;transform:translateY(-50%);white-space:nowrap;padding-left:4px"></span></span>
                     <span class="turn-dot" id="dot-p2" style="display:<?= ((int)$game['current_turn'] === $p2Id) ? 'inline' : 'none' ?>">●</span>
                 </div>
                 <span class="player-pts" id="pts-p2"><?= $p2Score ?></span>
+                <span class="player-lexika" id="lexika-p2"><?= ($initLexikaCounts[$p2Id] ?? 0) > 0 ? '⭐' . ($initLexikaCounts[$p2Id] ?? 0) : '' ?></span>
             </div>
         </div>
         <div class="bag-count">
@@ -287,7 +344,7 @@ $initialStateJson = json_encode($initialState);
     <!-- Burger menu -->
     <div id="burger-menu" class="burger-menu" style="display:none" onclick="closeBurgerMenu()">
         <div class="burger-sheet" onclick="event.stopPropagation()">
-            <button class="burger-option" onclick="closeBurgerMenu(); openExchangeModal()">Changer mes lettres</button>
+            <button class="burger-option" id="btn-burger-exchange" <?= $bagCount < 7 ? 'disabled' : '' ?> onclick="closeBurgerMenu(); openExchangeModal()">Changer mes lettres</button>
             <button class="burger-option" onclick="closeBurgerMenu(); sendPass()">Passer mon tour</button>
             <button class="burger-option burger-option-danger" onclick="closeBurgerMenu(); sendAbandon()">Abandonner la partie</button>
             <button class="burger-option burger-option-cancel" onclick="closeBurgerMenu()">Annuler</button>
@@ -336,6 +393,46 @@ $initialStateJson = json_encode($initialState);
         </div>
     </div>
 
+    <!-- Pending review banner (adversaire du dernier coup — bandeau bas, sans overlay) -->
+    <?php if ($game['status'] === 'pending_review' && $isMyTurn):
+        $prWinnerId = (int)($game['winner_id'] ?? 0);
+        $myScore    = ($uid === $p1Id) ? $p1Score : $p2Score;
+        $oppScore   = ($uid === $p1Id) ? $p2Score : $p1Score;
+        $oppPrenom  = ($uid === $p1Id) ? $p2Prenom : $p1Prenom;
+        if ($prWinnerId === $uid) {
+            $prTitle = 'Victoire&nbsp;!';
+            $prBody  = 'Vous avez remporté la partie ' . $myScore . '&nbsp;–&nbsp;' . $oppScore
+                     . ' contre ' . htmlspecialchars($oppPrenom) . '.';
+        } elseif ($prWinnerId) {
+            $prTitle = 'Défaite';
+            $prBody  = 'Vous avez perdu ' . $myScore . '&nbsp;–&nbsp;' . $oppScore
+                     . ' contre ' . htmlspecialchars($oppPrenom) . '.';
+        } else {
+            $prTitle = 'Match nul';
+            $prBody  = 'La partie s\'est terminée sur un match nul '
+                     . $myScore . '&nbsp;–&nbsp;' . $oppScore . '.';
+        }
+    ?>
+    <div id="pending-review-banner" style="position:fixed;bottom:0;left:0;right:0;z-index:9000;background:#fff;border-top:3px solid #1a3a5c;padding:0.85rem 1.2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 -4px 20px rgba(0,0,0,0.18);">
+        <div>
+            <div style="font-size:1rem;font-weight:700;color:#1a3a5c;"><?= $prTitle ?></div>
+            <div style="font-size:0.85rem;color:#555;margin-top:0.2rem;"><?= $prBody ?></div>
+        </div>
+        <button class="btn btn-primary" id="btn-acknowledge" style="flex-shrink:0;white-space:nowrap;">OK</button>
+    </div>
+    <script>
+    document.getElementById('btn-acknowledge').addEventListener('click', function() {
+        this.disabled = true;
+        fetch('api.php', {
+            method: 'POST',
+            body: new URLSearchParams({ action: 'acknowledge_game', game_id: <?= $gameId ?> }),
+        })
+        .then(function(r) { return r.json(); })
+        .finally(function() { window.location.href = 'index.php'; });
+    });
+    </script>
+    <?php endif; ?>
+
     <!-- Toast notifications -->
     <div id="toast-container" class="toast-container"></div>
 
@@ -347,8 +444,42 @@ $initialStateJson = json_encode($initialState);
         const INITIAL_STATE = <?= $initialStateJson ?>;
     </script>
 
+    <?php if ($game['status'] === 'pending_review' && !$isMyTurn): ?>
+    <script>
+        /* Empêche game.js de démarrer le polling — initGame verra status='finished' */
+        INITIAL_STATE.status = 'finished';
+    </script>
+    <?php endif; ?>
     <script src="drag.js"></script>
     <script src="game.js"></script>
+    <?php if ($game['status'] === 'pending_review' && !$isMyTurn):
+        /* Résultat calculé côté PHP pour éviter la confusion winnerId/winner_id */
+        $goWinnerId = (int)($game['winner_id'] ?? 0);
+        if ($goWinnerId === $uid) {
+            $goTitle = 'Victoire&nbsp;!';
+            $goBody  = 'Félicitations, vous avez gagné cette partie.';
+        } elseif ($goWinnerId) {
+            $goTitle = 'Défaite';
+            $goBody  = 'Votre adversaire a remporté la partie.';
+        } else {
+            $goTitle = 'Match nul';
+            $goBody  = 'La partie s\'est terminée sur un match nul.';
+        }
+    ?>
+    <script>
+        /* Ce handler s'enregistre après game.js → s'exécute après initGame/showGameOver
+           et écrase le contenu de la modale avec les valeurs PHP correctes */
+        document.addEventListener('DOMContentLoaded', function () {
+            var t = document.getElementById('gameover-title');
+            var b = document.getElementById('gameover-body');
+            var m = document.getElementById('gameover-modal');
+            if (!m) return;
+            if (t) t.innerHTML   = <?= json_encode($goTitle) ?>;
+            if (b) b.textContent = <?= json_encode($goBody) ?>;
+            m.style.display = 'flex';
+        });
+    </script>
+    <?php endif; ?>
 
     <!-- Definition modal -->
     <div id="definition-modal" class="modal" style="display:none" onclick="closeDefinitionModal()">

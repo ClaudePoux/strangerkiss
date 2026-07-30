@@ -57,6 +57,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Change password
+    if ($postAction === 'change_password') {
+        $targetId = (int)($_POST['target_id'] ?? 0);
+        $password = trim($_POST['new_password'] ?? '');
+        if ($targetId > 0 && $password !== '') {
+            $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+            $pdo->prepare('UPDATE lxk_users SET password=? WHERE id=?')->execute([$hash, $targetId]);
+            $success = 'Mot de passe mis à jour.';
+        } else {
+            $error = 'Mot de passe vide.';
+        }
+    }
+
     // Delete user
     if ($postAction === 'delete_user') {
         $delId = (int)($_POST['del_id'] ?? 0);
@@ -108,6 +121,45 @@ $logs = $pdo->query(
      LIMIT 50'
 )->fetchAll();
 
+$playerStats = $pdo->query(
+    'SELECT u.prenom,
+            COALESCE(s.games_played, 0) AS games_played,
+            COALESCE(s.cumul_score,  0) AS cumul_score,
+            u.total_moves,
+            CASE WHEN u.total_moves > 0
+                 THEN ROUND(u.total_points / u.total_moves)
+                 ELSE NULL END AS score_indiv
+     FROM lxk_users u
+     LEFT JOIN (
+         SELECT gp.user_id,
+                COUNT(gp.game_id) AS games_played,
+                SUM(gp.score)     AS cumul_score
+         FROM lxk_game_players gp
+         JOIN lxk_games g ON g.id = gp.game_id
+         WHERE g.status IN (\'finished\', \'abandoned\')
+         GROUP BY gp.user_id
+     ) s ON s.user_id = u.id
+     WHERE u.role != \'admin\'
+     ORDER BY score_indiv DESC, games_played DESC'
+)->fetchAll();
+
+$topLexika = $pdo->query(
+    'SELECT lx.word, lx.score,
+            u.prenom  AS player_prenom,
+            u2.prenom AS opp_prenom,
+            lx.game_id
+     FROM lxk_lexika lx
+     JOIN lxk_games g       ON g.id          = lx.game_id
+     JOIN lxk_users u       ON u.id           = lx.user_id
+     JOIN lxk_game_players gp_opp
+                            ON gp_opp.game_id = lx.game_id
+                           AND gp_opp.user_id != lx.user_id
+     JOIN lxk_users u2      ON u2.id          = gp_opp.user_id
+     WHERE g.status IN (\'finished\', \'abandoned\')
+     ORDER BY lx.score DESC
+     LIMIT 10'
+)->fetchAll();
+
 $activeTab = $_GET['tab'] ?? 'users';
 ?>
 <!DOCTYPE html>
@@ -116,7 +168,9 @@ $activeTab = $_GET['tab'] ?? 'users';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lexika – Administration</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
 </head>
 <body>
     <header class="site-header">
@@ -150,6 +204,8 @@ $activeTab = $_GET['tab'] ?? 'users';
             <a href="admin.php?tab=users"  class="tab <?= $activeTab === 'users'  ? 'tab-active' : '' ?>">Joueurs</a>
             <a href="admin.php?tab=games"  class="tab <?= $activeTab === 'games'  ? 'tab-active' : '' ?>">Parties</a>
             <a href="admin.php?tab=logs"   class="tab <?= $activeTab === 'logs'   ? 'tab-active' : '' ?>">Journaux</a>
+            <a href="admin.php?tab=stats"  class="tab <?= $activeTab === 'stats'  ? 'tab-active' : '' ?>">Statistiques joueurs</a>
+            <a href="admin.php?tab=lexika" class="tab <?= $activeTab === 'lexika' ? 'tab-active' : '' ?>">Top 10 Lexika</a>
         </div>
 
         <!-- USERS TAB -->
@@ -184,6 +240,10 @@ $activeTab = $_GET['tab'] ?? 'users';
                                 <button class="btn btn-sm btn-secondary"
                                     onclick="openEditModal(<?= $u['id'] ?>, '<?= htmlspecialchars(addslashes($u['prenom'])) ?>', '<?= $u['role'] ?>')">
                                     Éditer
+                                </button>
+                                <button class="btn btn-sm btn-secondary"
+                                    onclick="openPwdModal(<?= $u['id'] ?>, '<?= htmlspecialchars(addslashes($u['prenom'])) ?>')">
+                                    Mot de passe
                                 </button>
                                 <form method="post" style="display:inline"
                                       onsubmit="return confirm('Supprimer ce joueur ?')">
@@ -228,6 +288,25 @@ $activeTab = $_GET['tab'] ?? 'users';
                 <button type="submit" class="btn btn-primary">Créer</button>
             </form>
         </section>
+
+        <!-- Change Password Modal -->
+        <div id="pwd-modal" class="modal" style="display:none">
+            <div class="modal-content">
+                <h3>Changer le mot de passe — <span id="pwd-modal-name"></span></h3>
+                <form method="post" action="admin.php?tab=users" class="admin-form">
+                    <input type="hidden" name="post_action" value="change_password">
+                    <input type="hidden" name="target_id" id="pwd-target-id">
+                    <div class="form-group">
+                        <label>Nouveau mot de passe *</label>
+                        <input type="password" name="new_password" id="pwd-new-password" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary">Valider</button>
+                        <button type="button" class="btn btn-secondary" onclick="closePwdModal()">Annuler</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- Edit User Modal -->
         <div id="edit-user-modal" class="modal" style="display:none">
@@ -348,9 +427,92 @@ $activeTab = $_GET['tab'] ?? 'users';
         </section>
         <?php endif; ?>
 
+        <!-- STATS TAB -->
+        <?php if ($activeTab === 'stats'): ?>
+        <section class="card">
+            <h2 class="card-title">Statistiques joueurs</h2>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Prénom</th>
+                            <th>Parties jouées</th>
+                            <th>Points cumulés</th>
+                            <th>Coups cumulés</th>
+                            <th>Score Individuel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($playerStats as $ps): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($ps['prenom']) ?></td>
+                            <td><?= (int)$ps['games_played'] ?></td>
+                            <td><?= (int)$ps['cumul_score'] ?></td>
+                            <td><?= (int)$ps['total_moves'] ?></td>
+                            <td><?= $ps['score_indiv'] !== null ? (int)$ps['score_indiv'] : '&mdash;' ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <!-- TOP LEXIKA TAB -->
+        <?php if ($activeTab === 'lexika'): ?>
+        <section class="card">
+            <h2 class="card-title">Top 10 Lexika</h2>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Joueur</th>
+                            <th>Mot</th>
+                            <th>Points</th>
+                            <th>Adversaire</th>
+                            <th>Partie</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($topLexika)): ?>
+                        <tr>
+                            <td colspan="6" style="text-align:center;color:#888">Aucun Lexika enregistré.</td>
+                        </tr>
+                        <?php else: ?>
+                        <?php foreach ($topLexika as $i => $lx): ?>
+                        <tr>
+                            <td><?= $i + 1 ?></td>
+                            <td><?= htmlspecialchars($lx['player_prenom']) ?></td>
+                            <td><strong><?= htmlspecialchars(strtoupper($lx['word'])) ?></strong></td>
+                            <td><?= (int)$lx['score'] ?></td>
+                            <td><?= htmlspecialchars($lx['opp_prenom']) ?></td>
+                            <td><a href="game.php?id=<?= $lx['game_id'] ?>">#<?= $lx['game_id'] ?></a></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <?php endif; ?>
+
     </main>
 
     <script>
+    function openPwdModal(id, prenom) {
+        document.getElementById('pwd-target-id').value  = id;
+        document.getElementById('pwd-modal-name').textContent = prenom;
+        document.getElementById('pwd-new-password').value = '';
+        document.getElementById('pwd-modal').style.display = 'flex';
+    }
+    function closePwdModal() {
+        document.getElementById('pwd-modal').style.display = 'none';
+    }
+    document.getElementById('pwd-modal').addEventListener('click', function(e) {
+        if (e.target === this) closePwdModal();
+    });
+
     function openEditModal(id, prenom, role) {
         document.getElementById('edit-user-id').value    = id;
         document.getElementById('edit-user-prenom').value = prenom;

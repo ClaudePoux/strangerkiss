@@ -98,7 +98,7 @@ h3 { font-size: 1rem; }
 }
 .form-row label { display: none; }
 .form-row select { flex: 1; }
-.new-game-form .form-row select { flex: none; width: auto; }
+.new-game-form .form-row select { flex: none; width: auto; height: 40px; padding: 0 0.75rem; }
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -276,7 +276,8 @@ h3 { font-size: 1rem; }
 .finished-row   { cursor: default; }
 .finished-row:hover { transform: none; }
 .game-row-opponent { flex: 1; font-weight: 600; font-size: 0.95rem; }
-.card-playing .game-row-opponent { font-size: 1.35rem; font-weight: 700; }
+.card-playing .game-row-opponent,
+.invite-row .game-row-opponent   { font-size: 1.35rem; font-weight: 700; }
 .card-playing .game-row-scores   { font-size: 1.55rem; }
 .game-row-date { font-size: 0.8rem; color: #888; min-width: 70px; }
 .game-row-scores {
@@ -346,6 +347,9 @@ h3 { font-size: 1rem; }
 /* ── Stat color overrides ── */
 .stat-green { color: #27ae60; }
 .stat-gray  { color: #999; }
+
+/* ── Score Individuel affiché à côté des prénoms ── */
+.player-si { font-size: 0.75em; color: #666; font-weight: 400; }
 
 /* ── Opponents stats ── */
 .opp-list { display: flex; flex-direction: column; gap: 1rem; }
@@ -486,7 +490,7 @@ h3 { font-size: 1rem; }
 
 /* Board wrapper */
 .board-wrapper {
-    overflow: auto;
+    overflow: hidden;
     -webkit-overflow-scrolling: touch;
     padding: 0.5rem;
     flex-shrink: 0;
@@ -505,6 +509,7 @@ h3 { font-size: 1rem; }
     border-radius: 4px;
     flex-shrink: 0;
     touch-action: none;
+    transform-origin: top center;
 }
 
 .cell {
@@ -855,52 +860,61 @@ h3 { font-size: 1rem; }
     .btn-play-main { font-size: 1.1rem; }
 }
 
-/* Tablette portrait (768–1024px) — cases 34px */
+/* Tablette portrait (768–1024px) — cases 30px
+   Budget : 400px (Safari + header + rack + controls + preview + play) + 15×30=450px = 850px < 1180px ✓ */
 @media (min-width: 768px) and (max-width: 1024px) {
     .board {
-        grid-template-columns: repeat(15, 34px);
-        grid-template-rows:    repeat(15, 34px);
+        grid-template-columns: repeat(15, 30px);
+        grid-template-rows:    repeat(15, 30px);
     }
-    .cell        { width: 34px; height: 34px; }
-    .tile-letter { font-size: calc(34px * 0.52); }
-    .tile-value  { font-size: 9px; right: 2px; }
-    .bonus-label { font-size: 9px; }
-    .tile-rack   { width: 41px; height: 41px; }
-    .tile-rack .tile-letter { font-size: calc(41px * 0.58); }
-    .tile-rack .tile-value  { font-size: 9px; }
-    .tile-slot   { width: 41px; height: 41px; }
+    .cell        { width: 30px; height: 30px; }
+    .tile-letter { font-size: calc(30px * 0.52); }
+    .tile-value  { font-size: 8px; right: 2px; }
+    .bonus-label { font-size: 8px; }
+    .tile-rack   { width: 36px; height: 36px; }
+    .tile-rack .tile-letter { font-size: calc(36px * 0.58); }
+    .tile-rack .tile-value  { font-size: 8px; }
+    .tile-slot   { width: 36px; height: 36px; }
 }
 
-/* Tablette paysage (768px+, orientation landscape) — cases 28px */
+/* Tablette paysage (768px+, orientation landscape) — cases 26px
+   Budget : 400px (Safari + header + rack + controls + preview + play) + 15×26=390px = 790px < 820px ✓
+   (iPad Air 4 paysage : 820px de haut, ~720px utiles sous Safari) */
 @media (min-width: 768px) and (orientation: landscape) and (max-width: 1024px) {
     .board {
-        grid-template-columns: repeat(15, 28px);
-        grid-template-rows:    repeat(15, 28px);
+        grid-template-columns: repeat(15, 26px);
+        grid-template-rows:    repeat(15, 26px);
     }
-    .cell        { width: 28px; height: 28px; }
-    .tile-letter { font-size: calc(28px * 0.52); }
-    .tile-value  { font-size: 7px; right: 1px; }
-    .bonus-label { font-size: 7px; }
-    .tile-rack   { width: 34px; height: 34px; }
-    .tile-rack .tile-letter { font-size: calc(34px * 0.58); }
-    .tile-rack .tile-value  { font-size: 8px; }
-    .tile-slot   { width: 34px; height: 34px; }
+    .cell        { width: 26px; height: 26px; }
+    .tile-letter { font-size: calc(26px * 0.52); }
+    .tile-value  { font-size: 6px; right: 1px; }
+    .bonus-label { font-size: 6px; }
+    .tile-rack   { width: 32px; height: 32px; }
+    .tile-rack .tile-letter { font-size: calc(32px * 0.58); }
+    .tile-rack .tile-value  { font-size: 7px; }
+    .tile-slot   { width: 32px; height: 32px; }
 }
 
-/* Desktop (>1024px) — cases 40px */
+/* Desktop (>1024px) — cases jusqu'à 40px, capé par la hauteur utile
+   --cell = min(44px, (100dvh - 280px) / 15)
+   iPad Air 4 paysage (~710px dvh) : (710-280)/15 ≈ 28.6px → plateau 430px ✓
+   Desktop 1080p  (~1080px dvh) : (1080-280)/15 = 53px → capé à 44px ✓ */
 @media (min-width: 1025px) {
-    .board {
-        grid-template-columns: repeat(15, 40px);
-        grid-template-rows:    repeat(15, 40px);
+    :root {
+        --cell: min(44px, calc((100dvh - 280px) / 15));
     }
-    .cell        { width: 40px; height: 40px; }
-    .tile-letter { font-size: calc(40px * 0.52); }
-    .tile-value  { font-size: 10px; right: 2px; }
-    .bonus-label { font-size: 10px; }
-    .tile-rack   { width: 48px; height: 48px; }
-    .tile-rack .tile-letter { font-size: calc(48px * 0.58); }
-    .tile-rack .tile-value  { font-size: 10px; }
-    .tile-slot   { width: 48px; height: 48px; }
+    .board {
+        grid-template-columns: repeat(15, var(--cell));
+        grid-template-rows:    repeat(15, var(--cell));
+    }
+    .cell        { width: var(--cell); height: var(--cell); }
+    .tile-letter { font-size: calc(var(--cell) * 0.52); }
+    .tile-value  { font-size: min(10px, calc(var(--cell) * 0.25)); right: 2px; }
+    .bonus-label { font-size: min(10px, calc(var(--cell) * 0.25)); }
+    .tile-rack   { width: calc(var(--cell) * 1.2); height: calc(var(--cell) * 1.2); }
+    .tile-rack .tile-letter { font-size: calc(var(--cell) * 1.2 * 0.58); }
+    .tile-rack .tile-value  { font-size: min(10px, calc(var(--cell) * 0.28)); }
+    .tile-slot   { width: calc(var(--cell) * 1.2); height: calc(var(--cell) * 1.2); }
 }
 
 /* ================================================================

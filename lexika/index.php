@@ -95,6 +95,25 @@ $stPending = $pdo->prepare(
 $stPending->execute([':uid1' => $uid, ':uid2' => $uid, ':uid3' => $uid]);
 $pendingGames = $stPending->fetchAll();
 
+// ── Games pending review (moi-même ayant terminé la partie) ───────────────────
+$stPendingMine = $pdo->prepare(
+    'SELECT g.id, g.winner_id,
+            u1.id AS p1_id, u1.prenom AS p1_prenom,
+            u2.id AS p2_id, u2.prenom AS p2_prenom,
+            gp1.score AS p1_score, gp2.score AS p2_score
+     FROM lxk_games g
+     JOIN lxk_users u1 ON u1.id = g.player1_id
+     JOIN lxk_users u2 ON u2.id = g.player2_id
+     JOIN lxk_game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
+     JOIN lxk_game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
+     WHERE g.status = \'pending_review\'
+       AND (g.player1_id = :uid1 OR g.player2_id = :uid2)
+       AND g.current_turn != :uid3
+     ORDER BY g.id DESC'
+);
+$stPendingMine->execute([':uid1' => $uid, ':uid2' => $uid, ':uid3' => $uid]);
+$pendingGamesMine = $stPendingMine->fetchAll();
+
 // ── Personal stats ────────────────────────────────────────────────────────────
 $stStats = $pdo->prepare(
     'SELECT
@@ -490,6 +509,40 @@ function lxkFormatDateFr(string $datetime): string {
                         <?php endif; ?>
                     </div>
                 </a>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <!-- Pending Review Games (moi ayant terminé la partie) -->
+        <?php if (!empty($pendingGamesMine)): ?>
+        <section class="card">
+            <h2 class="card-title">Partie terminée, en attente de validation par l'adversaire (<?= count($pendingGamesMine) ?>)</h2>
+            <div class="game-list">
+                <?php foreach ($pendingGamesMine as $g):
+                    $oppPrenom = ($g['p1_id'] == $uid) ? $g['p2_prenom'] : $g['p1_prenom'];
+                    $myScore   = ($g['p1_id'] == $uid) ? $g['p1_score'] : $g['p2_score'];
+                    $oppScore  = ($g['p1_id'] == $uid) ? $g['p2_score'] : $g['p1_score'];
+                    $iWon      = ((int)$g['winner_id'] === $uid);
+                    $isDraw    = ($g['winner_id'] === null);
+                ?>
+                <div class="game-row">
+                    <div class="game-row-opponent"><?= htmlspecialchars($oppPrenom) ?></div>
+                    <div class="game-row-scores">
+                        <span class="score-mine"><?= $myScore ?></span>
+                        <span class="score-sep">–</span>
+                        <span class="score-opp"><?= $oppScore ?></span>
+                    </div>
+                    <div class="game-row-status">
+                        <?php if ($isDraw): ?>
+                            <span class="badge badge-wait">Match nul</span>
+                        <?php elseif ($iWon): ?>
+                            <span class="badge badge-win">Victoire</span>
+                        <?php else: ?>
+                            <span class="badge badge-loss">Défaite</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
                 <?php endforeach; ?>
             </div>
         </section>

@@ -147,14 +147,35 @@ function checkConsecutivePasses(PDO $pdo, int $gameId): bool {
     if (count($moves) < 2) return false;
     if ($moves[0]['move_type'] !== 'pass' || $moves[1]['move_type'] !== 'pass') return false;
     if ($moves[0]['user_id'] === $moves[1]['user_id']) return false; // same player passed twice
-    return true;
+    // Fin par passes seulement si le sac a moins de 7 tuiles
+    $st = $pdo->prepare('SELECT bag FROM lxk_games WHERE id = ?');
+    $st->execute([$gameId]);
+    $row = $st->fetch();
+    $bag = $row ? (json_decode($row['bag'], true) ?: []) : [];
+    return count($bag) < 7;
 }
 
 function finishGame(PDO $pdo, int $gameId, int $winnerId): void {
     $st = $pdo->prepare(
-        'UPDATE lxk_games SET status=\'finished\', winner_id=?, finished_at=NOW() WHERE id=?'
+        'UPDATE lxk_games SET status=\'pending_review\', winner_id=?, finished_at=NOW() WHERE id=?'
     );
     $st->execute([$winnerId, $gameId]);
+}
+
+function updateUsersStats(PDO $pdo, int $gameId): void {
+    $stScores = $pdo->prepare('SELECT user_id, score FROM lxk_game_players WHERE game_id = ?');
+    $stScores->execute([$gameId]);
+    $stMoves = $pdo->prepare('SELECT user_id, COUNT(*) AS cnt FROM lxk_game_moves WHERE game_id = ? GROUP BY user_id');
+    $stMoves->execute([$gameId]);
+    $moveCounts = [];
+    foreach ($stMoves->fetchAll() as $row) {
+        $moveCounts[(int)$row['user_id']] = (int)$row['cnt'];
+    }
+    $upd = $pdo->prepare('UPDATE lxk_users SET total_points = total_points + ?, total_moves = total_moves + ? WHERE id = ?');
+    foreach ($stScores->fetchAll() as $row) {
+        $pid = (int)$row['user_id'];
+        $upd->execute([(int)$row['score'], $moveCounts[$pid] ?? 0, $pid]);
+    }
 }
 
 function determineWinner(PDO $pdo, int $gameId, int $p1Id, int $p2Id): int {
@@ -283,10 +304,25 @@ switch ($action) {
         );
         $stGP->execute([$gameId]);
         $gpRows = $stGP->fetchAll();
+
+        $stLxk = $pdo->prepare(
+            'SELECT user_id, COUNT(*) AS cnt FROM lxk_lexika WHERE game_id = ? GROUP BY user_id'
+        );
+        $stLxk->execute([$gameId]);
+        $lexikaCounts = [];
+        foreach ($stLxk->fetchAll() as $lx) {
+            $lexikaCounts[(int)$lx['user_id']] = (int)$lx['cnt'];
+        }
+
         $scores = [];
         $myRack = [];
         foreach ($gpRows as $gp) {
-            $scores[$gp['user_id']] = ['id' => $gp['user_id'], 'prenom' => $gp['prenom'], 'score' => (int)$gp['score']];
+            $scores[$gp['user_id']] = [
+                'id'           => $gp['user_id'],
+                'prenom'       => $gp['prenom'],
+                'score'        => (int)$gp['score'],
+                'lexika_count' => $lexikaCounts[(int)$gp['user_id']] ?? 0,
+            ];
             if ($gp['user_id'] == $uid) {
                 $myRack = json_decode($gp['rack'], true) ?: [];
             }
@@ -328,13 +364,30 @@ switch ($action) {
         $bag      = json_decode($game['bag'], true) ?: [];
         $bagCount = count($bag);
 
+        $oppRackCount = null;
+        if ($bagCount === 0) {
+            $oppId = getOpponentId($game, $uid);
+            foreach ($gpRows as $gp) {
+                if ($gp['user_id'] == $oppId) {
+                    $oppRackCount = count(json_decode($gp['rack'], true) ?: []);
+                    break;
+                }
+            }
+        }
+
         // Build moves history with cumulative scores per player
         $p1Id = (int)$game['player1_id'];
         $p2Id = (int)$game['player2_id'];
         $stMoves = $pdo->prepare(
-            'SELECT m.user_id, m.move_type, m.word, m.score, m.tiles, u.prenom
+            'SELECT m.user_id, m.move_type, m.word, m.score, m.tiles, u.prenom,
+                    (lx.id IS NOT NULL) AS is_lexika
              FROM lxk_game_moves m
              JOIN lxk_users u ON u.id = m.user_id
+             LEFT JOIN lxk_lexika lx
+                    ON lx.game_id = m.game_id
+                   AND lx.user_id = m.user_id
+                   AND lx.word COLLATE utf8mb4_unicode_ci <=> m.word
+                   AND lx.score   = m.score
              WHERE m.game_id = ?
              ORDER BY m.id ASC'
         );
@@ -356,6 +409,7 @@ switch ($action) {
                 'score_p1_after' => $runningScores[$p1Id],
                 'score_p2_after' => $runningScores[$p2Id],
                 'exchange_count' => $mv['move_type'] === 'exchange' ? (int)($tileData['count'] ?? 0) : null,
+                'is_lexika'      => (bool)$mv['is_lexika'],
             ];
         }
 
@@ -372,6 +426,7 @@ switch ($action) {
             'last_opponent_move'  => $lastOppMove,
             'moves_history'       => $movesHistory,
             'definition_markers'  => getBoardDefinitions($rawBoard),
+            'opp_rack_count'      => $oppRackCount,
         ]);
     }
 
@@ -470,6 +525,11 @@ switch ($action) {
             );
             $st->execute([$gameId, $uid, $bestWord, json_encode($tiles), $score]);
 
+            if (count($tiles) === 7) {
+                $pdo->prepare('INSERT INTO lxk_lexika (game_id, user_id, word, score) VALUES (?,?,?,?)')
+                    ->execute([$gameId, $uid, $bestWord, $score]);
+            }
+
             $pdo->commit();
         } catch (Exception $e) {
             $pdo->rollBack();
@@ -482,6 +542,8 @@ switch ($action) {
         $updatedGame = $gameUpdated->fetch();
         $gameOver    = checkEndGame($pdo, $updatedGame, $gameId);
 
+        $winnerId    = null;
+        $finalScores = [];
         if ($gameOver) {
             // Règle officielle : la somme des tuiles restantes sur chaque chevalet
             // est retranchée au joueur concerné ET ajoutée au joueur qui a le rack vide.
@@ -502,6 +564,13 @@ switch ($action) {
 
             $winnerId = determineWinner($pdo, $gameId, (int)$game['player1_id'], (int)$game['player2_id']);
             finishGame($pdo, $gameId, $winnerId);
+            updateUsersStats($pdo, $gameId);
+
+            $stFinal = $pdo->prepare('SELECT user_id, score FROM lxk_game_players WHERE game_id = ?');
+            $stFinal->execute([$gameId]);
+            foreach ($stFinal->fetchAll() as $row) {
+                $finalScores[(int)$row['user_id']] = (int)$row['score'];
+            }
         }
 
         jsonOk([
@@ -511,6 +580,9 @@ switch ($action) {
             'bag_count' => $bagCount,
             'game_over' => $gameOver,
             'is_bingo'  => count($tiles) === 7,
+            'winner_id' => $winnerId,
+            'score_p1'  => $gameOver ? ($finalScores[(int)$game['player1_id']] ?? 0) : null,
+            'score_p2'  => $gameOver ? ($finalScores[(int)$game['player2_id']] ?? 0) : null,
         ]);
     }
 
@@ -521,9 +593,9 @@ switch ($action) {
 
         if ($game['status'] !== 'playing') jsonErr('La partie est terminée');
 
-        $indicesRaw = $_POST['tile_indices'] ?? '[]';
-        $indices    = json_decode($indicesRaw, true);
-        if (!is_array($indices) || empty($indices)) jsonErr('Aucune tuile sélectionnée');
+        $tilesRaw    = $_POST['tiles_to_exchange'] ?? '[]';
+        $wantedTiles = json_decode($tilesRaw, true);
+        if (!is_array($wantedTiles) || empty($wantedTiles)) jsonErr('Aucune tuile sélectionnée');
 
         $stRack = $pdo->prepare('SELECT rack FROM lxk_game_players WHERE game_id=? AND user_id=?');
         $stRack->execute([$gameId, $uid]);
@@ -531,18 +603,24 @@ switch ($action) {
         $rack    = json_decode($rackRow['rack'] ?? '[]', true) ?: [];
 
         $bag = json_decode($game['bag'], true) ?: [];
-        if (count($bag) < count($indices)) jsonErr('Pas assez de tuiles dans le sac');
 
-        // Extract tiles to exchange
+        // Identifier les tuiles par lettre + valeur + is_joker, une occurrence à la fois
         $toExchange = [];
-        $remaining  = [];
-        foreach ($rack as $i => $tile) {
-            if (in_array($i, $indices, false)) {
-                $toExchange[] = $tile;
-            } else {
-                $remaining[] = $tile;
+        $remaining  = array_values($rack);
+        foreach ($wantedTiles as $want) {
+            foreach ($remaining as $i => $rackTile) {
+                if (($rackTile['letter']   ?? '')    === ($want['letter']   ?? '')
+                 && (int)($rackTile['value']    ?? 0) === (int)($want['value']    ?? 0)
+                 && (bool)($rackTile['is_joker'] ?? false) === (bool)($want['is_joker'] ?? false)) {
+                    $toExchange[] = $rackTile;
+                    array_splice($remaining, $i, 1);
+                    break;
+                }
             }
         }
+
+        if (empty($toExchange)) jsonErr('Aucune tuile correspondante trouvée');
+        if (count($bag) < 7) jsonErr('Pas assez de lettres dans le sac (minimum 7)');
 
         // Piocher d'abord, puis remettre les tuiles échangées dans le sac :
         // ainsi le joueur ne peut jamais récupérer une lettre qu'il vient d'échanger.
@@ -605,6 +683,7 @@ switch ($action) {
         if ($gameOver) {
             $winnerId = determineWinner($pdo, $gameId, (int)$game['player1_id'], (int)$game['player2_id']);
             finishGame($pdo, $gameId, $winnerId);
+            updateUsersStats($pdo, $gameId);
         }
 
         jsonOk(['game_over' => $gameOver]);
@@ -635,7 +714,34 @@ switch ($action) {
             jsonErr('Erreur');
         }
 
+        updateUsersStats($pdo, $gameId);
         jsonOk(['winner_id' => $oppId]);
+    }
+
+    // ── check_updates ────────────────────────────────────────────────────────
+    case 'check_updates': {
+        $st = $pdo->prepare(
+            'SELECT COALESCE(MAX(m.id), 0) AS last_move_id
+             FROM lxk_game_moves m
+             JOIN lxk_games g ON g.id = m.game_id
+             WHERE g.player1_id = ? OR g.player2_id = ?'
+        );
+        $st->execute([$uid, $uid]);
+        $row = $st->fetch();
+        jsonOk(['last_move_id' => (int)$row['last_move_id']]);
+    }
+
+    // ── acknowledge_game ──────────────────────────────────────────────────────
+    case 'acknowledge_game': {
+        $gameId = (int)($_POST['game_id'] ?? 0);
+        $game   = loadGame($pdo, $gameId, $uid);
+
+        if ($game['status'] !== 'pending_review') jsonErr('La partie n\'est pas en attente de confirmation');
+        if ((int)$game['current_turn'] !== $uid)  jsonErr('Vous n\'êtes pas l\'adversaire à confirmer');
+
+        $pdo->prepare('UPDATE lxk_games SET status=\'finished\' WHERE id=?')->execute([$gameId]);
+
+        jsonOk([]);
     }
 
     default:
