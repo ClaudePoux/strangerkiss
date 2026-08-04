@@ -89,6 +89,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success = 'Partie #' . $delId . ' supprimée.';
         }
     }
+
+    // Validate game (force pending_review -> finished, bypass current_turn check)
+    if ($postAction === 'validate_game') {
+        $valId = (int)($_POST['game_id'] ?? 0);
+        if ($valId > 0) {
+            $stmt = $pdo->prepare("UPDATE lxk_games SET status='finished' WHERE id=? AND status='pending_review'");
+            $stmt->execute([$valId]);
+            if ($stmt->rowCount() > 0) {
+                $success = 'Partie #' . $valId . ' validée et marquée comme terminée.';
+            }
+        }
+    }
 }
 
 // ── Load data ─────────────────────────────────────────────────────────────
@@ -168,7 +180,7 @@ $activeTab = $_GET['tab'] ?? 'users';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lexika – Administration</title>
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=<?= ASSET_VERSION ?>">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
 </head>
@@ -377,6 +389,14 @@ $activeTab = $_GET['tab'] ?? 'users';
                             <td><?= $g['winner_prenom'] ? htmlspecialchars($g['winner_prenom']) : '–' ?></td>
                             <td><?= date('d/m/Y', strtotime($g['created_at'])) ?></td>
                             <td class="actions-cell">
+                                <?php if ($g['status'] === 'pending_review'): ?>
+                                <form method="post" style="display:inline"
+                                      onsubmit="return confirm('Valider et terminer la partie #<?= $g['id'] ?> ?')">
+                                    <input type="hidden" name="post_action" value="validate_game">
+                                    <input type="hidden" name="game_id" value="<?= $g['id'] ?>">
+                                    <button type="submit" class="btn btn-sm btn-primary">Valider</button>
+                                </form>
+                                <?php endif; ?>
                                 <form method="post" style="display:inline"
                                       onsubmit="return confirm('Supprimer la partie #<?= $g['id'] ?> et tous ses coups ?')">
                                     <input type="hidden" name="post_action" value="delete_game">

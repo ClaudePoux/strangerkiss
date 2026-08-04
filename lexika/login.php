@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lexika – Connexion</title>
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=<?= ASSET_VERSION ?>">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
     .lx-logo {
@@ -147,5 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </div>
+<script>window.LEXIKA_VERSION = "<?= ASSET_VERSION ?>";</script>
+<script src="version-check.js?v=<?= ASSET_VERSION ?>"></script>
 </body>
 </html>

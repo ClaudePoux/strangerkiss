@@ -201,7 +201,7 @@ $initialStateJson = json_encode($initialState);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Lexika – Partie #<?= $gameId ?></title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?= ASSET_VERSION ?>">
     <style>
         .def-dot {
             position: absolute;
@@ -450,8 +450,8 @@ $initialStateJson = json_encode($initialState);
         INITIAL_STATE.status = 'finished';
     </script>
     <?php endif; ?>
-    <script src="drag.js"></script>
-    <script src="game.js"></script>
+    <script src="drag.js?v=<?= ASSET_VERSION ?>"></script>
+    <script src="game.js?v=<?= ASSET_VERSION ?>"></script>
     <?php if ($game['status'] === 'pending_review' && !$isMyTurn):
         /* Résultat calculé côté PHP pour éviter la confusion winnerId/winner_id */
         $goWinnerId = (int)($game['winner_id'] ?? 0);
@@ -516,5 +516,7 @@ $initialStateJson = json_encode($initialState);
             </div>
         </div>
     </div>
+<script>window.LEXIKA_VERSION = "<?= ASSET_VERSION ?>";</script>
+<script src="version-check.js?v=<?= ASSET_VERSION ?>"></script>
 </body>
 </html>

@@ -276,6 +276,22 @@ $topGameScores = $pdo->query(
      LIMIT 10'
 )->fetchAll();
 
+// ── Top 10 scores globaux de partie (score cumulé des deux joueurs) ────────────
+$topGlobalScores = $pdo->query(
+    'SELECT g.id, g.finished_at, g.winner_id,
+            gp1.user_id AS p1_id, gp1.score AS p1_score, u1.prenom AS p1_prenom,
+            gp2.user_id AS p2_id, gp2.score AS p2_score, u2.prenom AS p2_prenom,
+            (gp1.score + gp2.score) AS total_score
+     FROM lxk_games g
+     JOIN lxk_game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
+     JOIN lxk_game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
+     JOIN lxk_users u1 ON u1.id = gp1.user_id
+     JOIN lxk_users u2 ON u2.id = gp2.user_id
+     WHERE g.status = \'finished\'
+     ORDER BY total_score DESC
+     LIMIT 10'
+)->fetchAll();
+
 // ── French date formatter (e.g. "26 juin") ─────────────────────────────────────
 function lxkFormatDateFr(string $datetime): string {
     static $mois = [1=>'janvier',2=>'février',3=>'mars',4=>'avril',5=>'mai',6=>'juin',
@@ -290,7 +306,7 @@ function lxkFormatDateFr(string $datetime): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lexika – Accueil</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?= ASSET_VERSION ?>">
     <link rel="manifest" href="/lexika/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -776,6 +792,59 @@ function lxkFormatDateFr(string $datetime): string {
                         </table>
                     </div>
                 </div>
+                <div>
+                    <h3 class="subsection-title">Top 10 des scores globaux de partie</h3>
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Date</th>
+                                    <th>Vainqueur</th>
+                                    <th>Score</th>
+                                    <th>Adversaire</th>
+                                    <th>Score</th>
+                                    <th>Score cumulé</th>
+                                    <th>Partie</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($topGlobalScores)): ?>
+                                <tr>
+                                    <td colspan="8" style="text-align:center;color:#888">Aucune partie terminée.</td>
+                                </tr>
+                                <?php else: ?>
+                                <?php foreach ($topGlobalScores as $i => $gg):
+                                    $isDraw = ($gg['winner_id'] === null);
+                                    if ($isDraw) {
+                                        $winnerLabel = 'Match nul';
+                                        $winnerScore = null;
+                                        $loserLabel  = htmlspecialchars($gg['p1_prenom']) . ' &amp; ' . htmlspecialchars($gg['p2_prenom']);
+                                        $loserScore  = (int)$gg['p1_score'];
+                                    } else {
+                                        $winnerIsP1  = ((int)$gg['winner_id'] === (int)$gg['p1_id']);
+                                        $winnerLabel = htmlspecialchars($winnerIsP1 ? $gg['p1_prenom'] : $gg['p2_prenom']);
+                                        $winnerScore = $winnerIsP1 ? (int)$gg['p1_score'] : (int)$gg['p2_score'];
+                                        $loserLabel  = htmlspecialchars($winnerIsP1 ? $gg['p2_prenom'] : $gg['p1_prenom']);
+                                        $loserScore  = $winnerIsP1 ? (int)$gg['p2_score'] : (int)$gg['p1_score'];
+                                    }
+                                ?>
+                                <tr>
+                                    <td><?= $i + 1 ?></td>
+                                    <td><?= lxkFormatDateFr($gg['finished_at']) ?></td>
+                                    <td><?= $winnerLabel ?></td>
+                                    <td><?= $winnerScore !== null ? '<strong>' . $winnerScore . '</strong>' : '—' ?></td>
+                                    <td><?= $loserLabel ?></td>
+                                    <td><?= (int)$loserScore ?></td>
+                                    <td><strong><?= (int)$gg['total_score'] ?></strong></td>
+                                    <td><a href="game.php?id=<?= $gg['id'] ?>">#<?= $gg['id'] ?></a></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -834,5 +903,7 @@ function lxkFormatDateFr(string $datetime): string {
         }, 5000);
     })();
 </script>
+<script>window.LEXIKA_VERSION = "<?= ASSET_VERSION ?>";</script>
+<script src="version-check.js?v=<?= ASSET_VERSION ?>"></script>
 </body>
 </html>
