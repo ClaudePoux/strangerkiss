@@ -134,7 +134,12 @@ $lostPct  = $played > 0 ? round($lost  / $played * 100) : null;
 $drawnPct = $played > 0 ? round($drawn / $played * 100) : null;
 
 // Lexika count
-$stLex = $pdo->prepare('SELECT COUNT(*) FROM lxk_lexika WHERE user_id = ?');
+$stLex = $pdo->prepare(
+    'SELECT COUNT(*)
+     FROM lxk_lexika lx
+     JOIN lxk_games g ON g.id = lx.game_id
+     WHERE lx.user_id = ? AND g.status = \'finished\''
+);
 $stLex->execute([$uid]);
 $lexikaCount = (int)$stLex->fetchColumn();
 
@@ -290,6 +295,31 @@ $topGlobalScores = $pdo->query(
      WHERE g.status = \'finished\'
      ORDER BY total_score DESC
      LIMIT 10'
+)->fetchAll();
+
+// ── Moyenne de Lexika par partie (tous joueurs, parties terminées) ─────────────
+$avgLexikaPerGame = $pdo->query(
+    'SELECT u.id, u.prenom,
+            CASE WHEN u.total_moves > 0 THEN ROUND(u.total_points / u.total_moves) ELSE NULL END AS si,
+            gp_stats.games_played AS games_played,
+            COALESCE(lex_stats.lexika_count, 0) AS lexika_count,
+            ROUND(COALESCE(lex_stats.lexika_count, 0) / gp_stats.games_played, 2) AS avg_lexika
+     FROM lxk_users u
+     JOIN (
+         SELECT gp.user_id, COUNT(*) AS games_played
+         FROM lxk_game_players gp
+         JOIN lxk_games g ON g.id = gp.game_id
+         WHERE g.status = \'finished\'
+         GROUP BY gp.user_id
+     ) gp_stats ON gp_stats.user_id = u.id
+     LEFT JOIN (
+         SELECT lx.user_id, COUNT(*) AS lexika_count
+         FROM lxk_lexika lx
+         JOIN lxk_games g ON g.id = lx.game_id
+         WHERE g.status = \'finished\'
+         GROUP BY lx.user_id
+     ) lex_stats ON lex_stats.user_id = u.id
+     ORDER BY avg_lexika DESC'
 )->fetchAll();
 
 // ── French date formatter (e.g. "26 juin") ─────────────────────────────────────
@@ -838,6 +868,39 @@ function lxkFormatDateFr(string $datetime): string {
                                     <td><?= (int)$loserScore ?></td>
                                     <td><strong><?= (int)$gg['total_score'] ?></strong></td>
                                     <td><a href="game.php?id=<?= $gg['id'] ?>">#<?= $gg['id'] ?></a></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="subsection-title">Moyenne de Lexika par partie</h3>
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Joueur</th>
+                                    <th>Lexika</th>
+                                    <th>Parties terminées</th>
+                                    <th>Moyenne</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($avgLexikaPerGame)): ?>
+                                <tr>
+                                    <td colspan="5" style="text-align:center;color:#888">Aucune partie terminée.</td>
+                                </tr>
+                                <?php else: ?>
+                                <?php foreach ($avgLexikaPerGame as $i => $al): ?>
+                                <tr>
+                                    <td><?= $i + 1 ?></td>
+                                    <td><?= htmlspecialchars($al['prenom']) ?> (<?= $al['si'] !== null ? (int)$al['si'] : '—' ?>)</td>
+                                    <td><?= (int)$al['lexika_count'] ?></td>
+                                    <td><?= (int)$al['games_played'] ?></td>
+                                    <td><strong><?= number_format((float)$al['avg_lexika'], 2, ',', '') ?></strong></td>
                                 </tr>
                                 <?php endforeach; ?>
                                 <?php endif; ?>
