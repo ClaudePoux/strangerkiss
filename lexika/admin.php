@@ -109,6 +109,20 @@ $users = $pdo->query(
 )->fetchAll();
 
 $statusFilter = $_GET['status'] ?? 'all';
+$gamesPerPage = 50;
+$page         = max(1, (int)($_GET['page'] ?? 1));
+
+$whereClause = '';
+if ($statusFilter !== 'all') {
+    $whereClause = ' WHERE g.status = ' . $pdo->quote($statusFilter);
+}
+
+// Total pour la pagination, sur le même filtre de statut
+$totalGames = (int)$pdo->query('SELECT COUNT(*) FROM lxk_games g' . $whereClause)->fetchColumn();
+$totalPages = max(1, (int)ceil($totalGames / $gamesPerPage));
+$page       = min($page, $totalPages); // clamp si ?page= hors bornes
+$offset     = ($page - 1) * $gamesPerPage;
+
 $gameSql = 'SELECT g.id, g.status, g.created_at, g.finished_at,
                    u1.prenom AS p1_prenom, u2.prenom AS p2_prenom,
                    gp1.score AS p1_score, gp2.score AS p2_score,
@@ -118,11 +132,9 @@ $gameSql = 'SELECT g.id, g.status, g.created_at, g.finished_at,
             JOIN lxk_users u2 ON u2.id = g.player2_id
             JOIN lxk_game_players gp1 ON gp1.game_id = g.id AND gp1.user_id = g.player1_id
             JOIN lxk_game_players gp2 ON gp2.game_id = g.id AND gp2.user_id = g.player2_id
-            LEFT JOIN lxk_users uw ON uw.id = g.winner_id';
-if ($statusFilter !== 'all') {
-    $gameSql .= ' WHERE g.status = ' . $pdo->quote($statusFilter);
-}
-$gameSql .= ' ORDER BY g.id DESC LIMIT 100';
+            LEFT JOIN lxk_users uw ON uw.id = g.winner_id'
+           . $whereClause
+           . ' ORDER BY g.id DESC LIMIT ' . $gamesPerPage . ' OFFSET ' . $offset;
 $games = $pdo->query($gameSql)->fetchAll();
 
 $logs = $pdo->query(
@@ -455,6 +467,23 @@ $activeTab = $_GET['tab'] ?? 'users';
                     </tbody>
                 </table>
             </div>
+            <?php if ($totalPages > 1): ?>
+            <div class="filter-bar" style="margin-top:0.9rem;margin-bottom:0">
+                <?php if ($page > 1): ?>
+                <a href="admin.php?tab=games&status=<?= urlencode($statusFilter) ?>&page=<?= $page - 1 ?>" class="btn btn-sm btn-secondary">&laquo; Précédent</a>
+                <?php else: ?>
+                <span class="btn btn-sm btn-secondary" style="opacity:.45;pointer-events:none">&laquo; Précédent</span>
+                <?php endif; ?>
+
+                <span>Page <?= $page ?> / <?= $totalPages ?> (<?= $totalGames ?> parties)</span>
+
+                <?php if ($page < $totalPages): ?>
+                <a href="admin.php?tab=games&status=<?= urlencode($statusFilter) ?>&page=<?= $page + 1 ?>" class="btn btn-sm btn-secondary">Suivant &raquo;</a>
+                <?php else: ?>
+                <span class="btn btn-sm btn-secondary" style="opacity:.45;pointer-events:none">Suivant &raquo;</span>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </section>
         <?php endif; ?>
 
