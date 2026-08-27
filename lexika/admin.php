@@ -172,6 +172,51 @@ $topLexika = $pdo->query(
      LIMIT 10'
 )->fetchAll();
 
+// ── TPM (Tirage Pondéré Moyen) ───────────────────────────────────────────────
+// Pondération par lettre (pas la valeur Scrabble officielle). Joker exclu du calcul.
+$tpmLetterWeights = [
+    'A' => 6, 'E' => 6, 'S' => 6, 'T' => 6, 'R' => 6,
+    'I' => 5, 'O' => 5,
+    'D' => 4, 'B' => 4, 'C' => 4, 'N' => 4, 'L' => 4,
+    'P' => 3, 'M' => 3, 'X' => 3, 'Z' => 3, 'H' => 3,
+    'V' => 2, 'J' => 2, 'G' => 2, 'Q' => 2, 'U' => 2, 'F' => 2,
+    'W' => 1, 'Y' => 1, 'K' => 1,
+];
+
+$drawRows = $pdo->query(
+    'SELECT d.user_id, u.prenom, d.tiles
+     FROM lxk_draws d
+     JOIN lxk_users u ON u.id = d.user_id
+     WHERE u.role != \'admin\''
+)->fetchAll();
+
+$tpmAgg = [];
+foreach ($drawRows as $row) {
+    $tiles = json_decode($row['tiles'], true) ?: [];
+    $rowUid = (int)$row['user_id'];
+    if (!isset($tpmAgg[$rowUid])) {
+        $tpmAgg[$rowUid] = ['prenom' => $row['prenom'], 'sum' => 0, 'count' => 0];
+    }
+    foreach ($tiles as $t) {
+        if (!empty($t['is_joker'])) continue;
+        $letter = strtoupper($t['letter'] ?? '');
+        if (!isset($tpmLetterWeights[$letter])) continue;
+        $tpmAgg[$rowUid]['sum']   += $tpmLetterWeights[$letter];
+        $tpmAgg[$rowUid]['count']++;
+    }
+}
+
+$tpmStats = [];
+foreach ($tpmAgg as $agg) {
+    if ($agg['count'] === 0) continue;
+    $tpmStats[] = [
+        'prenom' => $agg['prenom'],
+        'count'  => $agg['count'],
+        'tpm'    => round($agg['sum'] / $agg['count'], 2),
+    ];
+}
+usort($tpmStats, fn($a, $b) => $b['tpm'] <=> $a['tpm']);
+
 $activeTab = $_GET['tab'] ?? 'users';
 ?>
 <!DOCTYPE html>
@@ -218,6 +263,7 @@ $activeTab = $_GET['tab'] ?? 'users';
             <a href="admin.php?tab=logs"   class="tab <?= $activeTab === 'logs'   ? 'tab-active' : '' ?>">Journaux</a>
             <a href="admin.php?tab=stats"  class="tab <?= $activeTab === 'stats'  ? 'tab-active' : '' ?>">Statistiques joueurs</a>
             <a href="admin.php?tab=lexika" class="tab <?= $activeTab === 'lexika' ? 'tab-active' : '' ?>">Top 10 Lexika</a>
+            <a href="admin.php?tab=tpm"    class="tab <?= $activeTab === 'tpm'    ? 'tab-active' : '' ?>">Tirage Pondéré Moyen</a>
         </div>
 
         <!-- USERS TAB -->
@@ -508,6 +554,39 @@ $activeTab = $_GET['tab'] ?? 'users';
                             <td><?= (int)$lx['score'] ?></td>
                             <td><?= htmlspecialchars($lx['opp_prenom']) ?></td>
                             <td><a href="game.php?id=<?= $lx['game_id'] ?>">#<?= $lx['game_id'] ?></a></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <!-- TPM TAB -->
+        <?php if ($activeTab === 'tpm'): ?>
+        <section class="card">
+            <h2 class="card-title">Tirage Pondéré Moyen (TPM)</h2>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Joueur</th>
+                            <th>Lettres piochées</th>
+                            <th>TPM</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($tpmStats)): ?>
+                        <tr>
+                            <td colspan="3" style="text-align:center;color:#888">Aucune donnée de tirage enregistrée.</td>
+                        </tr>
+                        <?php else: ?>
+                        <?php foreach ($tpmStats as $tp): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($tp['prenom']) ?></td>
+                            <td><?= (int)$tp['count'] ?></td>
+                            <td><?= number_format($tp['tpm'], 2, ',', '') ?></td>
                         </tr>
                         <?php endforeach; ?>
                         <?php endif; ?>

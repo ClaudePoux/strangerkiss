@@ -155,7 +155,7 @@ function checkConsecutivePasses(PDO $pdo, int $gameId): bool {
     return count($bag) < 7;
 }
 
-function finishGame(PDO $pdo, int $gameId, int $winnerId): void {
+function finishGame(PDO $pdo, int $gameId, ?int $winnerId): void {
     $st = $pdo->prepare(
         'UPDATE lxk_games SET status=\'pending_review\', winner_id=?, finished_at=NOW() WHERE id=?'
     );
@@ -178,7 +178,7 @@ function updateUsersStats(PDO $pdo, int $gameId): void {
     }
 }
 
-function determineWinner(PDO $pdo, int $gameId, int $p1Id, int $p2Id): int {
+function determineWinner(PDO $pdo, int $gameId, int $p1Id, int $p2Id): ?int {
     $st = $pdo->prepare('SELECT user_id, score FROM lxk_game_players WHERE game_id = ?');
     $st->execute([$gameId]);
     $scores = [];
@@ -187,8 +187,8 @@ function determineWinner(PDO $pdo, int $gameId, int $p1Id, int $p2Id): int {
     }
     $s1 = $scores[$p1Id] ?? 0;
     $s2 = $scores[$p2Id] ?? 0;
-    if ($s1 >= $s2) return $p1Id;
-    return $p2Id;
+    if ($s1 === $s2) return null;
+    return ($s1 > $s2) ? $p1Id : $p2Id;
 }
 
 function getBoardDefinitions(array $board): array {
@@ -266,6 +266,12 @@ switch ($action) {
             $gp = $pdo->prepare('INSERT INTO lxk_game_players (game_id, user_id, rack, score) VALUES (?,?,?,0)');
             $gp->execute([$gameId, $p1id, json_encode($p1Rack)]);
             $gp->execute([$gameId, $uid,  json_encode($p2Rack)]);
+
+            $dw = $pdo->prepare(
+                'INSERT INTO lxk_draws (game_id, user_id, draw_type, tiles) VALUES (?,?,\'initial\',?)'
+            );
+            $dw->execute([$gameId, $p1id, json_encode($p1Rack)]);
+            $dw->execute([$gameId, $uid,  json_encode($p2Rack)]);
 
             $pdo->commit();
         } catch (Exception $e) {
@@ -530,6 +536,12 @@ switch ($action) {
                     ->execute([$gameId, $uid, $bestWord, $score]);
             }
 
+            if (!empty($drawn)) {
+                $pdo->prepare(
+                    'INSERT INTO lxk_draws (game_id, user_id, draw_type, tiles) VALUES (?,?,\'play\',?)'
+                )->execute([$gameId, $uid, json_encode($drawn)]);
+            }
+
             $pdo->commit();
         } catch (Exception $e) {
             $pdo->rollBack();
@@ -644,6 +656,10 @@ switch ($action) {
             );
             $st->execute([$gameId, $uid, json_encode(['count' => count($toExchange)])]);
 
+            $pdo->prepare(
+                'INSERT INTO lxk_draws (game_id, user_id, draw_type, tiles) VALUES (?,?,\'exchange\',?)'
+            )->execute([$gameId, $uid, json_encode($drawn)]);
+
             $pdo->commit();
         } catch (Exception $e) {
             $pdo->rollBack();
@@ -687,6 +703,41 @@ switch ($action) {
         }
 
         jsonOk(['game_over' => $gameOver]);
+    }
+
+    // ── update_rack_order ───────────────────────────────────────────────────────
+    case 'update_rack_order': {
+        $gameId = (int)($_POST['game_id'] ?? 0);
+        $game   = loadGame($pdo, $gameId, $uid);
+
+        $rackRaw = $_POST['rack'] ?? '[]';
+        $newRack = json_decode($rackRaw, true);
+        if (!is_array($newRack)) jsonErr('Rack invalide');
+
+        $stRack = $pdo->prepare('SELECT rack FROM lxk_game_players WHERE game_id=? AND user_id=?');
+        $stRack->execute([$gameId, $uid]);
+        $rackRow     = $stRack->fetch();
+        $currentRack = json_decode($rackRow['rack'] ?? '[]', true) ?: [];
+
+        // Vérifie que le nouveau tableau contient exactement le même multiset de tuiles
+        // (letter + value + is_joker), pour empêcher toute triche/incohérence.
+        $rackSignature = function (array $tiles): array {
+            $sigs = [];
+            foreach ($tiles as $t) {
+                $sigs[] = ($t['letter'] ?? '') . '|' . (int)($t['value'] ?? 0) . '|' . ((bool)($t['is_joker'] ?? false) ? '1' : '0');
+            }
+            sort($sigs);
+            return $sigs;
+        };
+
+        if ($rackSignature($newRack) !== $rackSignature($currentRack)) {
+            jsonErr('Le nouvel ordre ne correspond pas au rack actuel');
+        }
+
+        $st = $pdo->prepare('UPDATE lxk_game_players SET rack=? WHERE game_id=? AND user_id=?');
+        $st->execute([json_encode(array_values($newRack)), $gameId, $uid]);
+
+        jsonOk([]);
     }
 
     // ── abandon ──────────────────────────────────────────────────────────────
