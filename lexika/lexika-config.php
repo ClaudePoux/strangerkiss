@@ -7,7 +7,7 @@ declare(strict_types=1);
 define('BASE_URL', '/lexika');
 
 // ── Version des assets (à incrémenter à chaque déploiement) ────────────────
-define('ASSET_VERSION', '12');
+define('ASSET_VERSION', '13');
 
 // ── Database configuration ──────────────────────────────────────────────────
 define('DB_HOST', 'nqmwgujcp.mysql.db');

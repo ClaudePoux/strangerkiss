@@ -195,6 +195,21 @@ $tpmLetterWeights = [
     'W' => 1, 'Y' => 1, 'K' => 1,
 ];
 
+// Somme pondérée + nombre de lettres (jokers exclus) pour un tableau de tuiles piochées.
+function tpmTileStats(array $tiles, array $weights): array {
+    $sum   = 0;
+    $count = 0;
+    foreach ($tiles as $t) {
+        if (!empty($t['is_joker'])) continue;
+        $letter = strtoupper($t['letter'] ?? '');
+        if (!isset($weights[$letter])) continue;
+        $sum += $weights[$letter];
+        $count++;
+    }
+    return [$sum, $count];
+}
+
+// ── TPM global par joueur ─────────────────────────────────────────────────
 $drawRows = $pdo->query(
     'SELECT d.user_id, u.prenom, d.tiles
      FROM lxk_draws d
@@ -204,18 +219,13 @@ $drawRows = $pdo->query(
 
 $tpmAgg = [];
 foreach ($drawRows as $row) {
-    $tiles = json_decode($row['tiles'], true) ?: [];
     $rowUid = (int)$row['user_id'];
     if (!isset($tpmAgg[$rowUid])) {
         $tpmAgg[$rowUid] = ['prenom' => $row['prenom'], 'sum' => 0, 'count' => 0];
     }
-    foreach ($tiles as $t) {
-        if (!empty($t['is_joker'])) continue;
-        $letter = strtoupper($t['letter'] ?? '');
-        if (!isset($tpmLetterWeights[$letter])) continue;
-        $tpmAgg[$rowUid]['sum']   += $tpmLetterWeights[$letter];
-        $tpmAgg[$rowUid]['count']++;
-    }
+    [$s, $c] = tpmTileStats(json_decode($row['tiles'], true) ?: [], $tpmLetterWeights);
+    $tpmAgg[$rowUid]['sum']   += $s;
+    $tpmAgg[$rowUid]['count'] += $c;
 }
 
 $tpmStats = [];
@@ -228,6 +238,110 @@ foreach ($tpmAgg as $agg) {
     ];
 }
 usort($tpmStats, fn($a, $b) => $b['tpm'] <=> $a['tpm']);
+
+// ── TPM par partie et par joueur (paginé) ───────────────────────────────────
+$tpmGamesPerPage = 50;
+$tpmPage = max(1, (int)($_GET['tpm_page'] ?? 1));
+
+$tpmGameTotal = (int)$pdo->query(
+    'SELECT COUNT(DISTINCT d.game_id)
+     FROM lxk_draws d
+     JOIN lxk_users u ON u.id = d.user_id
+     WHERE u.role != \'admin\''
+)->fetchColumn();
+$tpmGameTotalPages = max(1, (int)ceil($tpmGameTotal / $tpmGamesPerPage));
+$tpmPage   = min($tpmPage, $tpmGameTotalPages);
+$tpmOffset = ($tpmPage - 1) * $tpmGamesPerPage;
+
+$tpmGameIds = array_map('intval', $pdo->query(
+    'SELECT DISTINCT d.game_id
+     FROM lxk_draws d
+     JOIN lxk_users u ON u.id = d.user_id
+     WHERE u.role != \'admin\'
+     ORDER BY d.game_id DESC
+     LIMIT ' . $tpmGamesPerPage . ' OFFSET ' . $tpmOffset
+)->fetchAll(PDO::FETCH_COLUMN));
+
+$tpmByGame = [];
+if (!empty($tpmGameIds)) {
+    $idList = implode(',', $tpmGameIds); // entiers garantis par array_map('intval', ...)
+    $tpmGameRows = $pdo->query(
+        "SELECT d.game_id, d.user_id, u.prenom, d.tiles,
+                gp.score, uo.prenom AS opp_prenom
+         FROM lxk_draws d
+         JOIN lxk_users u          ON u.id  = d.user_id
+         JOIN lxk_game_players gp  ON gp.game_id = d.game_id AND gp.user_id = d.user_id
+         JOIN lxk_game_players gpo ON gpo.game_id = d.game_id AND gpo.user_id != d.user_id
+         JOIN lxk_users uo         ON uo.id = gpo.user_id
+         WHERE u.role != 'admin' AND d.game_id IN ($idList)"
+    )->fetchAll();
+
+    $tpmByGameAgg = [];
+    foreach ($tpmGameRows as $row) {
+        $key = $row['game_id'] . ':' . $row['user_id'];
+        if (!isset($tpmByGameAgg[$key])) {
+            $tpmByGameAgg[$key] = [
+                'game_id'    => (int)$row['game_id'],
+                'prenom'     => $row['prenom'],
+                'opp_prenom' => $row['opp_prenom'],
+                'score'      => (int)$row['score'],
+                'sum'        => 0,
+                'count'      => 0,
+            ];
+        }
+        [$s, $c] = tpmTileStats(json_decode($row['tiles'], true) ?: [], $tpmLetterWeights);
+        $tpmByGameAgg[$key]['sum']   += $s;
+        $tpmByGameAgg[$key]['count'] += $c;
+    }
+    foreach ($tpmByGameAgg as $agg) {
+        if ($agg['count'] === 0) continue;
+        $agg['tpm'] = round($agg['sum'] / $agg['count'], 2);
+        $tpmByGame[] = $agg;
+    }
+    usort($tpmByGame, fn($a, $b) => $b['game_id'] <=> $a['game_id']);
+}
+
+// ── TPM moyen par joueur et par adversaire ──────────────────────────────────
+$tpmPairRows = $pdo->query(
+    "SELECT d.user_id, u.prenom, d.tiles, d.game_id,
+            gpo.user_id AS opponent_id, uo.prenom AS opp_prenom
+     FROM lxk_draws d
+     JOIN lxk_users u          ON u.id  = d.user_id
+     JOIN lxk_game_players gpo ON gpo.game_id = d.game_id AND gpo.user_id != d.user_id
+     JOIN lxk_users uo         ON uo.id = gpo.user_id
+     WHERE u.role != 'admin'"
+)->fetchAll();
+
+$tpmPairAgg = [];
+foreach ($tpmPairRows as $row) {
+    $key = $row['user_id'] . '|' . $row['opponent_id'];
+    if (!isset($tpmPairAgg[$key])) {
+        $tpmPairAgg[$key] = [
+            'prenom'     => $row['prenom'],
+            'opp_prenom' => $row['opp_prenom'],
+            'sum'        => 0,
+            'count'      => 0,
+            'game_ids'   => [],
+        ];
+    }
+    [$s, $c] = tpmTileStats(json_decode($row['tiles'], true) ?: [], $tpmLetterWeights);
+    $tpmPairAgg[$key]['sum']   += $s;
+    $tpmPairAgg[$key]['count'] += $c;
+    $tpmPairAgg[$key]['game_ids'][(int)$row['game_id']] = true;
+}
+
+$tpmByOpponent = [];
+foreach ($tpmPairAgg as $agg) {
+    if ($agg['count'] === 0) continue;
+    $tpmByOpponent[] = [
+        'prenom'      => $agg['prenom'],
+        'opp_prenom'  => $agg['opp_prenom'],
+        'games_count' => count($agg['game_ids']),
+        'count'       => $agg['count'],
+        'tpm'         => round($agg['sum'] / $agg['count'], 2),
+    ];
+}
+usort($tpmByOpponent, fn($a, $b) => $b['tpm'] <=> $a['tpm']);
 
 $activeTab = $_GET['tab'] ?? 'users';
 ?>
@@ -616,6 +730,95 @@ $activeTab = $_GET['tab'] ?? 'users';
                             <td><?= htmlspecialchars($tp['prenom']) ?></td>
                             <td><?= (int)$tp['count'] ?></td>
                             <td><?= number_format($tp['tpm'], 2, ',', '') ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TPM PAR PARTIE -->
+        <section class="card">
+            <h2 class="card-title">TPM par partie</h2>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Partie</th>
+                            <th>Joueur</th>
+                            <th>Adversaire</th>
+                            <th>Score</th>
+                            <th>Lettres piochées</th>
+                            <th>TPM</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($tpmByGame)): ?>
+                        <tr>
+                            <td colspan="6" style="text-align:center;color:#888">Aucune donnée de tirage enregistrée.</td>
+                        </tr>
+                        <?php else: ?>
+                        <?php foreach ($tpmByGame as $tg): ?>
+                        <tr>
+                            <td><a href="game.php?id=<?= $tg['game_id'] ?>">#<?= $tg['game_id'] ?></a></td>
+                            <td><?= htmlspecialchars($tg['prenom']) ?></td>
+                            <td><?= htmlspecialchars($tg['opp_prenom']) ?></td>
+                            <td><?= $tg['score'] ?></td>
+                            <td><?= (int)$tg['count'] ?></td>
+                            <td><?= number_format($tg['tpm'], 2, ',', '') ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php if ($tpmGameTotalPages > 1): ?>
+            <div class="filter-bar" style="margin-top:0.9rem;margin-bottom:0">
+                <?php if ($tpmPage > 1): ?>
+                <a href="admin.php?tab=tpm&tpm_page=<?= $tpmPage - 1 ?>" class="btn btn-sm btn-secondary">&laquo; Précédent</a>
+                <?php else: ?>
+                <span class="btn btn-sm btn-secondary" style="opacity:.45;pointer-events:none">&laquo; Précédent</span>
+                <?php endif; ?>
+
+                <span>Page <?= $tpmPage ?> / <?= $tpmGameTotalPages ?> (<?= $tpmGameTotal ?> parties)</span>
+
+                <?php if ($tpmPage < $tpmGameTotalPages): ?>
+                <a href="admin.php?tab=tpm&tpm_page=<?= $tpmPage + 1 ?>" class="btn btn-sm btn-secondary">Suivant &raquo;</a>
+                <?php else: ?>
+                <span class="btn btn-sm btn-secondary" style="opacity:.45;pointer-events:none">Suivant &raquo;</span>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+        </section>
+
+        <!-- TPM PAR ADVERSAIRE -->
+        <section class="card">
+            <h2 class="card-title">TPM par adversaire</h2>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Joueur</th>
+                            <th>Adversaire</th>
+                            <th>Parties jouées</th>
+                            <th>Lettres piochées</th>
+                            <th>TPM moyen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($tpmByOpponent)): ?>
+                        <tr>
+                            <td colspan="5" style="text-align:center;color:#888">Aucune donnée de tirage enregistrée.</td>
+                        </tr>
+                        <?php else: ?>
+                        <?php foreach ($tpmByOpponent as $to): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($to['prenom']) ?></td>
+                            <td><?= htmlspecialchars($to['opp_prenom']) ?></td>
+                            <td><?= (int)$to['games_count'] ?></td>
+                            <td><?= (int)$to['count'] ?></td>
+                            <td><?= number_format($to['tpm'], 2, ',', '') ?></td>
                         </tr>
                         <?php endforeach; ?>
                         <?php endif; ?>
