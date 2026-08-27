@@ -185,7 +185,7 @@ $topLexika = $pdo->query(
 )->fetchAll();
 
 // ── TPM (Tirage Pondéré Moyen) ───────────────────────────────────────────────
-// Pondération par lettre (pas la valeur Scrabble officielle). Joker exclu du calcul.
+// Pondération par lettre (pas la valeur Scrabble officielle). Joker compté à 7 points fixes (meilleure pioche possible).
 $tpmLetterWeights = [
     'A' => 6, 'E' => 6, 'S' => 6, 'T' => 6, 'R' => 6,
     'I' => 5, 'O' => 5,
@@ -195,12 +195,16 @@ $tpmLetterWeights = [
     'W' => 1, 'Y' => 1, 'K' => 1,
 ];
 
-// Somme pondérée + nombre de lettres (jokers exclus) pour un tableau de tuiles piochées.
+// Somme pondérée + nombre de lettres pour un tableau de tuiles piochées (joker inclus, poids fixe).
 function tpmTileStats(array $tiles, array $weights): array {
     $sum   = 0;
     $count = 0;
     foreach ($tiles as $t) {
-        if (!empty($t['is_joker'])) continue;
+        if (!empty($t['is_joker'])) {
+            $sum += 7; // meilleure pioche possible, poids fixe supérieur au max des lettres (6)
+            $count++;
+            continue;
+        }
         $letter = strtoupper($t['letter'] ?? '');
         if (!isset($weights[$letter])) continue;
         $sum += $weights[$letter];
